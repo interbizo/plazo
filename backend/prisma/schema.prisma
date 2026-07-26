@@ -1,0 +1,2825 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum UserRole {
+  BUYER
+  SELLER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  UNDER_APPEAL
+}
+
+enum AppealStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ProductType {
+  PHYSICAL
+  DIGITAL
+}
+
+enum JobStatus {
+  OPEN
+  IN_REVIEW
+  HIRED
+  COMPLETED
+  CANCELLED
+}
+
+enum ProposalStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  COMPLETED
+  CANCELLED
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT // Waiting for payment
+  PAYMENT_UPLOADED // Payment proof uploaded
+  PAYMENT_VERIFIED // Payment confirmed
+  PENDING // Legacy - for backward compatibility
+  PROCESSING // Seller working
+  DELIVERED // Seller delivered
+  COMPLETED // Buyer accepted
+  CANCELLED // Cancelled
+  DISPUTED // In dispute
+  EXPIRED // Payment deadline passed
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  E_WALLET
+  CASH
+}
+
+enum PaymentProofStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  EXPIRED
+}
+
+enum SubscriptionPlan {
+  FREE
+  BASIC
+  PREMIUM
+  PROFESSIONAL
+  ENTERPRISE
+  ULTIMATE
+}
+
+enum SellerTier {
+  FREE
+  MEMBER
+}
+
+enum ListingType {
+  PRODUCT
+  SERVICE
+  JOB
+}
+
+enum RatingType {
+  SELLER_RATING
+  BUYER_RATING
+}
+
+enum DisputeStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED_BUYER_WIN
+  RESOLVED_SELLER_WIN
+  RESOLVED_PARTIAL
+  CLOSED
+  CANCELLED
+}
+
+enum FileCategory {
+  PRODUCT_IMAGE
+  SERVICE_IMAGE
+  AVATAR
+  CV
+  PORTFOLIO
+  ATTACHMENT
+  BANNER
+  LOGO
+  KYC_DOCUMENT
+}
+
+enum PackageTier {
+  BASIC
+  STANDARD
+  PREMIUM
+}
+
+enum DeliveryStatus {
+  SUBMITTED
+  ACCEPTED
+  REVISION_REQUESTED
+}
+
+enum TransactionType {
+  ESCROW_HOLD
+  ESCROW_RELEASE
+  WITHDRAWAL
+  REFUND
+  PLATFORM_FEE
+  BOOST_PAYMENT
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  PROCESSING
+  COMPLETED
+  REJECTED
+}
+
+enum KycStatus {
+  NOT_SUBMITTED
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum VerificationMethod {
+  EMAIL
+  WHATSAPP
+  NONE
+}
+
+enum CancellationStatus {
+  REQUESTED
+  ACCEPTED
+  DECLINED
+}
+
+enum ExtensionStatus {
+  REQUESTED
+  ACCEPTED
+  DECLINED
+}
+
+enum StockReservationStatus {
+  RESERVED
+  CONFIRMED
+  CANCELLED
+  EXPIRED
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWING
+  RESOLVED
+  DISMISSED
+}
+
+enum SellerLevel {
+  NEW
+  LEVEL_1
+  LEVEL_2
+  TOP_RATED
+}
+
+enum CmsPageStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum BannerStatus {
+  ACTIVE
+  INACTIVE
+  SCHEDULED
+}
+
+enum StoreDisplayMode {
+  LANDING_PAGE
+  CATALOG
+}
+
+// ============================================
+// AUTH & USER SYSTEM
+// ============================================
+
+model User {
+  id        String  @id @default(cuid())
+  email     String  @unique
+  phone     String?
+  password  String // bcrypt hashed
+  firstName String
+  lastName  String
+  avatar    String?
+  bio       String?
+
+  // Address Information (required for registration)
+  address        String?
+  city           String?
+  province       String?
+  postalCode     String?
+  whatsappNumber String?
+
+  // Role & Status
+  role                UserRole           @default(BUYER)
+  isEmailVerified     Boolean            @default(false)
+  isPhoneVerified     Boolean            @default(false)
+  phoneVerifiedAt     DateTime?
+  verificationMethod  VerificationMethod @default(NONE)
+  isActive            Boolean            @default(true)
+
+  // KYC Verification
+  kycStatus     KycStatus @default(NOT_SUBMITTED)
+  kycVerifiedAt DateTime?
+
+  // Auth tokens
+  resetToken              String?
+  resetTokenExpiry        DateTime?
+  verificationToken       String?
+  verificationTokenExpiry DateTime?
+  emailVerifiedAt         DateTime?
+  lastVerificationEmailSentAt DateTime?
+
+  // Two-Factor Authentication (2FA)
+  twoFactorSecret   String? // Encrypted TOTP secret
+  twoFactorEnabled  Boolean  @default(false)
+  twoFactorVerified Boolean  @default(false) // True after first successful verification
+  backupCodes       String[] // Hashed backup codes for recovery
+
+  // Tenant relationship (seller has own tenant, buyer can be on multiple)
+  tenants         Tenant[] @relation("TenantOwner")
+  tenantMembers   Tenant[] @relation("TenantMembers")
+  referredTenants Tenant[] @relation("ReferredTenants")
+
+  // Seller Data
+  sellerProfile    SellerProfile?
+  affiliateProfile AffiliateProfile?
+  affiliateClaims  AffiliateClaim[]  @relation("AffiliateClaimOwner")
+  affiliateBonuses AffiliateBonus[]  @relation("AffiliateBonusOwner")
+
+  // Orders
+  buyerOrders  Order[] @relation("OrderBuyer")
+  sellerOrders Order[] @relation("OrderSeller")
+
+  // Jobs & Proposals
+  postedJobs Job[]
+  proposals  Proposal[]
+
+  // Chat
+  chatMessages ChatMessage[]
+  chatRooms    ChatRoom[]
+
+  // Reviews
+  reviewsGiven    Review[] @relation("ReviewGiver")
+  reviewsReceived Review[] @relation("ReviewReceiver")
+
+  // Notifications
+  notifications Notification[]
+
+  // OTP
+  otps OTP[]
+
+  // Wishlist
+  wishlists Wishlist[]
+
+  // Disputes
+  disputesOpened Dispute[] @relation("DisputeOpener")
+
+  // File Uploads
+  uploads FileUpload[]
+
+  // KYC
+  kycSubmission KycSubmission?
+
+  // Financial
+  transactions Transaction[]
+  withdrawals  Withdrawal[]
+
+  // Reports
+  reportsFiled    Report[]        @relation("ReportFiler")
+  reportsReceived Report[]        @relation("ReportTarget")
+  reportMessages  ReportMessage[]
+
+  // Custom Offers
+  offersReceived CustomOffer[] @relation("OfferBuyer")
+  offersSent     CustomOffer[] @relation("OfferSeller")
+
+  // Payment
+  paymentProofsUploaded   PaymentProof[]
+  paymentProofsVerified   PaymentProof[]           @relation("PaymentVerifier")
+  paymentVerificationLogs PaymentVerificationLog[]
+
+  // Refresh Tokens
+  refreshTokens RefreshToken[]
+
+  // Shipping Addresses (address book)
+  shippingAddresses ShippingAddress[]
+
+  // Review Replies (seller replies to buyer reviews)
+  reviewReplies ReviewReply[] @relation("ReviewReplier")
+
+  // Stock Reservations
+  stockReservations StockReservation[]
+
+  // Activity Tracking
+  lastActiveAt DateTime? // Last time user was active (for online status)
+  lastLoginAt  DateTime? // Last successful login timestamp
+
+  // Account Status & Suspension
+  accountStatus     AccountStatus @default(ACTIVE)
+  suspendedAt       DateTime?
+  suspendedReason   String?
+  suspendedBy       String? // Admin ID who suspended
+  gracePeriodEndsAt DateTime? // 30 days after suspension — auto-delete after this
+
+  // Appeals
+  appeals AccountAppeal[]
+
+  // Timestamps
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([email])
+  @@index([isActive])
+  @@index([role])
+  @@index([firstName])
+  @@index([accountStatus])
+  @@index([lastName])
+}
+
+// ============================================
+// REFRESH TOKEN STORAGE (for revocation & rotation)
+// ============================================
+
+model RefreshToken {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tokenHash String  @unique // SHA-256 hash of the token (never store raw)
+  family    String // Token family for rotation detection
+  isRevoked Boolean @default(false)
+
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@index([family])
+  @@index([expiresAt])
+}
+
+// ============================================
+// MULTI-TENANT SYSTEM
+// ============================================
+
+model Tenant {
+  id String @id @default(cuid())
+
+  // Subdomain (setiap seller punya subdomain unik: tokobudi.ehftest.dev)
+  subdomain String @unique
+
+  // Owner & Members
+  ownerId String
+  owner   User   @relation("TenantOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members User[] @relation("TenantMembers")
+
+  // ============ STORE INFO ============
+  name            String
+  description     String? @db.Text
+  tagline         String? // Slogan singkat toko
+  logo            String?
+  banner          String?
+  favicon         String?
+  contactEmail    String?
+  contactPhone    String?
+  contactWhatsapp String?
+  address         String? @db.Text // Alamat fisik toko (opsional)
+  city            String? // Kota toko, e.g. "Jakarta", "Bandung"
+  latitude        Float? // Koordinat opsional
+  longitude       Float? // Koordinat opsional
+
+  // ============ SUBSCRIPTION ============
+  subscriptionPlan      SubscriptionPlan @default(FREE)
+  sellerTier            SellerTier       @default(FREE)
+  postsLimit            Int              @default(10)
+  usedPosts             Int              @default(0)
+  subscriptionExpiresAt DateTime?
+
+  // ============ STATUS ============
+  isActive Boolean @default(true)
+
+  // Verified Badge & Featured
+  isVerified    Boolean   @default(false)
+  verifiedAt    DateTime?
+  isFeatured    Boolean   @default(false)
+  featuredOrder Int?
+
+  // ============ SEO CONTROL ============
+  // Control whether this store can be indexed by search engines
+  // Default: false (noindex) - Only premium + verified stores can enable this
+  isSeoActive      Boolean   @default(false)
+  seoActivatedAt   DateTime? // When SEO was activated
+  seoDeactivatedAt DateTime? // When SEO was deactivated (for tracking)
+
+  // ============ STOREFRONT THEME & CMS ============
+  themeColor        String? // Primary color hex e.g. "#3B82F6"
+  themeSecondary    String? // Secondary color hex
+  themePreset       String? // Preset theme name (e.g. "emerald", "ocean", "sunset")
+  themeFontFamily   String? // Font family (e.g. "inter", "poppins", "playfair")
+  themeBorderRadius String? // Border radius style (e.g. "none", "sm", "md", "lg", "full")
+  themeShadowStyle  String? // Shadow style (e.g. "none", "soft", "medium", "hard")
+  socialLinks       Json? // {instagram, facebook, twitter, tiktok, youtube, website}
+  storeAnnouncement String?          @db.Text // Banner announcement on store
+  displayMode       StoreDisplayMode @default(CATALOG)
+
+  // Store SEO
+  metaTitle       String?
+  metaDescription String? @db.Text
+  metaKeywords    String?
+  ogImage         String?
+
+  // Store Policies (rich text HTML)
+  returnPolicy   String? @db.Text
+  shippingPolicy String? @db.Text
+  termsOfService String? @db.Text
+  privacyPolicy  String? @db.Text
+
+  // Store Hours (JSON: {monday: {open: "09:00", close: "17:00", closed: false}, ...})
+  storeHours Json?
+
+  // Featured/Pinned Products (array of product IDs to pin at top)
+  pinnedProductIds String[]
+  pinnedServiceIds String[]
+
+  // ============ SELLER TIER FEATURES ============
+  canHighlightProducts Boolean @default(false)
+  canPriorityListing   Boolean @default(false)
+  canAnalyticsAdvanced Boolean @default(false)
+
+  // ============ REFERRAL TRACKING ============
+  referralCodeUsed String? // Kode referral yang digunakan saat daftar
+  referredBy       String? // User ID yang mereferensikan
+  referredByUser   User?   @relation("ReferredTenants", fields: [referredBy], references: [id], onDelete: SetNull)
+
+  // ============ RELATIONS ============
+  products             Product[]
+  services             Service[]
+  jobs                 Job[]
+  orders               Order[]
+  chatRooms            ChatRoom[]
+  notifications        Notification[]
+  subscription         Subscription?
+  subscriptionPayments SubscriptionPayment[]
+  affiliateBonuses     AffiliateBonus[]
+  flashSaleItems       FlashSaleItem[]
+  paymentAccounts      PaymentAccount[]
+  storePages           StorePage[]
+  storeMenus           StoreMenu[]
+  physicalVerification PhysicalVerification?
+
+  // Timestamps
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([ownerId])
+  @@index([subdomain])
+  @@index([isActive])
+  @@index([isVerified])
+  @@index([isFeatured])
+  @@index([city])
+  @@index([referredBy])
+  @@index([name])
+  @@index([referredBy, deletedAt])
+  @@index([referredBy, createdAt])
+}
+
+// ============================================
+// STORE PAGES (Seller CMS - custom pages per store)
+// ============================================
+
+model StorePage {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  slug    String // URL slug: "about", "faq", "return-policy"
+  title   String
+  content String  @db.Text // HTML content
+  excerpt String?
+
+  isPublished Boolean @default(true)
+  sortOrder   Int     @default(0)
+
+  // SEO
+  metaTitle       String?
+  metaDescription String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@index([tenantId, isPublished])
+}
+
+model StoreMenu {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  label    String // Menu label: "Home", "Products", "About Us"
+  type     String // "page", "products", "services", "external", "custom"
+  url      String? // For external links or custom URLs
+  pageSlug String? // For linking to StorePage
+  icon     String? // Optional icon name (lucide-react icon name)
+
+  isVisible Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  // For dropdown/nested menus
+  parentId String?
+  parent   StoreMenu?  @relation("MenuHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children StoreMenu[] @relation("MenuHierarchy")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, isVisible, sortOrder])
+  @@index([parentId])
+}
+
+// ============================================
+// SELLER PROFILE
+// ============================================
+// ACCOUNT APPEAL (Recovery/Banding System)
+// ============================================
+
+model AccountAppeal {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Appeal content
+  reason    String       @db.Text // Why user wants account restored
+  evidence  String?      // Optional: URL to evidence/proof
+
+  // Status
+  status    AppealStatus @default(PENDING)
+
+  // Admin review
+  reviewedBy   String?
+  reviewedAt   DateTime?
+  adminNote    String?   // Admin's internal note
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ============================================
+// SELLER PROFILE
+// ============================================
+
+model SellerProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Seller Stats
+  totalEarnings  Float       @default(0)
+  totalOrders    Int         @default(0)
+  totalReviews   Int         @default(0)
+  averageRating  Float       @default(0)
+  level          SellerLevel @default(NEW)
+  levelUpdatedAt DateTime?
+
+  // Seller Info
+  bio            String?
+  skills         String[] // Array of skills
+  certifications String?
+
+  // Portfolio & CV
+  portfolio      String? // Portfolio URL or description
+  portfolioFiles String[] // Array of portfolio file URLs
+  cvUrl          String? // CV file URL
+  cvFileName     String? // Original CV filename
+  website        String?
+  linkedin       String?
+  github         String?
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// ============================================
+// MARKETPLACE: PRODUCTS & SERVICES
+// ============================================
+
+model Product {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Basic Info
+  name         String
+  slug         String?
+  description  String  @db.Text
+  price        Float
+  comparePrice Float? // Original/compare price (harga coret)
+  stock        Int     @default(0)
+
+  // Product Type
+  productType ProductType @default(PHYSICAL)
+  isDigital   Boolean     @default(false)
+
+  // Variants
+  hasVariants Boolean          @default(false)
+  variants    ProductVariant[]
+
+  // Media
+  images    String[] // Array of image URLs
+  thumbnail String?
+
+  // Digital Product Fields
+  digitalFileUrl        String? // URL to downloadable file
+  digitalFileSize       Int? // File size in bytes
+  digitalFileName       String? // Original file name
+  downloadLimit         Int? // Max downloads per purchase (null = unlimited)
+  downloadExpiry        Int? // Days until download expires (null = never)
+  externalLink          String? // Google Drive, Dropbox, etc
+  accessInstructions    String? @db.Text // Instructions for accessing digital product
+  licenseKey            String? // For software licenses
+  digitalDeliveryMethod String? // 'FILE_DOWNLOAD', 'EXTERNAL_LINK', 'LICENSE_KEY', 'GOOGLE_DRIVE', 'MANUAL'
+
+  // Category & Tags
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+  tags       String[]
+
+  // Location (untuk filter kota)
+  city      String? // Nama kota, e.g. "Jakarta", "Bandung", "Surabaya"
+  latitude  Float? // Koordinat opsional
+  longitude Float? // Koordinat opsional
+
+  // SEO
+  metaTitle       String?
+  metaDescription String?
+  metaKeywords    String?
+
+  // Boost & Ranking
+  isBoosted    Boolean   @default(false)
+  boostedUntil DateTime?
+
+  // Stats
+  viewCount Int @default(0)
+
+  // Visibility
+  isPublished          Boolean @default(true)
+  publishToMarketplace Boolean @default(false) // true = visible on main marketplace
+
+  // Timestamps
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // Relations
+  cartItems         CartItem[]
+  wishlists         Wishlist[]
+  orderItems        OrderItem[]
+  flashSaleItems    FlashSaleItem[]
+  reviews           Review[]
+  stockReservations StockReservation[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@index([categoryId])
+  @@index([isPublished])
+  @@index([isBoosted])
+  @@index([publishToMarketplace])
+  @@index([productType])
+  @@index([isDigital])
+  @@index([hasVariants])
+  @@index([city])
+  @@index([tenantId, isPublished, deletedAt])
+  @@index([tenantId, categoryId, isPublished])
+}
+
+model ProductVariant {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  sku       String? // Stock Keeping Unit
+  name      String // e.g., "Size M - Red" or "Basic Package"
+  price     Float? // Override product price (null = use product price)
+  stock     Int     @default(0)
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  // Variant options (e.g., Size: M, Color: Red)
+  options ProductVariantOption[]
+
+  // Relations
+  cartItems         CartItem[]
+  orderItems        OrderItem[]
+  stockReservations StockReservation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([productId])
+  @@index([sku])
+  @@index([isActive])
+}
+
+model ProductVariantOption {
+  id          String         @id @default(cuid())
+  variantId   String
+  variant     ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  optionName  String // e.g., "Size", "Color", "Material"
+  optionValue String // e.g., "M", "Red", "Cotton"
+
+  createdAt DateTime @default(now())
+
+  @@index([variantId])
+  @@index([optionName])
+}
+
+model Service {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Basic Info (Gig like Fiverr)
+  name         String
+  slug         String?
+  description  String  @db.Text
+  basePrice    Float
+  comparePrice Float? // Original/compare price (harga coret)
+
+  // Media
+  thumbnail String?
+  gallery   String[] // Array of image/video URLs
+
+  // Category & Tags
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+  tags       String[]
+
+  // Location (untuk filter kota)
+  city      String? // Nama kota, e.g. "Jakarta", "Bandung", "Surabaya"
+  latitude  Float? // Koordinat opsional
+  longitude Float? // Koordinat opsional
+
+  // FAQ
+  faq Json? // [{question, answer}]
+
+  // SEO
+  metaTitle       String?
+  metaDescription String?
+  metaKeywords    String?
+
+  // Boost & Ranking
+  isBoosted    Boolean   @default(false)
+  boostedUntil DateTime?
+
+  // Stats
+  viewCount Int @default(0)
+
+  // Visibility
+  isPublished          Boolean @default(true)
+  publishToMarketplace Boolean @default(false) // true = visible on main marketplace
+
+  // Packages (Basic/Standard/Premium)
+  packages ServicePackage[]
+
+  // Wishlists
+  wishlists      Wishlist[]
+  flashSaleItems FlashSaleItem[]
+  reviews        Review[]
+
+  // Timestamps
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@index([categoryId])
+  @@index([isPublished])
+  @@index([isBoosted])
+  @@index([publishToMarketplace])
+  @@index([city])
+  @@index([tenantId, isPublished, deletedAt])
+}
+
+// ============================================
+// FLASH SALE / FEATURED LISTING
+// ============================================
+
+enum FlashSaleStatus {
+  PENDING // Seller requested, awaiting admin approval
+  APPROVED // Admin approved, will show on homepage
+  REJECTED
+  EXPIRED
+}
+
+// Flash Sale Event — admin-controlled period
+model FlashSaleEvent {
+  id        String   @id @default(cuid())
+  name      String // e.g. "Flash Sale Hari Ini", "Weekend Sale"
+  startDate DateTime
+  endDate   DateTime
+  isActive  Boolean  @default(true)
+
+  items FlashSaleItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, startDate, endDate])
+}
+
+model FlashSaleItem {
+  id String @id @default(cuid())
+
+  // Link to event (admin-controlled period)
+  eventId String?
+  event   FlashSaleEvent? @relation(fields: [eventId], references: [id])
+
+  // Can be product or service
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id])
+  serviceId String?
+  service   Service? @relation(fields: [serviceId], references: [id])
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  // Pricing override for flash sale
+  salePrice       Float // Discounted price during flash sale
+  originalPrice   Float // Store original price for display
+  discountPercent Float? // Calculated discount %
+
+  // Legacy scheduling (kept for backward compat, new items use event dates)
+  startDate DateTime?
+  endDate   DateTime?
+
+  // Position
+  position  String @default("flash_sale") // flash_sale, featured, recommended
+  sortOrder Int    @default(0)
+
+  // Status
+  status         FlashSaleStatus @default(PENDING)
+  approvedBy     String?
+  rejectedReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, position])
+  @@index([eventId])
+  @@index([tenantId])
+}
+
+model Category {
+  id          String       @id @default(cuid())
+  name        String
+  description String?
+  slug        String
+  type        CategoryType
+
+  // Nested category support (parent-child relationship)
+  parentId String?
+  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children Category[] @relation("CategoryHierarchy")
+
+  // Icon for better UI
+  icon String? // Icon name (e.g., "ShoppingBag", "Wrench")
+
+  // Ordering
+  sortOrder Int @default(0)
+
+  // Status
+  isActive Boolean @default(true)
+
+  products  Product[]
+  services  Service[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([slug, type])
+  @@index([parentId])
+  @@index([type])
+  @@index([isActive])
+  @@index([sortOrder])
+}
+
+// ============================================
+// CATEGORY TYPE ENUM
+// ============================================
+enum CategoryType {
+  PRODUCT
+  SERVICE
+}
+
+// ============================================
+// JOBS & FREELANCE SYSTEM
+// ============================================
+
+model Job {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Buyer
+  buyerId String
+  buyer   User   @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+
+  // Job Details
+  title       String
+  slug        String?
+  description String  @db.Text
+  budget      Float // Budget atau price range
+
+  // Category & Tags
+  categoryId   String?
+  tags         String[]
+  maxProposals Int?
+
+  // Location (untuk filter kota)
+  city      String? // Nama kota, e.g. "Jakarta", "Bandung", "Surabaya"
+  latitude  Float? // Koordinat opsional
+  longitude Float? // Koordinat opsional
+
+  // SEO
+  metaTitle       String?
+  metaDescription String?
+
+  // Status
+  status JobStatus @default(OPEN)
+
+  // Boost
+  isBoosted    Boolean   @default(false)
+  boostedUntil DateTime?
+
+  // Proposals
+  proposals Proposal[]
+
+  // Order (after hiring)
+  order Order?
+
+  // Timestamps
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@index([buyerId])
+  @@index([status])
+  @@index([isBoosted])
+  @@index([city])
+  @@index([maxProposals])
+}
+
+model Proposal {
+  id    String @id @default(cuid())
+  jobId String
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  // Seller
+  sellerId String
+  seller   User   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  // Proposal Details
+  bidPrice Float
+  message  String @db.Text
+
+  // Attachments (metadata only for step 1)
+  attachments String[] // Array of file URLs
+
+  // Status
+  status ProposalStatus @default(PENDING)
+
+  // Timestamps
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([jobId, sellerId])
+  @@index([jobId])
+  @@index([sellerId])
+  @@index([status])
+}
+
+// ============================================
+// ORDER SYSTEM
+// ============================================
+
+model Order {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // From Job & Proposal
+  jobId      String? @unique
+  job        Job?    @relation(fields: [jobId], references: [id])
+  proposalId String?
+
+  // Buyer & Seller
+  buyerId String
+  buyer   User   @relation("OrderBuyer", fields: [buyerId], references: [id])
+
+  sellerId String
+  seller   User   @relation("OrderSeller", fields: [sellerId], references: [id])
+
+  // Order Details
+  title       String
+  description String? @db.Text
+  amount      Float
+
+  // Service Package reference
+  serviceId   String?
+  packageTier PackageTier?
+
+  // Status
+  status OrderStatus @default(PENDING)
+
+  // Revision tracking
+  maxRevisions  Int @default(0)
+  revisionsUsed Int @default(0)
+
+  // Chat
+  chatRoom ChatRoom?
+
+  // Dispute
+  dispute Dispute?
+
+  // Order Items (for product purchases)
+  orderItems OrderItem[]
+
+  // Deliveries
+  deliveries OrderDelivery[]
+
+  // Milestones
+  milestones OrderMilestone[]
+
+  // Activity timeline
+  activities OrderActivity[]
+
+  // Cancellation
+  cancellation OrderCancellation?
+
+  // Extension
+  extension OrderExtension?
+
+  // Reviews
+  reviews Review[]
+
+  // Payment fields
+  paymentCode     String?        @unique
+  paymentMethod   PaymentMethod?
+  paymentDeadline DateTime?
+  paymentProof    PaymentProof?
+  paidAt          DateTime?
+
+  // Escrow
+  escrowAmount     Float?
+  escrowHeldAt     DateTime?
+  escrowReleasedAt DateTime?
+
+  // Auto-expire
+  autoExpireAt DateTime?
+
+  // Delivery & Completion
+  deliveryDeadline DateTime?
+  completedAt      DateTime?
+
+  // Shipping Info (snapshot at order time — not a relation, to preserve history)
+  shippingName       String?
+  shippingPhone      String?
+  shippingAddress    String? @db.Text
+  shippingProvince   String?
+  shippingCity       String?
+  shippingDistrict   String?
+  shippingPostalCode String?
+  shippingNotes      String? // Catatan untuk kurir
+
+  // Timestamps
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([tenantId])
+  @@index([buyerId])
+  @@index([sellerId])
+  @@index([status])
+  @@index([jobId])
+  @@index([paymentCode])
+  @@index([paymentDeadline])
+  @@index([sellerId, status])
+  @@index([buyerId, status])
+  @@index([tenantId, status])
+  @@index([sellerId, createdAt])
+  @@index([sellerId, status, createdAt])
+}
+
+// ============================================
+// SHIPPING ADDRESS (Buyer Address Book)
+// ============================================
+
+model ShippingAddress {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  label      String // "Rumah", "Kantor", "Kos", etc.
+  name       String // Nama penerima
+  phone      String // No HP penerima
+  address    String  @db.Text // Alamat lengkap (jalan, RT/RW, dll)
+  province   String // Provinsi
+  provinceId String? // ID provinsi dari API
+  city       String // Kota/Kabupaten
+  cityId     String? // ID kota dari API
+  district   String // Kecamatan
+  districtId String? // ID kecamatan dari API
+  postalCode String // Kode pos
+
+  isDefault Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, isDefault])
+}
+
+// ============================================
+// PAYMENT SYSTEM
+// ============================================
+
+model PaymentProof {
+  id      String @id @default(cuid())
+  orderId String @unique
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  // Upload info
+  imageUrl   String
+  uploadedAt DateTime @default(now())
+  uploadedBy String // Buyer ID
+  uploader   User     @relation(fields: [uploadedBy], references: [id])
+
+  // Payment details
+  amount          Float
+  paymentMethod   PaymentMethod
+  bankName        String?
+  accountNumber   String? // Last 4 digits only for security
+  accountName     String?
+  transactionDate DateTime?
+  referenceNumber String?
+
+  // Verification
+  status          PaymentProofStatus @default(PENDING)
+  verifiedAt      DateTime?
+  verifiedBy      String? // Admin/System ID
+  verifier        User?              @relation("PaymentVerifier", fields: [verifiedBy], references: [id])
+  rejectionReason String?            @db.Text
+
+  // Metadata
+  metadata Json? // OCR results, fraud flags, etc
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([uploadedAt])
+  @@index([uploadedBy])
+  @@index([verifiedBy])
+}
+
+model PaymentAccount {
+  id       String  @id @default(cuid())
+  tenantId String? // If seller's account, null for platform
+  tenant   Tenant? @relation(fields: [tenantId], references: [id])
+
+  // Account details
+  type          PaymentMethod
+  bankName      String?
+  accountNumber String
+  accountName   String
+
+  // E-wallet
+  walletType  String? // OVO, GOPAY, DANA, etc
+  phoneNumber String?
+
+  // Status
+  isActive  Boolean @default(true)
+  isPrimary Boolean @default(false)
+
+  // Verification
+  isVerified Boolean   @default(false)
+  verifiedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([isActive, isPrimary])
+}
+
+model PaymentVerificationLog {
+  id             String @id @default(cuid())
+  paymentProofId String
+
+  action      String // VERIFIED, REJECTED, FLAGGED
+  performedBy String // Admin ID
+  admin       User    @relation(fields: [performedBy], references: [id])
+  reason      String? @db.Text
+  notes       String? @db.Text
+
+  createdAt DateTime @default(now())
+
+  @@index([paymentProofId])
+  @@index([performedBy])
+  @@index([createdAt])
+}
+
+// ============================================
+// CHAT & REALTIME SYSTEM
+// ============================================
+
+model ChatRoom {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Order Context (legacy, tetap dipertahankan untuk backward compatibility)
+  orderId String? @unique
+  order   Order?  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  // Item Context — konteks produk/layanan/lowongan yang memulai chat
+  contextType  String? // "product", "service", "job", "admin_support"
+  contextId    String? // ID dari product/service/job
+  contextTitle String? // Judul item (snapshot saat chat dibuat)
+
+  // Admin Support Chat
+  isAdminChat Boolean @default(false) // true jika chat dengan admin/super admin
+  adminUserId String? // ID admin yang handle chat ini
+
+  // Participants
+  participants User[]
+
+  // Messages
+  messages ChatMessage[]
+
+  // Chat Transactions (transaksi manual via chat)
+  chatTransactions ChatTransaction[]
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([orderId])
+  @@index([contextType, contextId])
+  @@index([isAdminChat])
+  @@index([adminUserId])
+}
+
+// ============================================
+// CHAT TRANSACTION (Transaksi Manual via Chat)
+// Seller menandai transaksi selesai → buyer bisa review
+// ============================================
+
+enum ChatTransactionStatus {
+  ONGOING // Transaksi sedang berlangsung
+  COMPLETED // Seller sudah tandai selesai
+}
+
+model ChatTransaction {
+  id     String   @id @default(cuid())
+  roomId String
+  room   ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  // Participants
+  buyerId  String
+  sellerId String
+
+  // Tenant / Store
+  tenantId String
+
+  // Item context — produk/jasa yang ditransaksikan
+  contextType  String // "product" atau "service"
+  contextId    String // ID produk/jasa
+  contextTitle String // Nama produk/jasa (snapshot)
+
+  // Product-specific
+  variantName String? // Nama varian jika ada
+  quantity    Int? // Jumlah
+
+  // Service-specific
+  packageTier  String? // BASIC/STANDARD/PREMIUM
+  packageTitle String? // Nama paket
+
+  // Price
+  price Float? // Harga yang disepakati
+
+  // Status
+  status ChatTransactionStatus @default(ONGOING)
+
+  // Completion
+  completedAt DateTime? // Kapan seller tandai selesai
+  completedBy String? // Seller ID yang menandai
+
+  // Review
+  reviewId String? @unique // Link ke review jika sudah direview
+  review   Review? @relation(fields: [reviewId], references: [id])
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([roomId])
+  @@index([buyerId])
+  @@index([sellerId])
+  @@index([tenantId])
+  @@index([status])
+  @@index([contextType, contextId])
+}
+
+model ChatMessage {
+  id     String   @id @default(cuid())
+  roomId String
+  room   ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  // Sender
+  senderId String
+  sender   User   @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  // Content
+  text        String   @db.Text
+  attachments String[] // File URLs
+
+  // Status
+  isRead Boolean   @default(false)
+  readAt DateTime?
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([roomId])
+  @@index([senderId])
+  @@index([createdAt])
+}
+
+// ============================================
+// REVIEW & RATING SYSTEM
+// ============================================
+
+model Review {
+  id      String  @id @default(cuid())
+  orderId String? // Optional — transaksi internal dihapus, review bisa tanpa order
+  order   Order?  @relation(fields: [orderId], references: [id])
+
+  // Product/Service being reviewed
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id])
+
+  serviceId String?
+  service   Service? @relation(fields: [serviceId], references: [id])
+
+  // Giver & Receiver
+  giverId String
+  giver   User   @relation("ReviewGiver", fields: [giverId], references: [id])
+
+  receiverId String
+  receiver   User   @relation("ReviewReceiver", fields: [receiverId], references: [id])
+
+  // Rating
+  rating  Int // 1-5
+  comment String?  @db.Text
+  images  String[] // Review photos (max 3, max 300KB each)
+
+  // Type
+  type RatingType // SELLER_RATING or BUYER_RATING
+
+  // Detailed ratings (optional breakdown)
+  communicationRating Int? // 1-5
+  serviceRating       Int? // 1-5
+  recommendRating     Int? // 1-5
+
+  // Verification
+  isVerified Boolean @default(false) // Verified purchase
+  isPublic   Boolean @default(true) // Public visibility
+
+  // Seller Reply
+  reply ReviewReply?
+
+  // Chat Transaction link (review berdasarkan transaksi chat)
+  chatTransaction ChatTransaction?
+
+  // Helpful votes
+  helpfulCount Int @default(0)
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([giverId, productId, serviceId])
+  @@index([orderId])
+  @@index([giverId])
+  @@index([receiverId])
+  @@index([productId])
+  @@index([serviceId])
+  @@index([rating])
+  @@index([receiverId, rating])
+  @@index([productId, rating])
+  @@index([serviceId, rating])
+  @@index([isVerified])
+  @@index([isPublic])
+  @@index([createdAt])
+}
+
+model ReviewReply {
+  id String @id @default(cuid())
+
+  // Review being replied to
+  reviewId String @unique
+  review   Review @relation(fields: [reviewId], references: [id])
+
+  // Seller who replied
+  sellerId String
+  seller   User   @relation("ReviewReplier", fields: [sellerId], references: [id])
+
+  // Content
+  message String @db.Text
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sellerId])
+  @@index([createdAt])
+}
+
+// ============================================
+// NOTIFICATION SYSTEM
+// ============================================
+
+model Notification {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  // Recipient
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  // Content
+  title   String
+  message String @db.Text
+  type    String // "job", "proposal", "order", "chat", "payment"
+
+  // Reference
+  referenceId   String? // Job ID, Order ID, etc
+  referenceType String? // "job", "order", "proposal"
+
+  // Additional data (JSON)
+  metadata Json? // Additional context data
+
+  // Status
+  isRead Boolean   @default(false)
+  readAt DateTime?
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@index([userId, isRead])
+  @@index([tenantId, userId, isRead])
+}
+
+// ============================================
+// CART SYSTEM
+// ============================================
+
+model Cart {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  // Items
+  items CartItem[]
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CartItem {
+  id     String @id @default(cuid())
+  cartId String
+  cart   Cart   @relation(fields: [cartId], references: [id])
+
+  // Product
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  // Variant (optional)
+  variantId String?
+  variant   ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  // Quantity
+  quantity Int @default(1)
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([cartId])
+  @@index([productId])
+  @@index([variantId])
+}
+
+// ============================================
+// SUBSCRIPTION & BILLING
+// ============================================
+
+model Subscription {
+  id       String @id @default(cuid())
+  tenantId String @unique
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  // Plan
+  plan SubscriptionPlan
+
+  // Billing
+  monthlyPrice Float
+  isActive     Boolean @default(true)
+  autoRenew    Boolean @default(true)
+
+  // Dates
+  startDate   DateTime
+  endDate     DateTime?
+  renewalDate DateTime?
+  cancelledAt DateTime?
+  expiresAt   DateTime?
+
+  // Payment tracking
+  lastPaymentAt     DateTime?
+  lastPaymentAmount Float?
+  failedPayments    Int       @default(0)
+  nextBillingDate   DateTime?
+
+  // Plan history
+  previousPlan SubscriptionPlan?
+  upgradedAt   DateTime?
+  downgradedAt DateTime?
+
+  // Trial
+  isTrialActive Boolean   @default(false)
+  trialEndsAt   DateTime?
+
+  // Status tracking
+  status String @default("active") // active, cancelled, expired, suspended
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([isActive])
+  @@index([status])
+  @@index([renewalDate])
+  @@index([expiresAt])
+}
+
+model SubscriptionHistory {
+  id       String @id @default(cuid())
+  tenantId String
+
+  // What changed
+  fromPlan SubscriptionPlan
+  toPlan   SubscriptionPlan
+  fromTier SellerTier
+  toTier   SellerTier
+
+  // Billing
+  amount Float   @default(0)
+  reason String? // "upgrade", "downgrade", "renewal", "cancellation", "admin_change"
+
+  // Who made the change
+  changedBy String? // userId of admin or "system" or "self"
+
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+}
+
+// ============================================
+// SUBSCRIPTION PLAN CONFIG (Admin-editable)
+// ============================================
+
+model SubscriptionPlanConfig {
+  id   String           @id @default(cuid())
+  plan SubscriptionPlan @unique
+
+  // Display
+  name        String // "Paket Gratis", "Paket Basic", etc.
+  description String? @db.Text
+  badge       String? // "Populer", "Best Value", etc.
+  sortOrder   Int     @default(0)
+  isActive    Boolean @default(true) // Can hide plans from listing
+
+  // Pricing
+  monthlyPrice Float  @default(0)
+  yearlyPrice  Float? // Optional yearly discount
+  currency     String @default("IDR")
+
+  // Limits
+  postsLimit       Int @default(10)
+  maxImagesPerPost Int @default(5)
+  maxFileSize      Int @default(10) // MB
+
+  // Feature Flags (what this plan unlocks)
+  canPublishToMarketplace        Boolean @default(false) // Publish Marketplace
+  canVerifiedBadge               Boolean @default(false) // Badge Terverifikasi
+  canFeaturedStore               Boolean @default(false) // Featured Homepage
+  canHighlightProducts           Boolean @default(false)
+  canPriorityListing             Boolean @default(false)
+  canAdvancedAnalytics           Boolean @default(false)
+  canBulkUpload                  Boolean @default(false)
+  canExportData                  Boolean @default(false)
+  canFlashSale                   Boolean @default(false) // Flash Sale
+  canCustomTheme                 Boolean @default(false)
+  canRemoveBranding              Boolean @default(false)
+  canRequestPhysicalVerification Boolean @default(false) // Verifikasi Kunjungan Fisik
+  canSubmitProposal              Boolean @default(false) // Kirim Proposal Job
+  canWhatsappCheckout            Boolean @default(false) // Beli via WhatsApp di Produk
+  canToolsRecommendation         Boolean @default(false) // Tools Rekomendasi Seller
+  canBecomeAffiliate             Boolean @default(false) // Bisa Jadi Affiliate Seller
+  canBoostListing                Boolean @default(false) // Boost / Top Ads
+
+  // Metadata
+  features Json? // Array of feature strings for display: ["10 Produk", "Analytics Dasar", ...]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([plan])
+  @@index([isActive, sortOrder])
+}
+
+// ============================================
+// SUBSCRIPTION PAYMENT (Manual Transfer)
+// ============================================
+
+enum SubscriptionPaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AffiliateType {
+  GENERAL
+  CITY_SPECIAL
+}
+
+enum AffiliateBonusStatus {
+  PENDING
+  APPROVED
+  PAID
+  REJECTED
+}
+
+enum AffiliateClaimStatus {
+  PENDING
+  APPROVED
+  PAID
+  REJECTED
+}
+
+model SubscriptionPayment {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  // Plan details
+  plan         SubscriptionPlan
+  planName     String // Snapshot of plan name at time of purchase
+  amount       Float
+  durationDays Int              @default(30) // 30 for monthly, 365 for yearly
+
+  // Payment proof
+  proofImageUrl String
+  accountName   String? // Nama pengirim
+  accountNumber String? // Nomor rekening pengirim
+  transferDate  DateTime? // Tanggal transfer
+  notes         String?   @db.Text
+
+  // Affiliate snapshot
+  referralCodeUsed String?
+  affiliateUserId  String?
+  affiliateType    AffiliateType?
+  affiliateRate    Float?
+
+  // Status
+  status          SubscriptionPaymentStatus @default(PENDING)
+  reviewedBy      String? // Admin user ID who approved/rejected
+  reviewedAt      DateTime?
+  reviewNotes     String?                   @db.Text // Admin notes
+  rejectionReason String?                   @db.Text
+
+  affiliateBonus AffiliateBonus?
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([affiliateUserId])
+}
+
+model AffiliateProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  referralCode String  @unique
+  isActive     Boolean @default(true)
+
+  // City-special affiliate settings
+  isCitySpecial Boolean @default(false)
+  city          String?
+
+  // Default bank account for claims (reusable)
+  defaultBankAccountName   String?
+  defaultBankAccountNumber String?
+  defaultBankName          String?
+
+  notes String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([isCitySpecial])
+  @@index([city])
+}
+
+model AffiliateClaim {
+  id              String @id @default(cuid())
+  affiliateUserId String
+  affiliateUser   User   @relation("AffiliateClaimOwner", fields: [affiliateUserId], references: [id], onDelete: Cascade)
+
+  amount           Float
+  status           AffiliateClaimStatus @default(PENDING)
+  requestedAt      DateTime             @default(now())
+  reviewedAt       DateTime?
+  reviewedByUserId String?
+  paidAt           DateTime?
+  adminNotes       String?              @db.Text
+  rejectionReason  String?              @db.Text
+
+  // Bank account details for payout
+  bankAccountName   String?
+  bankAccountNumber String?
+  bankName          String?
+  paymentProofUrl   String? // Bukti transfer dari admin
+
+  bonuses AffiliateBonus[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([affiliateUserId])
+  @@index([status])
+  @@index([requestedAt])
+}
+
+model AffiliateBonus {
+  id String @id @default(cuid())
+
+  affiliateUserId String
+  affiliateUser   User   @relation("AffiliateBonusOwner", fields: [affiliateUserId], references: [id], onDelete: Cascade)
+
+  referredTenantId String
+  referredTenant   Tenant @relation(fields: [referredTenantId], references: [id], onDelete: Cascade)
+
+  subscriptionPaymentId String              @unique
+  subscriptionPayment   SubscriptionPayment @relation(fields: [subscriptionPaymentId], references: [id], onDelete: Cascade)
+
+  claimId String?
+  claim   AffiliateClaim? @relation(fields: [claimId], references: [id], onDelete: SetNull)
+
+  affiliateType      AffiliateType
+  citySnapshot       String?
+  rate               Float
+  subscriptionAmount Float
+  bonusAmount        Float
+  status             AffiliateBonusStatus @default(PENDING)
+  approvedAt         DateTime?
+  paidAt             DateTime?
+  notes              String?              @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([affiliateUserId, referredTenantId, subscriptionPaymentId])
+  @@index([affiliateUserId])
+  @@index([referredTenantId])
+  @@index([claimId])
+  @@index([status])
+}
+
+// ============================================
+// AUDIT LOG
+// ============================================
+
+model AuditLog {
+  id String @id @default(cuid())
+
+  // Actor
+  userId String?
+  action String // "create", "update", "delete"
+
+  // Details
+  entityType String // "user", "product", "order"
+  entityId   String
+  changes    String? @db.Text // JSON stringified
+
+  // Timestamps
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([createdAt])
+}
+
+// ============================================
+// WISHLIST / FAVORITES
+// ============================================
+
+model Wishlist {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id])
+
+  serviceId String?
+  service   Service? @relation(fields: [serviceId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+  @@unique([userId, serviceId])
+  @@index([userId])
+  @@index([productId])
+  @@index([serviceId])
+}
+
+// ============================================
+// DISPUTE / REFUND SYSTEM
+// ============================================
+
+model Dispute {
+  id      String @id @default(cuid())
+  orderId String @unique
+  order   Order  @relation(fields: [orderId], references: [id])
+
+  openedById String
+  openedBy   User   @relation("DisputeOpener", fields: [openedById], references: [id])
+
+  reason   String   @db.Text
+  evidence String[] // Array of file URLs
+
+  status DisputeStatus @default(OPEN)
+
+  // Admin decision
+  adminId      String? // Admin who resolved the dispute
+  adminNotes   String? @db.Text
+  resolution   String? @db.Text
+  decision     String? // 'BUYER_WIN', 'SELLER_WIN', 'PARTIAL'
+  refundAmount Float? // Amount to refund (for partial or buyer win)
+
+  resolvedAt DateTime?
+  closedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([openedById])
+  @@index([status])
+}
+
+// ============================================
+// FILE UPLOAD SYSTEM
+// ============================================
+
+model FileUpload {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  originalName String
+  fileName     String // Stored filename (UUID-based)
+  mimeType     String
+  size         Int // File size in bytes
+  url          String // Public URL or path
+
+  category FileCategory @default(ATTACHMENT)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([category])
+}
+
+// ============================================
+// ORDER ITEMS (for product purchases)
+// ============================================
+
+model OrderItem {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id])
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  // Variant (optional)
+  variantId      String?
+  variant        ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  variantName    String? // Snapshot of variant name at time of order
+  variantOptions Json? // Snapshot of variant options at time of order
+
+  quantity   Int
+  unitPrice  Float
+  totalPrice Float
+
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+  @@index([variantId])
+}
+
+// ============================================
+// SERVICE PACKAGES (Fiverr-style tiers)
+// ============================================
+
+model ServicePackage {
+  id        String  @id @default(cuid())
+  serviceId String
+  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  tier         PackageTier // BASIC, STANDARD, PREMIUM
+  title        String // e.g. "Basic Logo", "Standard Logo", "Premium Logo"
+  description  String      @db.Text
+  price        Float
+  deliveryDays Int
+  revisions    Int         @default(1)
+  features     String[] // e.g. ["Source File", "High Resolution", "3 Concepts"]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([serviceId, tier])
+  @@index([serviceId])
+}
+
+// ============================================
+// ORDER DELIVERY SYSTEM
+// ============================================
+
+model OrderDelivery {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id])
+
+  message String   @db.Text
+  files   String[] // Array of file URLs
+
+  status DeliveryStatus @default(SUBMITTED)
+
+  // Buyer response
+  respondedAt     DateTime?
+  responseMessage String?   @db.Text
+
+  // Revision request
+  revisionNote String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orderId])
+}
+
+// ============================================
+// ORDER MILESTONES
+// ============================================
+
+model OrderMilestone {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id])
+
+  title       String
+  description String?   @db.Text
+  amount      Float // Partial payment amount
+  dueDate     DateTime?
+
+  isCompleted Boolean   @default(false)
+  completedAt DateTime?
+  isPaid      Boolean   @default(false)
+  paidAt      DateTime?
+
+  // Additional tracking
+  status   String @default("pending") // pending, in_progress, completed, cancelled
+  progress Int    @default(0) // 0-100 percentage
+
+  // Deliverables
+  deliverables String[] // Array of deliverable descriptions
+  attachments  String[] // Array of file URLs
+
+  // Approval
+  isApproved Boolean   @default(false)
+  approvedAt DateTime?
+  approvedBy String? // User ID who approved
+
+  sortOrder Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([status])
+  @@index([isCompleted])
+  @@index([isPaid])
+  @@index([orderId, sortOrder])
+}
+
+// ============================================
+// ORDER ACTIVITY TIMELINE
+// ============================================
+
+model OrderActivity {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id])
+
+  action      String // "created", "started", "delivered", "revision_requested", "completed", "cancelled", etc
+  description String
+  metadata    Json? // Extra data (file count, status change, etc)
+
+  actorId String? // Who performed the action
+
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+  @@index([createdAt])
+}
+
+// ============================================
+// MUTUAL CANCELLATION
+// ============================================
+
+model OrderCancellation {
+  id      String @id @default(cuid())
+  orderId String @unique
+  order   Order  @relation(fields: [orderId], references: [id])
+
+  requestedById String
+  reason        String @db.Text
+
+  status        CancellationStatus @default(REQUESTED)
+  respondedAt   DateTime?
+  declineReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orderId])
+}
+
+// ============================================
+// ORDER EXTENSION
+// ============================================
+
+model OrderExtension {
+  id      String @id @default(cuid())
+  orderId String @unique
+  order   Order  @relation(fields: [orderId], references: [id])
+
+  requestedById String
+  extraDays     Int
+  reason        String   @db.Text
+  newDeadline   DateTime
+
+  status      ExtensionStatus @default(REQUESTED)
+  respondedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orderId])
+}
+
+// ============================================
+// STOCK RESERVATION (Prevent Overselling)
+// ============================================
+
+model StockReservation {
+  id String @id @default(cuid())
+
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id])
+
+  variantId String?
+  variant   ProductVariant? @relation(fields: [variantId], references: [id])
+
+  quantity Int
+  userId   String
+  user     User   @relation(fields: [userId], references: [id])
+
+  status StockReservationStatus @default(RESERVED)
+
+  orderId     String? // Set when confirmed
+  expiresAt   DateTime
+  confirmedAt DateTime?
+  cancelledAt DateTime?
+
+  cancellationReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([productId])
+  @@index([variantId])
+  @@index([userId])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+// ============================================
+// CUSTOM OFFERS (Seller → Buyer from chat)
+// ============================================
+
+model CustomOffer {
+  id String @id @default(cuid())
+
+  sellerId String
+  seller   User   @relation("OfferSeller", fields: [sellerId], references: [id])
+
+  buyerId String
+  buyer   User   @relation("OfferBuyer", fields: [buyerId], references: [id])
+
+  title        String
+  description  String @db.Text
+  price        Float
+  deliveryDays Int
+  revisions    Int    @default(1)
+
+  // Reference
+  chatRoomId String?
+
+  isAccepted Boolean @default(false)
+  isDeclined Boolean @default(false)
+  orderId    String? // Created after acceptance
+
+  expiresAt DateTime // Auto-expire
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sellerId])
+  @@index([buyerId])
+}
+
+// ============================================
+// PAYMENT / ESCROW / WITHDRAWAL
+// ============================================
+
+model Transaction {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  type      TransactionType
+  amount    Float
+  fee       Float           @default(0) // Platform fee
+  netAmount Float // amount - fee
+
+  status TransactionStatus @default(PENDING)
+
+  // References
+  orderId      String?
+  milestoneId  String?
+  withdrawalId String?
+
+  description String?
+  metadata    Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([orderId])
+  @@index([type])
+  @@index([status])
+  @@index([userId, type])
+  @@index([userId, createdAt])
+}
+
+model Withdrawal {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  amount    Float
+  fee       Float @default(0)
+  netAmount Float
+
+  // Bank/Payment details (encrypted reference only)
+  paymentMethod String // "bank_transfer", "ewallet"
+  accountRef    String // Encrypted/masked reference
+
+  // Additional bank details
+  bankName      String?
+  accountNumber String?
+  accountName   String?
+
+  status WithdrawalStatus @default(PENDING)
+
+  adminNotes     String?   @db.Text
+  rejectedReason String?   @db.Text
+  processedAt    DateTime?
+  processedBy    String?
+  approvedAt     DateTime?
+  approvedBy     String?
+  completedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([userId, status])
+  @@index([createdAt])
+}
+
+// ============================================
+// KYC / IDENTITY VERIFICATION (Secure)
+// ============================================
+
+model KycSubmission {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Encrypted KYC data - NEVER store raw sensitive data
+  ktpNumberHash      String // SHA-256 hash of KTP number (for uniqueness check)
+  ktpNumberEncrypted String // AES encrypted KTP number (can be decrypted by admin)
+  fullNameEncrypted  String // AES encrypted full name
+  addressEncrypted   String? // AES encrypted address (optional)
+  dobEncrypted       String? // AES encrypted date of birth (optional)
+
+  // Encrypted file paths (stored in secure directory, not public)
+  ktpPhotoPath      String // Encrypted path to KTP photo
+  selfieWithKtpPath String // Encrypted path to selfie holding KTP (REQUIRED for verification)
+
+  // Verification
+  status          KycStatus @default(PENDING)
+  rejectionReason String?
+  verifiedBy      String? // Admin who verified
+  verifiedAt      DateTime?
+
+  // Audit
+  ipAddress   String? // IP at submission time
+  submittedAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([ktpNumberHash])
+}
+
+// ============================================
+// PHYSICAL VERIFICATION (Kunjungan Fisik)
+// ============================================
+
+enum PhysicalVerificationStatus {
+  NOT_REQUESTED // Belum pernah request
+  PENDING // Menunggu kunjungan
+  SCHEDULED // Jadwal kunjungan sudah ditentukan
+  IN_PROGRESS // Sedang proses kunjungan
+  APPROVED // Disetujui setelah kunjungan
+  REJECTED // Ditolak
+}
+
+model PhysicalVerification {
+  id       String @id @default(cuid())
+  tenantId String @unique
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Request Info
+  requestedBy  String // User ID who requested
+  requestedAt  DateTime @default(now())
+  requestNotes String?  @db.Text // Catatan dari seller saat request
+
+  // Business Info (snapshot at request time)
+  businessName    String
+  businessAddress String  @db.Text
+  businessCity    String?
+  businessPhone   String?
+
+  // Verification Process
+  status            PhysicalVerificationStatus @default(PENDING)
+  scheduledDate     DateTime? // Tanggal kunjungan dijadwalkan
+  visitedDate       DateTime? // Tanggal actual kunjungan
+  verifiedBy        String? // Admin ID who verified
+  verificationNotes String?                    @db.Text // Catatan hasil kunjungan
+
+  // Approval/Rejection
+  approvedAt      DateTime?
+  rejectedAt      DateTime?
+  rejectionReason String?   @db.Text
+
+  // Certificate (Piagam)
+  certificateUrl        String? // URL to certificate image/PDF
+  certificateUploadedAt DateTime?
+  certificateUploadedBy String? // Admin ID
+
+  // Photos from visit
+  visitPhotos String[] // Array of photo URLs from physical visit
+
+  // Audit
+  ipAddress String? // IP at request time
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([requestedBy])
+  @@index([scheduledDate])
+}
+
+// ============================================
+// REPORT / FLAG SYSTEM
+// ============================================
+
+model Report {
+  id String @id @default(cuid())
+
+  reporterId String
+  reporter   User   @relation("ReportFiler", fields: [reporterId], references: [id])
+
+  // Target
+  targetType   String // "user", "product", "service", "job", "review", "general"
+  targetId     String
+  targetUserId String?
+  targetUser   User?   @relation("ReportTarget", fields: [targetUserId], references: [id])
+
+  reason      String
+  description String?  @db.Text
+  evidence    String[] // File URLs
+
+  status     ReportStatus @default(PENDING)
+  adminNotes String?      @db.Text
+  resolvedBy String?
+  resolvedAt DateTime?
+
+  messages ReportMessage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([reporterId])
+  @@index([targetType, targetId])
+  @@index([status])
+}
+
+model ReportMessage {
+  id String @id @default(cuid())
+
+  reportId String
+  report   Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  senderId String
+  sender   User   @relation(fields: [senderId], references: [id])
+
+  message String  @db.Text
+  isAdmin Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([reportId])
+  @@index([senderId])
+}
+
+// ============================================
+// CMS SYSTEM
+// ============================================
+
+model CmsPage {
+  id      String  @id @default(cuid())
+  slug    String  @unique
+  title   String
+  content String  @db.Text
+  excerpt String?
+
+  status CmsPageStatus @default(DRAFT)
+
+  // SEO
+  metaTitle       String?
+  metaDescription String?
+  metaKeywords    String?
+  ogImage         String?
+
+  // Ordering / display
+  sortOrder      Int     @default(0)
+  isInNavigation Boolean @default(false)
+
+  createdBy   String?
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([slug])
+  @@index([status])
+}
+
+model CmsBanner {
+  id       String  @id @default(cuid())
+  title    String
+  subtitle String?
+  imageUrl String
+  linkUrl  String?
+
+  // Button CTA (Call to Action)
+  buttonText String? // Text tombol (contoh: "Beli Sekarang", "Lihat Detail")
+  buttonUrl  String? // Link/URL tujuan tombol
+
+  status     BannerStatus @default(ACTIVE)
+  position   String       @default("homepage_hero") // homepage_hero, homepage_secondary, sidebar
+  sortOrder  Int          @default(0)
+  isFallback Boolean      @default(false) // Fallback banner jika tidak ada banner aktif
+
+  startDate DateTime?
+  endDate   DateTime?
+
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, position])
+  @@index([isFallback])
+}
+
+model SiteSetting {
+  id          String  @id @default(cuid())
+  key         String  @unique
+  value       String  @db.Text
+  group       String  @default("general") // general, seo, social, email, payment, appearance
+  description String?
+
+  updatedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([key])
+  @@index([group])
+}
+
+model FaqItem {
+  id          String  @id @default(cuid())
+  question    String
+  answer      String  @db.Text
+  category    String  @default("general")
+  sortOrder   Int     @default(0)
+  isPublished Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+}
+
+// ============================================
+// PROMOTION / COUPON SYSTEM
+// ============================================
+
+enum PromotionType {
+  PERCENTAGE
+  FIXED_AMOUNT
+}
+
+model Promotion {
+  id          String  @id @default(cuid())
+  code        String  @unique
+  name        String
+  description String?
+
+  type           PromotionType @default(PERCENTAGE)
+  value          Float // percentage or fixed amount
+  minOrderAmount Float?
+  maxDiscount    Float? // cap for percentage type
+
+  usageLimit   Int? // null = unlimited
+  usedCount    Int  @default(0)
+  perUserLimit Int  @default(1)
+
+  // Targeting
+  tenantId     String? // null = platform-wide
+  applicableTo String? // "product", "service", "all"
+
+  isActive  Boolean  @default(true)
+  startDate DateTime
+  endDate   DateTime
+
+  createdBy String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([code])
+  @@index([isActive])
+}
+
+// ============================================
+// ACTIVITY LOG (Extended)
+// ============================================
+
+model ActivityLog {
+  id        String  @id @default(cuid())
+  userId    String?
+  action    String // "login", "logout", "password_change", "order_placed", etc.
+  ipAddress String?
+  userAgent String?
+  metadata  Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// ============================================
+// RECOMMENDED TOOLS (Super Admin → Seller Premium)
+// ============================================
+
+enum RecommendedToolType {
+  EBOOK_PDF
+  APPLICATION
+  WEBSITE
+  TOOLS_ONLINE
+}
+
+model RecommendedTool {
+  id String @id @default(cuid())
+
+  title       String
+  description String?             @db.Text
+  type        RecommendedToolType
+
+  // File — wajib jika type = EBOOK_PDF
+  fileUrl  String? // URL file yang diupload
+  fileName String? // Nama asli file
+  fileSize Int? // Ukuran file dalam bytes
+
+  // Redirect URL — wajib jika type = APPLICATION / WEBSITE / TOOLS_ONLINE
+  redirectUrl String?
+
+  // Thumbnail / cover image
+  thumbnail String?
+
+  // Status
+  isActive Boolean @default(true)
+
+  // Sorting
+  sortOrder Int @default(0)
+
+  // Metadata
+  createdBy String? // Admin user ID yang membuat
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([type])
+  @@index([sortOrder])
+}
+
+// ============================================
+// LOCATION / WILAYAH INDONESIA
+// ============================================
+
+model Province {
+  id        String   @id // ID dari API wilayah Indonesia
+  name      String
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cities City[]
+
+  @@index([isActive])
+  @@index([sortOrder])
+}
+
+model City {
+  id         String   @id // ID dari API wilayah Indonesia
+  provinceId String
+  province   Province @relation(fields: [provinceId], references: [id], onDelete: Cascade)
+  name       String
+  isActive   Boolean  @default(true)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  districts District[]
+
+  @@index([provinceId])
+  @@index([isActive])
+  @@index([sortOrder])
+}
+
+model District {
+  id        String   @id // ID dari API wilayah Indonesia
+  cityId    String
+  city      City     @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  name      String
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  villages Village[]
+
+  @@index([cityId])
+  @@index([isActive])
+  @@index([sortOrder])
+}
+
+model Village {
+  id         String   @id // ID dari API wilayah Indonesia
+  districtId String
+  district   District @relation(fields: [districtId], references: [id], onDelete: Cascade)
+  name       String
+  isActive   Boolean  @default(true)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([districtId])
+  @@index([isActive])
+  @@index([sortOrder])
+}
+
+// ============================================
+// TUTORIAL / PANDUAN PLATFORM
+// ============================================
+
+enum TutorialCategory {
+  GETTING_STARTED // Memulai
+  SELLER_GUIDE // Panduan Seller
+  BUYER_GUIDE // Panduan Buyer
+  FEATURES // Fitur Platform
+  PAYMENT // Pembayaran
+  SHIPPING // Pengiriman
+  TROUBLESHOOTING // Troubleshooting
+  FAQ // FAQ
+  OTHER // Lainnya
+}
+
+enum TutorialTargetRole {
+  ALL // Semua user
+  BUYER // Khusus buyer
+  SELLER // Khusus seller
+}
+
+model Tutorial {
+  id          String             @id @default(cuid())
+  title       String
+  slug        String             @unique
+  description String?            @db.Text
+  content     String             @db.Text // Rich text content
+  category    TutorialCategory   @default(OTHER)
+  targetRole  TutorialTargetRole @default(ALL)
+
+  // Media
+  thumbnail String? // Cover image
+  videoUrl  String? // YouTube embed URL
+
+  // SEO
+  metaTitle       String?
+  metaDescription String?
+
+  // Ordering & Visibility
+  sortOrder   Int     @default(0)
+  isPublished Boolean @default(true)
+  isFeatured  Boolean @default(false) // Tampil di homepage/dashboard
+
+  // Stats
+  viewCount Int @default(0)
+
+  // Timestamps
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
+
+  @@index([category])
+  @@index([targetRole])
+  @@index([isPublished])
+  @@index([isFeatured])
+  @@index([sortOrder])
+  @@index([slug])
+}
+
+// ============================================
+// OTP (WhatsApp Verification)
+// ============================================
+
+enum OTPType {
+  REGISTRATION
+  FORGOT_PASSWORD
+  LOGIN_2FA
+}
+
+model OTP {
+  id     String  @id @default(cuid())
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  phone String // WhatsApp number
+  code  String // OTP code (6 digits)
+  type  OTPType
+
+  expiresAt DateTime // OTP expires after 1 minute
+  isUsed    Boolean  @default(false)
+  usedAt    DateTime?
+
+  attempts Int @default(0) // Track verification attempts
+
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+  @@index([userId])
+  @@index([type])
+  @@index([expiresAt])
+  @@index([isUsed])
+}

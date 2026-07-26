@@ -1,0 +1,340 @@
+/* CKEditor 4 Custom Styles */
+
+/* Import Google Fonts for professional typography */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Open+Sans:wght@300;400;600;700&family=Lato:wght@300;400;700&family=Montserrat:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Merriweather:wght@300;400;700&display=swap');
+
+/* CKEditor 4 Container */
+.cke {
+  border: 1px solid #d1d5db !important;
+  border-radius: 0.5rem !important;
+  overflow: hidden;
+}
+
+.cke_top {
+  background: #f9fafb !important;
+  border-bottom: 1px solid #d1d5db !important;
+  padding: 0.5rem !important;
+}
+
+.cke_bottom {
+  background: #f9fafb !important;
+  border-top: 1px solid #d1d5db !important;
+}
+
+/* Toolbar */
+.cke_toolbar {
+  margin: 2px !important;
+}
+
+.cke_toolgroup {
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 0.25rem !important;
+  margin: 2px !important;
+}
+
+.cke_button {
+  background: transparent !important;
+  border: none !important;
+}
+
+.cke_button:hover {
+  background: #e5e7eb !important;
+}
+
+.cke_button_on {
+  background: #dbeafe !important;
+}
+
+.cke_button_icon {
+  opacity: 0.8;
+}
+
+.cke_button:hover .cke_button_icon {
+  opacity: 1;
+}
+
+/* Editor Content Area */
+.cke_wysiwyg_frame,
+.cke_wysiwyg_div {
+  background: #ffffff !important;
+  padding: 1rem !important;
+}
+
+/* Content Styles */
+.cke_editable {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  color: #111827;
+}
+
+.cke_editable h1 {
+  font-size: 2em;
+  font-weight: bold;
+  margin-top: 0.67em;
+  margin-bottom: 0.67em;
+  line-height: 1.2;
+  color: #111827;
+}
+
+.cke_editable h2 {
+  font-size: 1.5em;
+  font-weight: bold;
+  margin-top: 0.83em;
+  margin-bottom: 0.83em;
+  line-height: 1.3;
+  color: #111827;
+}
+
+.cke_editable h3 {
+  font-size: 1.17em;
+  font-weight: bold;
+  margin-top: 1em;
+  margin-bottom: 1em;
+  line-height: 1.4;
+  color: #111827;
+}
+
+.cke_editable h4 {
+  font-size: 1em;
+  font-weight: bold;
+  margin-top: 1.33em;
+  margin-bottom: 1.33em;
+  color: #111827;
+}
+
+.cke_editable h5 {
+  font-size: 0.83em;
+  font-weight: bold;
+  margin-top: 1.67em;
+  margin-bottom: 1.67em;
+  color: #111827;
+}
+
+.cke_editable h6 {
+  font-size: 0.67em;
+  font-weight: bold;
+  margin-top: 2.33em;
+  margin-bottom: 2.33em;
+  color: #111827;
+}
+
+.cke_editable p {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  line-height: 1.6;
+}
+
+.cke_editable ul,
+.cke_editable ol {
+  margin-left: 1.5em;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  padding-left: 0.5em;
+}
+
+.cke_editable ul {
+  list-style-type: disc;
+}
+
+.cke_editable ol {
+  list-style-type: decimal;
+}
+
+.cke_editable li {
+  margin-bottom: 0.25em;
+}
+
+.cke_editable blockquote {
+  border-left: 4px solid #3b82f6;
+  padding-left: 1em;
+  margin-left: 0;
+  margin-right: 0;
+  margin-top: 1em;
+  margin-bottom: 1em;
+  font-style: italic;
+  color: #4b5563;
+  background-color: #f3f4f6;
+  padding: 1em;
+  border-radius: 0.25rem;
+}
+
+.cke_editable table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+  border: 1px solid #d1d5db;
+}
+
+.cke_editable table td,
+.cke_editable table th {
+  border: 1px solid #d1d5db;
+  padding: 0.75em;
+  text-align: left;
+}
+
+.cke_editable table th {
+  background-color: #f9fafb;
+  font-weight: bold;
+  color: #111827;
+}
+
+.cke_editable table tr:nth-child(even) {
+  background-color: #f9fafb;
+}
+
+.cke_editable a {
+  color: #3b82f6;
+  text-decoration: underline;
+  transition: color 0.2s;
+}
+
+.cke_editable a:hover {
+  color: #2563eb;
+}
+
+.cke_editable code {
+  background-color: #f3f4f6;
+  padding: 0.2em 0.4em;
+  border-radius: 0.25rem;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.9em;
+  color: #dc2626;
+}
+
+.cke_editable pre {
+  background-color: #1f2937;
+  color: #f9fafb;
+  padding: 1em;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 1em 0;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.cke_editable hr {
+  border: none;
+  border-top: 2px solid #d1d5db;
+  margin: 2em 0;
+}
+
+/* Dropdown menus */
+.cke_combo__font .cke_combo_text,
+.cke_combo__fontsize .cke_combo_text {
+  width: 100px !important;
+}
+
+.cke_panel {
+  border: 1px solid #d1d5db !important;
+  border-radius: 0.25rem !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+.cke_panel_listItem a {
+  padding: 0.5rem 1rem !important;
+}
+
+.cke_panel_listItem a:hover {
+  background: #f3f4f6 !important;
+}
+
+/* Color picker */
+.cke_colorbox {
+  border: 1px solid #d1d5db !important;
+}
+
+.cke_colorbox:hover {
+  border: 2px solid #3b82f6 !important;
+}
+
+/* Dialogs */
+.cke_dialog {
+  border: 1px solid #d1d5db !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+}
+
+.cke_dialog_title {
+  background: #f9fafb !important;
+  border-bottom: 1px solid #d1d5db !important;
+  font-weight: 600 !important;
+  color: #111827 !important;
+}
+
+.cke_dialog_body {
+  background: #ffffff !important;
+}
+
+.cke_dialog_footer {
+  background: #f9fafb !important;
+  border-top: 1px solid #d1d5db !important;
+}
+
+/* Buttons in dialogs */
+.cke_dialog_ui_button {
+  background: #3b82f6 !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 0.375rem !important;
+  padding: 0.5rem 1rem !important;
+  font-weight: 500 !important;
+}
+
+.cke_dialog_ui_button:hover {
+  background: #2563eb !important;
+}
+
+.cke_dialog_ui_button_cancel {
+  background: #6b7280 !important;
+}
+
+.cke_dialog_ui_button_cancel:hover {
+  background: #4b5563 !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .cke_top {
+    padding: 0.25rem !important;
+  }
+  
+  .cke_toolbar {
+    margin: 1px !important;
+  }
+  
+  .cke_toolgroup {
+    margin: 1px !important;
+  }
+  
+  .cke_combo__font .cke_combo_text,
+  .cke_combo__fontsize .cke_combo_text {
+    width: 80px !important;
+  }
+}
+
+/* Focus state */
+.cke_focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 1px #3b82f6 !important;
+}
+
+/* Maximize mode */
+.cke_maximized {
+  z-index: 9999 !important;
+}
+
+/* Remove "Powered by CKEditor" */
+.cke_bottom {
+  display: none !important;
+}
+
+/* Source mode */
+.cke_source {
+  font-family: 'Courier New', Courier, monospace !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+  background: #1f2937 !important;
+  color: #f9fafb !important;
+  padding: 1rem !important;
+}

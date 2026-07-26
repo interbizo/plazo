@@ -1,0 +1,1017 @@
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  ForbiddenException,
+  Logger,
+} from "@nestjs/common";
+import { PrismaService } from "@modules/database/prisma.service";
+import {
+  CreateOrderDto,
+  UpdateOrderStatusDto,
+  SubmitDeliveryDto,
+  RespondDeliveryDto,
+  RequestCancellationDto,
+  RespondCancellationDto,
+  RequestExtensionDto,
+  RespondExtensionDto,
+  CreateMilestoneDto,
+} from "./orders.dto";
+import { OrderStatus } from "@prisma/client";
+import { PaginationHelper } from "@common/utils/pagination.helper";
+import { NotificationEventsService } from "@modules/notifications/notification-events.service";
+import { EscrowService } from "./escrow.service";
+import * as crypto from "crypto";
+
+@Injectable()
+export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private notifEvents: NotificationEventsService,
+    private escrowService: EscrowService,
+  ) {}
+
+  private generatePaymentCode(): string {
+    const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    const random = crypto.randomBytes(3).toString("hex").toUpperCase();
+    return `PAY-${date}-${random}`;
+  }
+
+  // ============ PAYMENT EXPIRY CHECKER ============
+  // Called by OrdersCronService via @nestjs/schedule — no more fragile setInterval
+
+  async expireUnpaidOrders() {
+    try {
+      const expiredOrders = await this.prisma.order.findMany({
+        where: {
+          status: OrderStatus.PENDING_PAYMENT,
+          paymentDeadline: { lt: new Date() },
+        },
+        include: { orderItems: true },
+      });
+
+      for (const order of expiredOrders) {
+        await this.prisma.order.update({
+          where: { id: order.id },
+          data: { status: OrderStatus.EXPIRED },
+        });
+
+        // Restore stock
+        for (const item of order.orderItems) {
+          if (item.variantId) {
+            await this.prisma.productVariant.update({
+              where: { id: item.variantId },
+              data: { stock: { increment: item.quantity } },
+            });
+          } else if (item.productId) {
+            await this.prisma.product.update({
+              where: { id: item.productId },
+              data: { stock: { increment: item.quantity } },
+            });
+          }
+        }
+
+        // Refund escrow if any
+        if (order.escrowAmount) {
+          await this.prisma.transaction.create({
+            data: {
+              userId: order.buyerId,
+              type: "REFUND",
+              amount: order.escrowAmount,
+              fee: 0,
+              netAmount: order.escrowAmount,
+              status: "COMPLETED",
+              orderId: order.id,
+              description: `Auto-refund: payment deadline expired for ${order.title}`,
+            },
+          });
+        }
+
+        this.logger.log(`Order ${order.id} expired — stock restored`);
+      }
+
+      if (expiredOrders.length > 0) {
+        this.logger.log(`Expired ${expiredOrders.length} unpaid orders`);
+      }
+    } catch (err) {
+      this.logger.error("Failed to expire unpaid orders", err);
+    }
+  }
+
+  // ============ HELPER: Restore stock for cancelled/expired orders ============
+  private async restoreOrderStock(orderId: string) {
+    const orderItems = await this.prisma.orderItem.findMany({
+      where: { orderId },
+    });
+    for (const item of orderItems) {
+      if (item.variantId) {
+        await this.prisma.productVariant.update({
+          where: { id: item.variantId },
+          data: { stock: { increment: item.quantity } },
+        });
+      } else if (item.productId) {
+        await this.prisma.product.update({
+          where: { id: item.productId },
+          data: { stock: { increment: item.quantity } },
+        });
+      }
+    }
+  }
+
+  // ============ HELPER: Log activity ============
+  private async logActivity(
+    orderId: string,
+    action: string,
+    description: string,
+    actorId?: string,
+    metadata?: any,
+  ) {
+    await this.prisma.orderActivity.create({
+      data: { orderId, action, description, actorId, metadata },
+    });
+  }
+
+  // ============ CREATE ORDER ============
+  async createOrder(tenantId: string, buyerId: string, dto: CreateOrderDto) {
+    let sellerId: string;
+    let jobId: string | null = null;
+    let maxRevisions = 0;
+
+    // From proposal
+    if (dto.proposalId) {
+      const proposal = await this.prisma.proposal.findUnique({
+        where: { id: dto.proposalId },
+        include: { job: true },
+      });
+      if (!proposal) throw new BadRequestException("Proposal not found");
+      if (proposal.status !== "ACCEPTED")
+        throw new BadRequestException("Proposal must be accepted first");
+      if (
+        proposal.job.buyerId !== buyerId ||
+        proposal.job.tenantId !== tenantId
+      )
+        throw new BadRequestException("Invalid proposal");
+      sellerId = proposal.sellerId;
+      jobId = proposal.jobId;
+      // Use the proposal's bid price — never trust client-supplied amount
+      dto.amount = proposal.bidPrice;
+    } else if (dto.serviceId && dto.packageTier) {
+      // From service package
+      const service = await this.prisma.service.findUnique({
+        where: { id: dto.serviceId },
+        include: {
+          tenant: { select: { ownerId: true } },
+          packages: { where: { tier: dto.packageTier } },
+        },
+      });
+      if (!service) throw new BadRequestException("Service not found");
+      sellerId = service.tenant.ownerId;
+      if (sellerId === buyerId)
+        throw new BadRequestException("Cannot order your own service");
+
+      const pkg = service.packages[0];
+      if (pkg) {
+        dto.amount = pkg.price;
+        maxRevisions = pkg.revisions;
+        const deadline = new Date();
+        deadline.setDate(deadline.getDate() + pkg.deliveryDays);
+        dto.deliveryDeadline = deadline;
+      }
+    } else {
+      throw new BadRequestException("Proposal ID or Service+Package required");
+    }
+
+    // Amount must have been set by the server from proposal or package
+    if (!dto.amount || dto.amount <= 0) {
+      throw new BadRequestException("Could not determine order amount from proposal or service package");
+    }
+
+    const amount = dto.amount;
+    const paymentDeadline = new Date();
+    paymentDeadline.setHours(paymentDeadline.getHours() + 24);
+
+    const order = await this.prisma.order.create({
+      data: {
+        tenantId,
+        buyerId,
+        sellerId,
+        jobId: jobId || undefined,
+        serviceId: dto.serviceId,
+        packageTier: dto.packageTier,
+        title: dto.title,
+        description: dto.description,
+        amount,
+        maxRevisions,
+        status: OrderStatus.PENDING_PAYMENT,
+        paymentCode: this.generatePaymentCode(),
+        paymentDeadline,
+        deliveryDeadline: dto.deliveryDeadline,
+        escrowAmount: amount, // Hold in escrow
+      },
+    });
+
+    // Create chat room
+    await this.prisma.chatRoom.create({
+      data: {
+        tenantId,
+        orderId: order.id,
+        participants: { connect: [{ id: buyerId }, { id: sellerId }] },
+      },
+    });
+
+    // Log activity
+    await this.logActivity(order.id, "created", "Order created", buyerId);
+
+    // Notify seller
+    const sellerUser = await this.prisma.user.findUnique({
+      where: { id: sellerId },
+      select: { email: true },
+    });
+    if (sellerUser) {
+      await this.notifEvents.onOrderCreated({
+        tenantId,
+        sellerId,
+        sellerEmail: sellerUser.email,
+        orderTitle: order.title,
+        orderId: order.id,
+      });
+    }
+
+    return { message: "Order created successfully", order };
+  }
+
+  // ============ GET ORDERS ============
+  async getBuyerOrders(
+    tenantId: string,
+    buyerId: string,
+    page = 1,
+    limit = 10,
+    status?: OrderStatus,
+  ) {
+    const { skip, take } = PaginationHelper.calculatePagination(page, limit);
+    const where = {
+      tenantId,
+      buyerId,
+      deletedAt: null,
+      ...(status && { status }),
+    };
+    const [orders, total] = await Promise.all([
+      this.prisma.order.findMany({
+        where,
+        skip,
+        take,
+        include: {
+          seller: {
+            select: { id: true, firstName: true, lastName: true, avatar: true },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+      this.prisma.order.count({ where }),
+    ]);
+    return PaginationHelper.formatPaginatedResponse(orders, total, page, limit);
+  }
+
+  async getSellerOrders(
+    tenantId: string,
+    sellerId: string,
+    page = 1,
+    limit = 10,
+    status?: OrderStatus,
+  ) {
+    const { skip, take } = PaginationHelper.calculatePagination(page, limit);
+    const where = {
+      tenantId,
+      sellerId,
+      deletedAt: null,
+      ...(status && { status }),
+    };
+    const [orders, total] = await Promise.all([
+      this.prisma.order.findMany({
+        where,
+        skip,
+        take,
+        include: {
+          buyer: {
+            select: { id: true, firstName: true, lastName: true, avatar: true },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+      this.prisma.order.count({ where }),
+    ]);
+    return PaginationHelper.formatPaginatedResponse(orders, total, page, limit);
+  }
+
+  async getOrder(tenantId: string, orderId: string, userId: string) {
+    // Allow cross-tenant access for buyer/seller
+    // Seller can view orders from buyer's tenant and vice versa
+    const order = await this.prisma.order.findFirst({
+      where: {
+        id: orderId,
+        deletedAt: null,
+        OR: [{ buyerId: userId }, { sellerId: userId }],
+      },
+      include: {
+        buyer: {
+          select: { id: true, firstName: true, lastName: true, avatar: true },
+        },
+        seller: {
+          select: { id: true, firstName: true, lastName: true, avatar: true },
+        },
+        orderItems: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                thumbnail: true,
+                images: true,
+                productType: true,
+                isDigital: true,
+              },
+            },
+          },
+        },
+        job: { select: { id: true, title: true } },
+        chatRoom: { select: { id: true } },
+        deliveries: { orderBy: { createdAt: "desc" } },
+        milestones: { orderBy: { sortOrder: "asc" } },
+        activities: { orderBy: { createdAt: "desc" }, take: 20 },
+        cancellation: true,
+        extension: true,
+      },
+    });
+    if (!order) throw new BadRequestException("Order not found");
+    return { order };
+  }
+
+  // ============ UPDATE STATUS ============
+
+  /**
+   * Role-based state machine for order status transitions.
+   * Each status maps to allowed transitions with the role that can trigger them.
+   * 'buyer' = only buyer can trigger, 'seller' = only seller, 'both' = either party.
+   */
+  private readonly statusTransitions: Record<
+    string,
+    Array<{ to: string; allowedRole: "buyer" | "seller" | "both" }>
+  > = {
+    PENDING_PAYMENT: [
+      { to: "PAYMENT_UPLOADED", allowedRole: "buyer" }, // Buyer uploads proof
+      { to: "CANCELLED", allowedRole: "both" }, // Either can cancel before payment
+    ],
+    PAYMENT_UPLOADED: [
+      // PAYMENT_VERIFIED and PENDING_PAYMENT transitions are handled by admin (payment verification)
+      { to: "CANCELLED", allowedRole: "buyer" }, // Buyer can cancel while waiting
+    ],
+    PAYMENT_VERIFIED: [
+      { to: "PROCESSING", allowedRole: "seller" }, // Seller accepts and starts working
+      { to: "CANCELLED", allowedRole: "both" }, // Either can cancel before work starts
+    ],
+    PENDING: [
+      { to: "PROCESSING", allowedRole: "seller" }, // Seller starts working
+      { to: "CANCELLED", allowedRole: "both" }, // Either can cancel
+    ],
+    PROCESSING: [
+      { to: "DELIVERED", allowedRole: "seller" }, // Seller delivers (use submitDelivery endpoint instead)
+      { to: "DISPUTED", allowedRole: "buyer" }, // Buyer opens dispute
+    ],
+    DELIVERED: [
+      { to: "COMPLETED", allowedRole: "buyer" }, // Buyer accepts delivery (use respondToDelivery instead)
+      { to: "DISPUTED", allowedRole: "buyer" }, // Buyer disputes delivery
+    ],
+    // Terminal states — no transitions allowed for regular users
+    DISPUTED: [],
+    COMPLETED: [],
+    CANCELLED: [],
+    EXPIRED: [],
+  };
+
+  async updateOrderStatus(
+    tenantId: string | null,
+    orderId: string,
+    userId: string,
+    dto: UpdateOrderStatusDto,
+  ) {
+    // Allow cross-tenant access for buyer/seller
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, deletedAt: null },
+    });
+    if (!order) throw new BadRequestException("Order not found");
+    if (order.buyerId !== userId && order.sellerId !== userId)
+      throw new BadRequestException("Not authorized");
+
+    // Determine user's role in this order
+    const userRole: "buyer" | "seller" =
+      order.buyerId === userId ? "buyer" : "seller";
+
+    // Get valid transitions for current status
+    const transitions = this.statusTransitions[order.status] || [];
+    const transition = transitions.find((t) => t.to === dto.status);
+
+    if (!transition) {
+      throw new BadRequestException(
+        `Cannot transition from ${order.status} to ${dto.status}`,
+      );
+    }
+
+    // Check if user's role is allowed to trigger this transition
+    if (
+      transition.allowedRole !== "both" &&
+      transition.allowedRole !== userRole
+    ) {
+      throw new BadRequestException(
+        `Only the ${transition.allowedRole} can change status to ${dto.status}`,
+      );
+    }
+
+    const updated = await this.prisma.order.update({
+      where: { id: orderId },
+      data: {
+        status: dto.status as OrderStatus,
+        ...(dto.status === "COMPLETED" && { completedAt: new Date() }),
+      },
+    });
+
+    // Restore stock when order is cancelled or expired
+    if (dto.status === "CANCELLED" || dto.status === "EXPIRED") {
+      await this.restoreOrderStock(orderId);
+      
+      // Refund escrow
+      await this.escrowService.autoRefundOnCancellation(
+        orderId,
+        dto.status === "EXPIRED" ? "Order expired" : "Order cancelled"
+      );
+    }
+
+    // Auto-release escrow when order completed
+    if (dto.status === "COMPLETED") {
+      await this.escrowService.autoReleaseOnCompletion(orderId);
+    }
+
+    await this.logActivity(
+      orderId,
+      "status_changed",
+      `Status changed to ${dto.status} by ${userRole}`,
+      userId,
+    );
+
+    // Notify
+    const [buyer, seller] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: order.buyerId },
+        select: { email: true },
+      }),
+      this.prisma.user.findUnique({
+        where: { id: order.sellerId },
+        select: { email: true },
+      }),
+    ]);
+    if (buyer && seller) {
+      await this.notifEvents.onOrderStatusChanged({
+        tenantId: order.tenantId,
+        buyerId: order.buyerId,
+        buyerEmail: buyer.email,
+        sellerId: order.sellerId,
+        sellerEmail: seller.email,
+        orderTitle: order.title,
+        orderId: order.id,
+        newStatus: dto.status,
+        updatedBy: userId,
+      });
+    }
+
+    return { message: "Order status updated", order: updated };
+  }
+
+  // ============ DELIVERY SYSTEM ============
+  async submitDelivery(
+    tenantId: string | null,
+    orderId: string,
+    sellerId: string,
+    dto: SubmitDeliveryDto,
+  ) {
+    // Allow cross-tenant access for seller
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, sellerId, deletedAt: null },
+    });
+    if (!order) throw new NotFoundException("Order not found");
+    if (order.status !== "PROCESSING")
+      throw new BadRequestException("Order must be PROCESSING to deliver");
+
+    const delivery = await this.prisma.orderDelivery.create({
+      data: {
+        orderId,
+        message: dto.message,
+        files: dto.files || [],
+        status: "SUBMITTED",
+      },
+    });
+
+    // Update order status to DELIVERED
+    await this.prisma.order.update({
+      where: { id: orderId },
+      data: { status: "DELIVERED" },
+    });
+
+    await this.logActivity(
+      orderId,
+      "delivered",
+      "Seller submitted delivery",
+      sellerId,
+      { deliveryId: delivery.id, fileCount: dto.files?.length || 0 },
+    );
+
+    // Notify buyer
+    await this.notifEvents.onDeliverySubmitted({
+      tenantId: order.tenantId,
+      buyerId: order.buyerId,
+      orderTitle: order.title,
+      orderId,
+    });
+
+    return { message: "Delivery submitted", delivery };
+  }
+
+  async respondToDelivery(
+    tenantId: string | null,
+    orderId: string,
+    buyerId: string,
+    deliveryId: string,
+    dto: RespondDeliveryDto,
+  ) {
+    // Allow cross-tenant access for buyer
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, buyerId, deletedAt: null },
+    });
+    if (!order) throw new NotFoundException("Order not found");
+
+    const delivery = await this.prisma.orderDelivery.findFirst({
+      where: { id: deliveryId, orderId },
+    });
+    if (!delivery) throw new NotFoundException("Delivery not found");
+    if (delivery.status !== "SUBMITTED")
+      throw new BadRequestException("Delivery already responded to");
+
+    if (dto.action === "accept") {
+      await this.prisma.orderDelivery.update({
+        where: { id: deliveryId },
+        data: { 
+          status: "ACCEPTED",
+          respondedAt: new Date(),
+          responseMessage: dto.message,
+        },
+      });
+
+      // Complete order
+      await this.prisma.order.update({
+        where: { id: orderId },
+        data: {
+          status: "COMPLETED",
+          completedAt: new Date(),
+        },
+      });
+
+      // Release escrow using EscrowService
+      await this.escrowService.releaseEscrow(
+        orderId,
+        "Buyer accepted delivery"
+      );
+
+      await this.logActivity(
+        orderId,
+        "completed",
+        "Buyer accepted delivery, order completed",
+        buyerId,
+      );
+
+      // Notify seller
+      await this.notifEvents.onDeliveryAccepted({
+        tenantId: order.tenantId,
+        sellerId: order.sellerId,
+        orderTitle: order.title,
+        orderId,
+      });
+
+      return { message: "Delivery accepted, order completed" };
+    } else {
+      // Request revision
+      if (order.revisionsUsed >= order.maxRevisions && order.maxRevisions > 0) {
+        throw new BadRequestException("Maximum revisions reached");
+      }
+
+      await this.prisma.orderDelivery.update({
+        where: { id: deliveryId },
+        data: {
+          status: "REVISION_REQUESTED",
+          respondedAt: new Date(),
+          responseMessage: dto.message,
+        },
+      });
+
+      // Increment revision count
+      await this.prisma.order.update({
+        where: { id: orderId },
+        data: {
+          revisionsUsed: { increment: 1 },
+          status: "PROCESSING", // Back to processing for revision
+        },
+      });
+
+      await this.logActivity(
+        orderId,
+        "revision_requested",
+        `Revision requested (${order.revisionsUsed + 1}/${order.maxRevisions})`,
+        buyerId,
+        { message: dto.message },
+      );
+
+      // Notify seller
+      await this.notifEvents.onRevisionRequested({
+        tenantId: order.tenantId,
+        sellerId: order.sellerId,
+        orderTitle: order.title,
+        orderId,
+      });
+
+      return { message: "Revision requested" };
+    }
+  }
+
+  // ============ CANCELLATION ============
+  async requestCancellation(
+    tenantId: string,
+    orderId: string,
+    userId: string,
+    dto: RequestCancellationDto,
+  ) {
+    // Allow cross-tenant access for buyer/seller
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, deletedAt: null },
+    });
+    if (!order) throw new NotFoundException("Order not found");
+    if (order.buyerId !== userId && order.sellerId !== userId)
+      throw new ForbiddenException("Not authorized");
+    if (order.status === "COMPLETED" || order.status === "CANCELLED")
+      throw new BadRequestException("Cannot cancel this order");
+
+    const existing = await this.prisma.orderCancellation.findUnique({
+      where: { orderId },
+    });
+    if (existing)
+      throw new BadRequestException("Cancellation already requested");
+
+    const cancellation = await this.prisma.orderCancellation.create({
+      data: { orderId, requestedById: userId, reason: dto.reason },
+    });
+
+    await this.logActivity(
+      orderId,
+      "cancellation_requested",
+      "Cancellation requested",
+      userId,
+    );
+
+    // Notify the other party
+    const recipientId =
+      order.buyerId === userId ? order.sellerId : order.buyerId;
+    await this.notifEvents.onCancellationRequested({
+      tenantId,
+      recipientId,
+      orderTitle: order.title,
+      orderId,
+    });
+
+    return { message: "Cancellation requested", cancellation };
+  }
+
+  async respondToCancellation(
+    tenantId: string,
+    orderId: string,
+    userId: string,
+    dto: RespondCancellationDto,
+  ) {
+    // Allow cross-tenant access for buyer/seller
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, deletedAt: null },
+    });
+    if (!order) throw new NotFoundException("Order not found");
+
+    // Ensure user is a party to this order
+    if (order.buyerId !== userId && order.sellerId !== userId)
+      throw new ForbiddenException("Not authorized");
+
+    const cancellation = await this.prisma.orderCancellation.findUnique({
+      where: { orderId },
+    });
+    if (!cancellation) throw new NotFoundException("No cancellation request");
+    if (cancellation.requestedById === userId)
+      throw new BadRequestException("Cannot respond to your own request");
+    if (cancellation.status !== "REQUESTED")
+      throw new BadRequestException("Already responded");
+
+    if (dto.action === "accept") {
+      await this.prisma.orderCancellation.update({
+        where: { id: cancellation.id },
+        data: { status: "ACCEPTED", respondedAt: new Date() },
+      });
+      await this.prisma.order.update({
+        where: { id: orderId },
+        data: { status: "CANCELLED" },
+      });
+
+      // Restore stock
+      await this.restoreOrderStock(orderId);
+
+      // Refund escrow using EscrowService
+      await this.escrowService.autoRefundOnCancellation(
+        orderId,
+        "Order cancelled by mutual agreement"
+      );
+
+      await this.logActivity(
+        orderId,
+        "cancelled",
+        "Order cancelled by mutual agreement",
+        userId,
+      );
+
+      // Notify requester
+      await this.notifEvents.onCancellationResponded({
+        tenantId,
+        recipientId: cancellation.requestedById,
+        orderTitle: order.title,
+        orderId,
+        accepted: true,
+      });
+
+      return { message: "Cancellation accepted, order cancelled" };
+    } else {
+      await this.prisma.orderCancellation.update({
+        where: { id: cancellation.id },
+        data: {
+          status: "DECLINED",
+          respondedAt: new Date(),
+          declineReason: dto.declineReason,
+        },
+      });
+      await this.logActivity(
+        orderId,
+        "cancellation_declined",
+        "Cancellation declined",
+        userId,
+      );
+
+      // Notify requester
+      await this.notifEvents.onCancellationResponded({
+        tenantId,
+        recipientId: cancellation.requestedById,
+        orderTitle: order.title,
+        orderId,
+        accepted: false,
+      });
+
+      return { message: "Cancellation declined" };
+    }
+  }
+
+  // ============ EXTENSION ============
+  async requestExtension(
+    tenantId: string,
+    orderId: string,
+    userId: string,
+    dto: RequestExtensionDto,
+  ) {
+    // Allow cross-tenant access for seller
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, deletedAt: null },
+    });
+    if (!order) throw new NotFoundException("Order not found");
+    if (order.sellerId !== userId)
+      throw new ForbiddenException("Only seller can request extension");
+
+    const existing = await this.prisma.orderExtension.findUnique({
+      where: { orderId },
+    });
+    if (existing && existing.status === "REQUESTED")
+      throw new BadRequestException("Extension already pending");
+
+    const currentDeadline = order.deliveryDeadline || new Date();
+    const newDeadline = new Date(currentDeadline);
+    newDeadline.setDate(newDeadline.getDate() + dto.extraDays);
+
+    // Delete old if exists and create new
+    if (existing) {
+      await this.prisma.orderExtension.delete({ where: { orderId } });
+    }
+
+    const extension = await this.prisma.orderExtension.create({
+      data: {
+        orderId,
+        requestedById: userId,
+        extraDays: dto.extraDays,
+        reason: dto.reason,
+        newDeadline,
+      },
+    });
+
+    await this.logActivity(
+      orderId,
+      "extension_requested",
+      `Extension requested: +${dto.extraDays} days`,
+      userId,
+    );
+
+    // Notify buyer
+    await this.notifEvents.onExtensionRequested({
+      tenantId,
+      buyerId: order.buyerId,
+      orderTitle: order.title,
+      orderId,
+      extraDays: dto.extraDays,
+    });
+
+    return { message: "Extension requested", extension };
+  }
+
+  async respondToExtension(
+    tenantId: string,
+    orderId: string,
+    userId: string,
+    dto: RespondExtensionDto,
+  ) {
+    // Allow cross-tenant access for buyer
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, buyerId: userId, deletedAt: null },
+    });
+    if (!order) throw new NotFoundException("Order not found or not buyer");
+
+    const extension = await this.prisma.orderExtension.findUnique({
+      where: { orderId },
+    });
+    if (!extension || extension.status !== "REQUESTED")
+      throw new BadRequestException("No pending extension");
+
+    if (dto.action === "accept") {
+      await this.prisma.orderExtension.update({
+        where: { id: extension.id },
+        data: { status: "ACCEPTED", respondedAt: new Date() },
+      });
+      await this.prisma.order.update({
+        where: { id: orderId },
+        data: { deliveryDeadline: extension.newDeadline },
+      });
+      await this.logActivity(
+        orderId,
+        "extension_accepted",
+        `Deadline extended to ${extension.newDeadline.toISOString()}`,
+        userId,
+      );
+
+      // Notify seller
+      await this.notifEvents.onExtensionResponded({
+        tenantId,
+        sellerId: order.sellerId,
+        orderTitle: order.title,
+        orderId,
+        accepted: true,
+      });
+
+      return { message: "Extension accepted" };
+    } else {
+      await this.prisma.orderExtension.update({
+        where: { id: extension.id },
+        data: { status: "DECLINED", respondedAt: new Date() },
+      });
+      await this.logActivity(
+        orderId,
+        "extension_declined",
+        "Extension declined",
+        userId,
+      );
+
+      // Notify seller
+      await this.notifEvents.onExtensionResponded({
+        tenantId,
+        sellerId: order.sellerId,
+        orderTitle: order.title,
+        orderId,
+        accepted: false,
+      });
+
+      return { message: "Extension declined" };
+    }
+  }
+
+  // ============ MILESTONES ============
+  async createMilestone(
+    tenantId: string,
+    orderId: string,
+    userId: string,
+    dto: CreateMilestoneDto,
+  ) {
+    // Allow cross-tenant access for buyer/seller
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, deletedAt: null },
+    });
+    if (!order) throw new NotFoundException("Order not found");
+    if (order.buyerId !== userId && order.sellerId !== userId)
+      throw new ForbiddenException("Not authorized");
+
+    const count = await this.prisma.orderMilestone.count({
+      where: { orderId },
+    });
+
+    const milestone = await this.prisma.orderMilestone.create({
+      data: {
+        orderId,
+        title: dto.title,
+        description: dto.description,
+        amount: dto.amount,
+        dueDate: dto.dueDate,
+        sortOrder: count + 1,
+      },
+    });
+
+    await this.logActivity(
+      orderId,
+      "milestone_created",
+      `Milestone created: ${dto.title}`,
+      userId,
+    );
+    return { message: "Milestone created", milestone };
+  }
+
+  async completeMilestone(
+    tenantId: string,
+    orderId: string,
+    milestoneId: string,
+    userId: string,
+  ) {
+    // Allow cross-tenant access for buyer
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, buyerId: userId, deletedAt: null },
+    });
+    if (!order) throw new NotFoundException("Order not found or not buyer");
+
+    const milestone = await this.prisma.orderMilestone.findFirst({
+      where: { id: milestoneId, orderId },
+    });
+    if (!milestone) throw new NotFoundException("Milestone not found");
+    if (milestone.isCompleted)
+      throw new BadRequestException("Already completed");
+
+    await this.prisma.orderMilestone.update({
+      where: { id: milestoneId },
+      data: {
+        isCompleted: true,
+        completedAt: new Date(),
+        isPaid: true,
+        paidAt: new Date(),
+      },
+    });
+
+    // Release milestone payment
+    const platformFee = milestone.amount * 0.1;
+    await this.prisma.transaction.create({
+      data: {
+        userId: order.sellerId,
+        type: "ESCROW_RELEASE",
+        amount: milestone.amount,
+        fee: platformFee,
+        netAmount: milestone.amount - platformFee,
+        status: "COMPLETED",
+        orderId,
+        milestoneId,
+        description: `Milestone payment: ${milestone.title}`,
+      },
+    });
+
+    await this.logActivity(
+      orderId,
+      "milestone_completed",
+      `Milestone completed: ${milestone.title}`,
+      userId,
+    );
+    return { message: "Milestone completed and paid" };
+  }
+
+  // ============ ACTIVITY TIMELINE ============
+  async getOrderTimeline(tenantId: string, orderId: string, userId: string) {
+    // Allow cross-tenant access for buyer/seller
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, deletedAt: null },
+    });
+    if (!order) throw new NotFoundException("Order not found");
+    if (order.buyerId !== userId && order.sellerId !== userId)
+      throw new ForbiddenException("Not authorized");
+
+    return this.prisma.orderActivity.findMany({
+      where: { orderId },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+}

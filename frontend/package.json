@@ -1,0 +1,49 @@
+{
+  "name": "frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
+    "build:turbo": "next build --turbo",
+    "build:check": "tsc --noEmit && next build --webpack",
+    "build:debug": "NODE_OPTIONS='--max-old-space-size=1536' next build --webpack --debug",
+    "build:prod": "NODE_ENV=production NODE_OPTIONS='--max-old-space-size=2048' next build --webpack",
+    "typecheck": "tsc --noEmit",
+    "start": "next start",
+    "lint": "eslint",
+    "clean": "rm -rf .next node_modules/.cache"
+  },
+  "dependencies": {
+    "@iconify/react": "^6.0.2",
+    "@marsidev/react-turnstile": "^1.5.1",
+    "axios": "^1.15.0",
+    "ckeditor4-react": "^5.2.1",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "isomorphic-dompurify": "^3.12.0",
+    "lucide-react": "^1.8.0",
+    "next": "16.2.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-hot-toast": "^2.6.0",
+    "react-markdown": "^10.1.0",
+    "rehype-raw": "^7.0.0",
+    "remark-gfm": "^4.0.1",
+    "socket.io-client": "^4.8.3",
+    "tailwind-merge": "^2.6.1",
+    "zod": "^3.25.76",
+    "zustand": "^5.0.12"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20.19.39",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.4",
+    "lightningcss": "^1.32.0",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

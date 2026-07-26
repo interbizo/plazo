@@ -1,0 +1,414 @@
+/* ============================================
+   STOREFRONT THEME VARIABLES
+   Dynamic theming untuk storefront seller
+   ============================================ */
+
+:root {
+  /* Default theme colors - Clean & Professional */
+  --store-primary: #10b981;
+  --store-primary-rgb: 16, 185, 129;
+  --store-secondary: #064e3b;
+  --store-secondary-rgb: 6, 78, 59;
+  
+  /* Background colors */
+  --store-bg-primary: #ffffff;
+  --store-bg-secondary: #f9fafb;
+  --store-bg-tertiary: #f3f4f6;
+  
+  /* Text colors */
+  --store-text-primary: #111827;
+  --store-text-secondary: #6b7280;
+  --store-text-tertiary: #9ca3af;
+  
+  /* Border colors */
+  --store-border-light: #e5e7eb;
+  --store-border-medium: #d1d5db;
+  --store-border-dark: #9ca3af;
+  
+  /* Typography */
+  --store-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --store-font-heading: var(--store-font);
+  
+  /* Spacing & Layout */
+  --store-radius: 0.5rem;
+  --store-radius-sm: 0.25rem;
+  --store-radius-lg: 0.75rem;
+  --store-radius-xl: 1rem;
+  
+  /* Shadows - Soft & Subtle */
+  --store-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --store-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --store-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --store-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --store-shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  
+  /* Transitions */
+  --store-transition: all 0.2s ease-in-out;
+  --store-transition-fast: all 0.15s ease-in-out;
+  --store-transition-slow: all 0.3s ease-in-out;
+}
+
+/* ============================================
+   STOREFRONT ANIMATIONS
+   ============================================ */
+
+@keyframes storefront-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes storefront-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes storefront-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes storefront-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes storefront-bounce-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes storefront-shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+@keyframes storefront-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes storefront-float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Animation classes */
+.storefront-animate-fade-in {
+  animation: storefront-fade-in 0.6s ease-out;
+}
+
+.storefront-animate-slide-up {
+  animation: storefront-slide-up 0.6s ease-out;
+}
+
+.storefront-animate-slide-down {
+  animation: storefront-slide-down 0.6s ease-out;
+}
+
+.storefront-animate-scale-in {
+  animation: storefront-scale-in 0.4s ease-out;
+}
+
+.storefront-animate-bounce-in {
+  animation: storefront-bounce-in 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.storefront-animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.2) 20%,
+    rgba(255, 255, 255, 0.5) 60%,
+    rgba(255, 255, 255, 0)
+  );
+  animation: storefront-shimmer 2s infinite;
+  background-size: 1000px 100%;
+}
+
+.storefront-animate-pulse {
+  animation: storefront-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.storefront-animate-float {
+  animation: storefront-float 3s ease-in-out infinite;
+}
+
+/* Stagger animation delays */
+.storefront-stagger-1 {
+  animation-delay: 0.1s;
+}
+
+.storefront-stagger-2 {
+  animation-delay: 0.2s;
+}
+
+.storefront-stagger-3 {
+  animation-delay: 0.3s;
+}
+
+.storefront-stagger-4 {
+  animation-delay: 0.4s;
+}
+
+/* ============================================
+   THEME UTILITIES
+   ============================================ */
+
+/* Primary color utilities */
+.store-bg-primary {
+  background-color: var(--store-primary);
+}
+
+.store-text-primary {
+  color: var(--store-primary);
+}
+
+.store-border-primary {
+  border-color: var(--store-primary);
+}
+
+/* Primary with opacity */
+.store-bg-primary-light {
+  background-color: rgba(var(--store-primary-rgb), 0.1);
+}
+
+.store-bg-primary-lighter {
+  background-color: rgba(var(--store-primary-rgb), 0.05);
+}
+
+/* Secondary color utilities */
+.store-bg-secondary {
+  background-color: var(--store-secondary);
+}
+
+.store-text-secondary {
+  color: var(--store-secondary);
+}
+
+.store-border-secondary {
+  border-color: var(--store-secondary);
+}
+
+/* Button styles */
+.store-btn-primary {
+  background-color: var(--store-primary);
+  color: white;
+  padding: 0.625rem 1.25rem;
+  border-radius: var(--store-radius);
+  font-weight: 500;
+  transition: var(--store-transition);
+  box-shadow: var(--store-shadow-sm);
+}
+
+.store-btn-primary:hover {
+  filter: brightness(1.1);
+  box-shadow: var(--store-shadow-md);
+  transform: translateY(-1px);
+}
+
+.store-btn-primary:active {
+  transform: translateY(0);
+  box-shadow: var(--store-shadow-sm);
+}
+
+.store-btn-secondary {
+  background-color: var(--store-secondary);
+  color: white;
+  padding: 0.625rem 1.25rem;
+  border-radius: var(--store-radius);
+  font-weight: 500;
+  transition: var(--store-transition);
+  box-shadow: var(--store-shadow-sm);
+}
+
+.store-btn-secondary:hover {
+  filter: brightness(1.1);
+  box-shadow: var(--store-shadow-md);
+  transform: translateY(-1px);
+}
+
+.store-btn-outline {
+  background-color: transparent;
+  color: var(--store-primary);
+  border: 2px solid var(--store-primary);
+  padding: 0.625rem 1.25rem;
+  border-radius: var(--store-radius);
+  font-weight: 500;
+  transition: var(--store-transition);
+}
+
+.store-btn-outline:hover {
+  background-color: var(--store-primary);
+  color: white;
+}
+
+/* Card styles */
+.store-card {
+  background-color: var(--store-bg-primary);
+  border: 1px solid var(--store-border-light);
+  border-radius: var(--store-radius);
+  box-shadow: var(--store-shadow);
+  transition: var(--store-transition);
+}
+
+.store-card:hover {
+  box-shadow: var(--store-shadow-md);
+  transform: translateY(-2px);
+}
+
+.store-card-flat {
+  background-color: var(--store-bg-primary);
+  border: 1px solid var(--store-border-light);
+  border-radius: var(--store-radius);
+}
+
+/* Badge styles */
+.store-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--store-radius-sm);
+  font-size: 0.75rem;
+  font-weight: 500;
+  background-color: rgba(var(--store-primary-rgb), 0.1);
+  color: var(--store-primary);
+}
+
+/* Input styles */
+.store-input {
+  width: 100%;
+  padding: 0.625rem 1rem;
+  border: 1px solid var(--store-border-medium);
+  border-radius: var(--store-radius);
+  font-size: 0.875rem;
+  transition: var(--store-transition-fast);
+  background-color: var(--store-bg-primary);
+}
+
+.store-input:focus {
+  outline: none;
+  border-color: var(--store-primary);
+  box-shadow: 0 0 0 3px rgba(var(--store-primary-rgb), 0.1);
+}
+
+/* Link styles */
+.store-link {
+  color: var(--store-primary);
+  text-decoration: none;
+  transition: var(--store-transition-fast);
+}
+
+.store-link:hover {
+  color: var(--store-secondary);
+  text-decoration: underline;
+}
+
+/* ============================================
+   RESPONSIVE UTILITIES
+   ============================================ */
+
+@media (max-width: 640px) {
+  :root {
+    --store-radius: 0.375rem;
+    --store-radius-lg: 0.5rem;
+  }
+}
+
+/* ============================================
+   PRINT STYLES
+   ============================================ */
+
+@media print {
+  .store-card {
+    box-shadow: none;
+    border: 1px solid var(--store-border-light);
+  }
+}
+
+/* ============================================
+   ACCESSIBILITY
+   ============================================ */
+
+/* Focus visible for keyboard navigation */
+.store-btn-primary:focus-visible,
+.store-btn-secondary:focus-visible,
+.store-btn-outline:focus-visible,
+.store-input:focus-visible {
+  outline: 2px solid var(--store-primary);
+  outline-offset: 2px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================
+   DARK MODE SUPPORT (Optional)
+   ============================================ */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --store-bg-primary: #1f2937;
+    --store-bg-secondary: #111827;
+    --store-bg-tertiary: #0f172a;
+    --store-text-primary: #f9fafb;
+    --store-text-secondary: #d1d5db;
+    --store-text-tertiary: #9ca3af;
+    --store-border-light: #374151;
+    --store-border-medium: #4b5563;
+    --store-border-dark: #6b7280;
+  }
+}

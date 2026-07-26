@@ -1,0 +1,66 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: plazo_postgres
+    environment:
+      POSTGRES_USER: plazo_user
+      POSTGRES_PASSWORD: plazo_password
+      POSTGRES_DB: plazo_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U plazo_user -d plazo_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache & Session
+  redis:
+    image: redis:7-alpine
+    container_name: plazo_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend Application (optional, uncomment to use)
+  # backend:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: plazo_backend
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     DATABASE_URL: postgresql://plazo_user:plazo_password@postgres:5432/plazo_db
+  #     REDIS_HOST: redis
+  #     REDIS_PORT: 6379
+  #     NODE_ENV: development
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   volumes:
+  #     - .:/app
+  #   command: npm run start:dev
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  default:
+    name: plazo_network

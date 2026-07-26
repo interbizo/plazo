@@ -1,0 +1,559 @@
+@import "tailwindcss";
+
+/* Storefront Dynamic Theming */
+@import "../styles/storefront-theme.css";
+
+:root {
+  --background: #ffffff;
+  --foreground: #111827;
+  
+  /* Global Theme Colors (from CMS) */
+  --color-primary: #2563eb; /* Default blue */
+  --color-primary-rgb: 37, 99, 235;
+  --color-accent: #10b981; /* Default green */
+  --color-accent-rgb: 16, 185, 129;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Focus visible */
+*:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Selection */
+::selection {
+  background: #bfdbfe;
+  color: #1e3a5f;
+}
+
+/* Custom animations for homepage */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.4s ease-out;
+}
+
+/* Card hover effects */
+.card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Hide scrollbar for horizontal scroll */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Backdrop blur support */
+@supports (backdrop-filter: blur(10px)) {
+  .backdrop-blur-custom {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+}
+
+/* Smooth transitions for all interactive elements */
+button, a, input, select, textarea {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Notification animations */
+@keyframes slideInFromTop {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes zoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-in {
+  animation-duration: 200ms;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  animation-fill-mode: both;
+}
+
+.fade-in {
+  animation-name: fadeIn;
+}
+
+.zoom-in {
+  animation-name: zoomIn;
+}
+
+.slide-in-from-top-1 {
+  animation-name: slideInFromTop;
+  animation-duration: 150ms;
+}
+
+.slide-in-from-top-2 {
+  animation-name: slideInFromTop;
+  animation-duration: 200ms;
+}
+
+/* Touch-friendly interactions */
+.touch-manipulation {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Smooth scrolling for notification list */
+.overscroll-contain {
+  overscroll-behavior: contain;
+}
+
+/* Loading shimmer effect */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.2) 20%,
+    rgba(255, 255, 255, 0.5) 60%,
+    rgba(255, 255, 255, 0)
+  );
+  animation: shimmer 2s infinite;
+  background-size: 1000px 100%;
+}
+
+/* CKEditor Custom Styles */
+.ck-editor__editable {
+  min-height: 300px !important;
+}
+
+.ck.ck-editor__main > .ck-editor__editable {
+  background-color: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+}
+
+.ck.ck-editor__main > .ck-editor__editable:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px #3b82f6;
+}
+
+.ck.ck-toolbar {
+  border: 1px solid #d1d5db !important;
+  border-radius: 0.5rem 0.5rem 0 0 !important;
+  background-color: #f9fafb !important;
+}
+
+.ck.ck-editor__main > .ck-editor__editable {
+  border-radius: 0 0 0.5rem 0.5rem !important;
+  border-top: none !important;
+}
+
+/* CKEditor content styles */
+.ck-content h1 {
+  font-size: 2em;
+  font-weight: bold;
+  margin-top: 0.67em;
+  margin-bottom: 0.67em;
+}
+
+.ck-content h2 {
+  font-size: 1.5em;
+  font-weight: bold;
+  margin-top: 0.83em;
+  margin-bottom: 0.83em;
+}
+
+.ck-content h3 {
+  font-size: 1.17em;
+  font-weight: bold;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
+.ck-content p {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+.ck-content ul,
+.ck-content ol {
+  margin-left: 1.5em;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+.ck-content blockquote {
+  border-left: 4px solid #d1d5db;
+  padding-left: 1em;
+  margin-left: 0;
+  font-style: italic;
+  color: #6b7280;
+}
+
+.ck-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+}
+
+.ck-content table td,
+.ck-content table th {
+  border: 1px solid #d1d5db;
+  padding: 0.5em;
+}
+
+.ck-content table th {
+  background-color: #f9fafb;
+  font-weight: bold;
+}
+
+.ck-content a {
+  color: #3b82f6;
+  text-decoration: underline;
+}
+
+.ck-content a:hover {
+  color: #2563eb;
+}
+
+/* CKEditor Content Rendering Styles */
+.ckeditor-content {
+  line-height: 1.75;
+  color: #374151;
+}
+
+.ckeditor-content h1 {
+  font-size: 2em;
+  font-weight: 700;
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+  line-height: 1.2;
+  color: #111827;
+}
+
+.ckeditor-content h2 {
+  font-size: 1.5em;
+  font-weight: 700;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  line-height: 1.3;
+  color: #111827;
+}
+
+.ckeditor-content h3 {
+  font-size: 1.25em;
+  font-weight: 600;
+  margin-top: 1.25em;
+  margin-bottom: 0.5em;
+  line-height: 1.4;
+  color: #111827;
+}
+
+.ckeditor-content h4 {
+  font-size: 1.125em;
+  font-weight: 600;
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+  line-height: 1.4;
+  color: #111827;
+}
+
+.ckeditor-content h5,
+.ckeditor-content h6 {
+  font-size: 1em;
+  font-weight: 600;
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+  line-height: 1.5;
+  color: #111827;
+}
+
+.ckeditor-content p {
+  margin-top: 0.75em;
+  margin-bottom: 0.75em;
+}
+
+.ckeditor-content p:first-child {
+  margin-top: 0;
+}
+
+.ckeditor-content p:last-child {
+  margin-bottom: 0;
+}
+
+.ckeditor-content ul,
+.ckeditor-content ol {
+  margin-left: 1.5em;
+  margin-top: 1em;
+  margin-bottom: 1em;
+  padding-left: 0.5em;
+}
+
+.ckeditor-content ul {
+  list-style-type: disc;
+}
+
+.ckeditor-content ol {
+  list-style-type: decimal;
+}
+
+.ckeditor-content li {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  padding-left: 0.25em;
+}
+
+.ckeditor-content li::marker {
+  color: #6b7280;
+}
+
+.ckeditor-content blockquote {
+  border-left: 4px solid #3b82f6;
+  padding-left: 1em;
+  margin-left: 0;
+  margin-top: 1em;
+  margin-bottom: 1em;
+  font-style: italic;
+  color: #4b5563;
+  background-color: #f9fafb;
+  padding: 1em;
+  border-radius: 0.25rem;
+}
+
+.ckeditor-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.5em 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.ckeditor-content table td,
+.ckeditor-content table th {
+  border: 1px solid #e5e7eb;
+  padding: 0.75em 1em;
+  text-align: left;
+}
+
+.ckeditor-content table th {
+  background-color: #f3f4f6;
+  font-weight: 600;
+  color: #111827;
+}
+
+.ckeditor-content table tr:nth-child(even) {
+  background-color: #f9fafb;
+}
+
+.ckeditor-content a {
+  color: #3b82f6;
+  text-decoration: underline;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.ckeditor-content a:hover {
+  color: #2563eb;
+}
+
+.ckeditor-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  margin: 1.5em 0;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.ckeditor-content figure {
+  margin: 1.5em 0;
+}
+
+.ckeditor-content figcaption {
+  text-align: center;
+  font-size: 0.875em;
+  color: #6b7280;
+  margin-top: 0.5em;
+  font-style: italic;
+}
+
+.ckeditor-content code {
+  background-color: #f3f4f6;
+  padding: 0.2em 0.4em;
+  border-radius: 0.25rem;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.875em;
+  color: #dc2626;
+}
+
+.ckeditor-content pre {
+  background-color: #1f2937;
+  color: #f9fafb;
+  padding: 1em;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 1.5em 0;
+}
+
+.ckeditor-content pre code {
+  background-color: transparent;
+  padding: 0;
+  color: inherit;
+  font-size: 0.875em;
+}
+
+.ckeditor-content hr {
+  border: none;
+  border-top: 2px solid #e5e7eb;
+  margin: 2em 0;
+}
+
+.ckeditor-content strong,
+.ckeditor-content b {
+  font-weight: 700;
+  color: #111827;
+}
+
+.ckeditor-content em,
+.ckeditor-content i {
+  font-style: italic;
+}
+
+.ckeditor-content u {
+  text-decoration: underline;
+}
+
+.ckeditor-content s,
+.ckeditor-content strike,
+.ckeditor-content del {
+  text-decoration: line-through;
+}
+
+.ckeditor-content mark {
+  background-color: #fef3c7;
+  padding: 0.1em 0.2em;
+  border-radius: 0.125rem;
+}
+
+.ckeditor-content sup {
+  vertical-align: super;
+  font-size: 0.75em;
+}
+
+.ckeditor-content sub {
+  vertical-align: sub;
+  font-size: 0.75em;
+}
+
+.ckeditor-content small {
+  font-size: 0.875em;
+  color: #6b7280;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .ckeditor-content h1 {
+    font-size: 1.75em;
+  }
+  
+  .ckeditor-content h2 {
+    font-size: 1.375em;
+  }
+  
+  .ckeditor-content h3 {
+    font-size: 1.125em;
+  }
+  
+  .ckeditor-content table {
+    font-size: 0.875em;
+  }
+  
+  .ckeditor-content table td,
+  .ckeditor-content table th {
+    padding: 0.5em;
+  }
+}

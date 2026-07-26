@@ -1,0 +1,302 @@
+### Variables
+@baseUrl = http://localhost:3000/api
+@email = buyer@plazo.com
+@password = Buyer@123
+@token = 
+
+### Register New User
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "testuser@plazo.com",
+  "password": "TestUser@123",
+  "firstName": "Test",
+  "lastName": "User",
+  "role": "BUYER"
+}
+
+### Login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### Get My Profile
+GET {{baseUrl}}/users/me
+Authorization: Bearer {{token}}
+
+### Update My Profile
+PUT {{baseUrl}}/users/me
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "firstName": "John",
+  "lastName": "Updated",
+  "bio": "I'm a buyer on Plazo marketplace",
+  "phone": "+62812345678"
+}
+
+### Search Users
+GET {{baseUrl}}/users/search?q=seller
+Authorization: Bearer {{token}}
+
+### Create Tenant (Store)
+POST {{baseUrl}}/tenants
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "subdomain": "mystore",
+  "name": "My Amazing Store",
+  "description": "Best products and services",
+  "contactEmail": "store@plazo.com"
+}
+
+### Get My Tenants
+GET {{baseUrl}}/tenants/my-tenants
+Authorization: Bearer {{token}}
+
+### Get Tenant Details
+GET {{baseUrl}}/tenants/{{tenantId}}
+Authorization: Bearer {{token}}
+
+### Get Tenant Stats
+GET {{baseUrl}}/tenants/{{tenantId}}/stats
+Authorization: Bearer {{token}}
+
+### Create Product
+POST {{baseUrl}}/marketplace/products
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Premium Laptop",
+  "description": "High-performance laptop for professionals",
+  "price": 1299.99,
+  "stock": 10,
+  "categoryId": "{{categoryId}}",
+  "tags": ["laptop", "electronics", "premium"],
+  "images": ["https://via.placeholder.com/300x300?text=Laptop"]
+}
+
+### Get Products
+GET {{baseUrl}}/marketplace/products?page=1&limit=10
+Authorization: Bearer {{token}}
+
+### Get Products with Filter
+GET {{baseUrl}}/marketplace/products?categoryId={{categoryId}}&search=laptop
+Authorization: Bearer {{token}}
+
+### Get Product Details
+GET {{baseUrl}}/marketplace/products/{{productId}}
+Authorization: Bearer {{token}}
+
+### Update Product
+PUT {{baseUrl}}/marketplace/products/{{productId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "price": 1199.99,
+  "stock": 5
+}
+
+### Boost Product
+POST {{baseUrl}}/marketplace/products/{{productId}}/boost?days=7
+Authorization: Bearer {{token}}
+
+### Delete Product
+DELETE {{baseUrl}}/marketplace/products/{{productId}}
+Authorization: Bearer {{token}}
+
+### Create Service
+POST {{baseUrl}}/marketplace/services
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Web Development Service",
+  "description": "Professional website development with React & Node.js",
+  "basePrice": 500,
+  "categoryId": "{{categoryId}}",
+  "tags": ["web-dev", "react", "nodejs"]
+}
+
+### Get Services
+GET {{baseUrl}}/marketplace/services?page=1&limit=10
+Authorization: Bearer {{token}}
+
+### Get Categories
+GET {{baseUrl}}/marketplace/categories
+Authorization: Bearer {{token}}
+
+### Create Job
+POST {{baseUrl}}/jobs
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Build E-commerce Website",
+  "description": "Need experienced developer to build full e-commerce platform with payment integration",
+  "budget": 5000,
+  "categoryId": "{{categoryId}}",
+  "tags": ["ecommerce", "urgent", "fullstack"]
+}
+
+### Get Jobs
+GET {{baseUrl}}/jobs?page=1&limit=10&status=OPEN
+Authorization: Bearer {{token}}
+
+### Get Job Details
+GET {{baseUrl}}/jobs/{{jobId}}
+Authorization: Bearer {{token}}
+
+### Get Job Proposals
+GET {{baseUrl}}/jobs/{{jobId}}/proposals?page=1&limit=10
+Authorization: Bearer {{token}}
+
+### Boost Job
+POST {{baseUrl}}/jobs/{{jobId}}/boost?days=7
+Authorization: Bearer {{token}}
+
+### Submit Proposal
+POST {{baseUrl}}/proposals
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "jobId": "{{jobId}}",
+  "bidPrice": 4500,
+  "message": "I have 10+ years of experience in web development. I can deliver this in 30 days with high quality.",
+  "attachments": []
+}
+
+### Get My Proposals
+GET {{baseUrl}}/proposals?page=1&limit=10
+Authorization: Bearer {{token}}
+
+### Get Proposal Details
+GET {{baseUrl}}/proposals/{{proposalId}}
+Authorization: Bearer {{token}}
+
+### Accept Proposal
+PUT {{baseUrl}}/proposals/{{proposalId}}/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "ACCEPTED"
+}
+
+### Reject Proposal
+PUT {{baseUrl}}/proposals/{{proposalId}}/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "REJECTED"
+}
+
+### Create Order
+POST {{baseUrl}}/orders
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "proposalId": "{{proposalId}}",
+  "title": "E-commerce Website Development",
+  "description": "Full website development based on accepted proposal",
+  "deliveryDeadline": "2026-05-17"
+}
+
+### Get My Orders
+GET {{baseUrl}}/orders?page=1&limit=10
+Authorization: Bearer {{token}}
+
+### Get Order Details
+GET {{baseUrl}}/orders/{{orderId}}
+Authorization: Bearer {{token}}
+
+### Update Order Status
+PUT {{baseUrl}}/orders/{{orderId}}/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "PROCESSING"
+}
+
+### Get Cart
+GET {{baseUrl}}/cart
+Authorization: Bearer {{token}}
+
+### Add to Cart
+POST {{baseUrl}}/cart/items
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "productId": "{{productId}}",
+  "quantity": 2
+}
+
+### Update Cart Item
+PUT {{baseUrl}}/cart/items/{{cartItemId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "quantity": 5
+}
+
+### Remove from Cart
+DELETE {{baseUrl}}/cart/items/{{cartItemId}}
+Authorization: Bearer {{token}}
+
+### Clear Cart
+DELETE {{baseUrl}}/cart
+Authorization: Bearer {{token}}
+
+### Get Cart Total
+GET {{baseUrl}}/cart/total
+Authorization: Bearer {{token}}
+
+### Get Chat Room
+GET {{baseUrl}}/chat/rooms/{{roomId}}
+Authorization: Bearer {{token}}
+
+### Get Messages
+GET {{baseUrl}}/chat/rooms/{{roomId}}/messages?page=1&limit=50
+Authorization: Bearer {{token}}
+
+### Create Review
+POST {{baseUrl}}/reviews
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "orderId": "{{orderId}}",
+  "rating": 5,
+  "comment": "Excellent work! Very professional and fast delivery. Highly recommended!"
+}
+
+### Get Reviews for User
+GET {{baseUrl}}/reviews/{{userId}}
+Authorization: Bearer {{token}}
+
+### Get My Notifications
+GET {{baseUrl}}/notifications
+Authorization: Bearer {{token}}
+
+### Mark Notification as Read
+PUT {{baseUrl}}/notifications/{{notificationId}}/read
+Authorization: Bearer {{token}}
+
+### Get Seller Stats
+GET {{baseUrl}}/users/{{userId}}/seller-stats
+Authorization: Bearer {{token}}
