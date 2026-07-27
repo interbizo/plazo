@@ -16,7 +16,7 @@ interface CachedToken {
 @Injectable()
 export class TurnstileService {
   private readonly logger = new Logger(TurnstileService.name);
-  private readonly secretKey = process.env.TURNSTILE_SECRET_KEY || '0x4AAAAAADNW_ILE7QkTpoDSrdUtXCRHO1M';
+  private readonly secretKey = process.env.TURNSTILE_SECRET_KEY?.trim() || '';
   private readonly verifyUrl = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
   
   // Token cache: Map<token, CachedToken>
@@ -35,10 +35,14 @@ export class TurnstileService {
   async verifyToken(token: string, remoteIp?: string): Promise<boolean> {
     const startTime = Date.now();
     
-    // Skip Turnstile verification ONLY in development mode AND when secret key is not set
-    // This prevents accidental bypass in production
-    if (process.env.NODE_ENV === 'development' && !this.secretKey) {
-      this.logger.log('Turnstile verification skipped (development mode, no secret key)');
+    // Allow local development without Cloudflare keys, but never bypass production.
+    if (!this.secretKey) {
+      if (process.env.NODE_ENV === 'production') {
+        this.logger.error('TURNSTILE_SECRET_KEY is required in production');
+        throw new BadRequestException('Turnstile verification is not configured');
+      }
+
+      this.logger.log('Turnstile verification skipped (non-production, no secret key)');
       return true;
     }
 

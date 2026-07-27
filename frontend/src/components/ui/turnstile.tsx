@@ -1,7 +1,7 @@
 "use client";
 
 import { Turnstile as TurnstileWidget, TurnstileInstance } from "@marsidev/react-turnstile";
-import { useRef, forwardRef, useImperativeHandle } from "react";
+import { useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 
 interface TurnstileProps {
   onSuccess: (token: string) => void;
@@ -23,27 +23,41 @@ export interface TurnstileRef {
   execute: () => void;
 }
 
+const DEV_TURNSTILE_TOKEN = "development-turnstile-bypass";
+
 export const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(
   ({ onSuccess, onError, onExpire, className, appearance = "normal" }, ref) => {
     const turnstileRef = useRef<TurnstileInstance>(null);
+    const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim();
+    const skipTurnstile = process.env.NODE_ENV === "development" && !siteKey;
+
+    useEffect(() => {
+      if (skipTurnstile) {
+        onSuccess(DEV_TURNSTILE_TOKEN);
+      }
+    }, [skipTurnstile, onSuccess]);
 
     useImperativeHandle(ref, () => ({
       reset: () => {
-        turnstileRef.current?.reset();
+        if (!skipTurnstile) turnstileRef.current?.reset();
       },
-      getResponse: () => {
-        return turnstileRef.current?.getResponse();
-      },
+      getResponse: () =>
+        skipTurnstile ? DEV_TURNSTILE_TOKEN : turnstileRef.current?.getResponse(),
       execute: () => {
-        turnstileRef.current?.execute();
+        if (skipTurnstile) onSuccess(DEV_TURNSTILE_TOKEN);
+        else turnstileRef.current?.execute();
       },
-    }));
+    }), [skipTurnstile, onSuccess]);
+
+    if (skipTurnstile) {
+      return null;
+    }
 
     return (
       <div className={className}>
         <TurnstileWidget
           ref={turnstileRef}
-          siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "0x4AAAAAADNW_HxnoYmWYaON"}
+          siteKey={siteKey || ""}
           onSuccess={onSuccess}
           onError={onError}
           onExpire={onExpire}
