@@ -7,6 +7,8 @@ import Link from "next/link";
 import { marketplaceApi } from "@/services/marketplace.service";
 import { chatApi } from "@/services/chat.service";
 import { getSubdomainLink, getSubdomainUrl } from "@/lib/domain";
+import { createWhatsAppCheckoutUrl } from "@/lib/whatsapp-checkout";
+import { useCurrentPageUrl } from "@/hooks/use-current-page-url";
 import { useAuthStore } from "@/stores/auth.store";
 import { formatPrice, formatDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -65,6 +67,7 @@ export default function ServiceDetailPage() {
   const router = useRouter();
   const slug = params.slug as string;
   const { isAuthenticated, user } = useAuthStore();
+  const currentPageUrl = useCurrentPageUrl();
 
   const [service, setService] = useState<ServiceDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -165,10 +168,19 @@ export default function ServiceDetailPage() {
     !!tenant?.contactWhatsapp &&
     !!tenant.subscriptionPlan &&
     tenant.subscriptionPlan !== "FREE";
+  const selectedPrice = selectedPackage?.price ?? service.basePrice;
+  const buyerName = [user?.firstName, user?.lastName].filter(Boolean).join(" ");
   const whatsappHref = canShowWhatsapp
-    ? `https://wa.me/${String(tenant.contactWhatsapp).replace(/\D/g, "")}?text=${encodeURIComponent(
-        `Halo, saya tertarik dengan layanan "${service.name}".${selectedPackage ? `\nPaket: ${selectedPackage.title || selectedPackage.tier}` : ""}`,
-      )}`
+    ? createWhatsAppCheckoutUrl({
+        phoneNumber: tenant.contactWhatsapp || "",
+        buyerName,
+        itemLabel: "Layanan",
+        itemName: service.name,
+        price: selectedPrice,
+        optionLabel: selectedPackage ? "Paket" : undefined,
+        optionValue: selectedPackage?.title || selectedPackage?.tier,
+        itemUrl: currentPageUrl,
+      })
     : "";
 
   return (
@@ -345,7 +357,7 @@ export default function ServiceDetailPage() {
                 <a href={whatsappHref} target="_blank" rel="noreferrer">
                   <Button size="lg" className="w-full bg-green-600 hover:bg-green-700">
                     <Phone className="mr-2 h-4 w-4" />
-                    Hubungi WhatsApp
+                    Checkout via WhatsApp
                   </Button>
                 </a>
               )}
@@ -354,7 +366,7 @@ export default function ServiceDetailPage() {
             {/* Share Button */}
             <div className="mb-4">
               <ShareButton
-                url={typeof window !== "undefined" ? window.location.href : ""}
+              url={currentPageUrl}
                 title={service.name}
                 description={service.description?.substring(0, 160) || ""}
                 image={service.thumbnail || service.gallery?.[0] || ""}

@@ -7,6 +7,8 @@ import Link from "next/link";
 import { marketplaceApi } from "@/services/marketplace.service";
 import { chatApi } from "@/services/chat.service";
 import { getSubdomainLink, getSubdomainUrl } from "@/lib/domain";
+import { createWhatsAppCheckoutUrl } from "@/lib/whatsapp-checkout";
+import { useCurrentPageUrl } from "@/hooks/use-current-page-url";
 import { useAuthStore } from "@/stores/auth.store";
 import { formatPrice, formatDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -116,6 +118,7 @@ export default function ProductDetailPage() {
   const router = useRouter();
   const slug = params.slug as string;
   const { isAuthenticated, user } = useAuthStore();
+  const currentPageUrl = useCurrentPageUrl();
 
   const [product, setProduct] = useState<ProductDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -216,10 +219,20 @@ export default function ProductDetailPage() {
     !!tenant?.contactWhatsapp &&
     !!tenant.subscriptionPlan &&
     tenant.subscriptionPlan !== "FREE";
+  const selectedPrice = selectedVariant?.price ?? product.price;
+  const buyerName = [user?.firstName, user?.lastName].filter(Boolean).join(" ");
   const whatsappHref = canShowWhatsapp
-    ? `https://wa.me/${String(tenant.contactWhatsapp).replace(/\D/g, "")}?text=${encodeURIComponent(
-        `Halo, saya ingin beli produk "${product.name}".${selectedVariantLabel ? `\nVariant: ${selectedVariantLabel}` : ""}\nJumlah: ${quantity}`,
-      )}`
+    ? createWhatsAppCheckoutUrl({
+        phoneNumber: tenant.contactWhatsapp || "",
+        buyerName,
+        itemLabel: "Produk",
+        itemName: product.name,
+        price: selectedPrice,
+        quantity,
+        optionLabel: selectedVariantLabel ? "Varian" : undefined,
+        optionValue: selectedVariantLabel || undefined,
+        itemUrl: currentPageUrl,
+      })
     : "";
 
   return (
@@ -360,7 +373,7 @@ export default function ProductDetailPage() {
 
           <div className="mt-4">
             <p className="text-3xl font-bold text-blue-600">
-              {formatPrice(selectedVariant?.price || product.price)}
+              {formatPrice(selectedPrice)}
             </p>
             {!product.hasVariants &&
               product.comparePrice &&
@@ -385,7 +398,7 @@ export default function ProductDetailPage() {
               <a href={whatsappHref} target="_blank" rel="noreferrer">
                   <Button size="lg" className="w-full bg-green-600 hover:bg-green-700">
                     <Phone className="mr-2 h-4 w-4" />
-                  Beli via WhatsApp
+                  Checkout via WhatsApp
                   </Button>
                 </a>
               )}
@@ -394,7 +407,7 @@ export default function ProductDetailPage() {
           {/* Share Button */}
           <div className="mt-3">
             <ShareButton
-              url={typeof window !== "undefined" ? window.location.href : ""}
+              url={currentPageUrl}
               title={product.name}
               description={product.description?.substring(0, 160) || ""}
               image={product.thumbnail || product.images?.[0] || ""}
@@ -517,7 +530,7 @@ export default function ProductDetailPage() {
                 <span className="text-sm text-gray-500">
                   Estimasi nilai:{" "}
                   <span className="font-semibold text-gray-900">
-                    {formatPrice((selectedVariant?.price || product.price) * quantity)}
+                    {formatPrice(selectedPrice * quantity)}
                   </span>
                 </span>
               </div>
@@ -531,7 +544,7 @@ export default function ProductDetailPage() {
               {/* Chat Button - Show for internal products or seller products */}
               {tenant?.subdomain && (
                 <Link
-                  href={`/dashboard/chat?openChat=true&tenantId=${tenant.id}&targetUserId=${tenant.owner?.id}&productId=${product.id}&itemTitle=${encodeURIComponent(product.name)}&price=${selectedVariant?.price || product.price}&quantity=${quantity}${selectedVariant ? `&variantName=${encodeURIComponent(selectedVariant.name)}` : ""}`}
+                  href={`/dashboard/chat?openChat=true&tenantId=${tenant.id}&targetUserId=${tenant.owner?.id}&productId=${product.id}&itemTitle=${encodeURIComponent(product.name)}&price=${selectedPrice}&quantity=${quantity}${selectedVariant ? `&variantName=${encodeURIComponent(selectedVariant.name)}` : ""}`}
                   className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
                 >
                   <MessageSquare className="h-4 w-4" />
