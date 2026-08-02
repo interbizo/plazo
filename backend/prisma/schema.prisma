@@ -370,8 +370,10 @@ model User {
   @@index([email])
   @@index([isActive])
   @@index([role])
+  @@index([isEmailVerified])
   @@index([firstName])
   @@index([accountStatus])
+  @@index([verificationToken])
   @@index([lastName])
 }
 
@@ -517,6 +519,7 @@ model Tenant {
   @@index([isVerified])
   @@index([isFeatured])
   @@index([city])
+  @@index([isSeoActive])
   @@index([referredBy])
   @@index([name])
   @@index([referredBy, deletedAt])

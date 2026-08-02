@@ -4,6 +4,7 @@ ADD COLUMN IF NOT EXISTS "canSubmitProposal" BOOLEAN NOT NULL DEFAULT false,
 ADD COLUMN IF NOT EXISTS "canWhatsappCheckout" BOOLEAN NOT NULL DEFAULT false,
 ADD COLUMN IF NOT EXISTS "canToolsRecommendation" BOOLEAN NOT NULL DEFAULT false,
 ADD COLUMN IF NOT EXISTS "canBecomeAffiliate" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN IF NOT EXISTS "canRequestPhysicalVerification" BOOLEAN NOT NULL DEFAULT false,
 ADD COLUMN IF NOT EXISTS "canBoostListing" BOOLEAN NOT NULL DEFAULT false;
 
 -- Update existing plans with default feature configurations
