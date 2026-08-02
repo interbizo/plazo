@@ -292,6 +292,35 @@ export const adminApi = {
   bulkUserAction: (data: Record<string, unknown>) =>
     api.post(`${BASE}/users/bulk`, data),
 
+  // Articles
+  getArticles: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+    source?: string;
+    categoryId?: string;
+    tag?: string;
+  }) => api.get(`${BASE}/articles`, { params }),
+  getArticle: (id: string) => api.get(`${BASE}/articles/${id}`),
+  createArticle: (data: Record<string, unknown>) =>
+    api.post(`${BASE}/articles`, data),
+  updateArticle: (id: string, data: Record<string, unknown>) =>
+    api.put(`${BASE}/articles/${id}`, data),
+  publishArticle: (id: string) => api.post(`${BASE}/articles/${id}/publish`),
+  unpublishArticle: (id: string) =>
+    api.post(`${BASE}/articles/${id}/unpublish`),
+  deleteArticle: (id: string) => api.delete(`${BASE}/articles/${id}`),
+  importArticlesCsv: (formData: FormData) =>
+    api.post(`${BASE}/articles/import-csv`, formData),
+  getArticleCategories: () => api.get(`${BASE}/article-categories`),
+  createArticleCategory: (data: Record<string, unknown>) =>
+    api.post(`${BASE}/article-categories`, data),
+  updateArticleCategory: (id: string, data: Record<string, unknown>) =>
+    api.put(`${BASE}/article-categories/${id}`, data),
+  deleteArticleCategory: (id: string) =>
+    api.delete(`${BASE}/article-categories/${id}`),
+
   // CMS (backend route: /admin/cms/*)
   getCmsPages: () => api.get(`${BASE}/cms/pages`),
   getCmsPage: (id: string) => api.get(`${BASE}/cms/pages/${id}`),

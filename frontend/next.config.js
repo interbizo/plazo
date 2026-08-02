@@ -67,6 +67,12 @@ const nextConfig = {
           { key: 'Cache-Control', value: 'public, max-age=0, s-maxage=1800, stale-while-revalidate=86400' },
         ],
       },
+      {
+        source: '/articles/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400' },
+        ],
+      },
     ];
   },
 

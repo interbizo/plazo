@@ -55,6 +55,7 @@ const VALID_FILE_CATEGORIES = [
   "BANNER",
   "LOGO",
   "KYC_DOCUMENT",
+  "ARTICLE_THUMBNAIL",
 ];
 
 /**
@@ -67,6 +68,7 @@ const IMAGE_PROCESSING_CONFIG: Record<string, { maxWidth: number; maxFileSizeKB:
   AVATAR: { maxWidth: 512, maxFileSizeKB: 150, quality: 80 },
   LOGO: { maxWidth: 512, maxFileSizeKB: 150, quality: 85 },
   BANNER: { maxWidth: 1920, maxFileSizeKB: 500, quality: 82 },
+  ARTICLE_THUMBNAIL: { maxWidth: 1280, maxFileSizeKB: 350, quality: 82 },
   PRODUCT_IMAGE: { maxWidth: 1024, maxFileSizeKB: 300, quality: 82 },
   SERVICE_IMAGE: { maxWidth: 1024, maxFileSizeKB: 300, quality: 82 },
   PORTFOLIO: { maxWidth: 1280, maxFileSizeKB: 400, quality: 80 },
@@ -462,6 +464,7 @@ export class UploadService {
       case "SERVICE_IMAGE":
       case "BANNER":
       case "LOGO":
+      case "ARTICLE_THUMBNAIL":
         return "images";
       case "AVATAR":
         return "avatars";

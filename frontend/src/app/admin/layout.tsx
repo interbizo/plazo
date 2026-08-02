@@ -33,6 +33,7 @@ import {
   Home,
   Database,
   BookOpen,
+  Newspaper,
   ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
@@ -73,6 +74,12 @@ const MENU_SECTIONS: MenuSection[] = [
         label: "Notifikasi",
         icon: Bell,
         desc: "Lihat notifikasi realtime untuk admin dan super admin",
+      },
+      {
+        href: "/admin/articles",
+        label: "Artikel",
+        icon: Newspaper,
+        desc: "Kelola artikel, kategori, SEO, dan import CSV",
       },
       {
         href: "/admin/chat-monitor",

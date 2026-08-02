@@ -27,6 +27,7 @@ import { KycModule } from "@modules/kyc/kyc.module";
 import { SellerLevelsModule } from "@modules/seller-levels/seller-levels.module";
 import { ReportsModule } from "@modules/reports/reports.module";
 import { CmsModule } from "@modules/cms/cms.module";
+import { ArticlesModule } from "@modules/articles/articles.module";
 import { RegionModule } from "@modules/region/region.module";
 import { AddressModule } from "@modules/address/address.module";
 import { RecommendedToolsModule } from "@modules/recommended-tools/recommended-tools.module";
@@ -71,6 +72,7 @@ import { RequestLoggerMiddleware } from "@common/middleware/request-logger.middl
     SellerLevelsModule,
     ReportsModule,
     CmsModule,
+    ArticlesModule,
     RegionModule,
     AddressModule,
     RecommendedToolsModule,

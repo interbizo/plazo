@@ -5,12 +5,12 @@ const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://plazo.id';
 
 /**
  * Dynamic Sitemap for main domain (plazo.id)
- * Includes: static pages + all published products + all published services + jobs
+ * Includes: static pages + all published products + all published services + jobs + articles
  * Only products/services from ACTIVE tenants with publishToMarketplace=true
  */
 export async function GET() {
   try {
-    const [productsRes, servicesRes, jobsRes] = await Promise.all([
+    const [productsRes, servicesRes, jobsRes, articlesRes] = await Promise.all([
       fetch(`${API_URL}/api/public/products?limit=500&sortBy=newest`, {
         next: { revalidate: 3600 },
       }).catch(() => null),
@@ -20,11 +20,15 @@ export async function GET() {
       fetch(`${API_URL}/api/public/jobs?limit=200&status=OPEN`, {
         next: { revalidate: 3600 },
       }).catch(() => null),
+      fetch(`${API_URL}/api/public/articles?limit=500`, {
+        next: { revalidate: 3600 },
+      }).catch(() => null),
     ]);
 
     let products: any[] = [];
     let services: any[] = [];
     let jobs: any[] = [];
+    let articles: any[] = [];
 
     if (productsRes?.ok) {
       const data = await productsRes.json();
@@ -38,6 +42,10 @@ export async function GET() {
       const data = await jobsRes.json();
       jobs = data?.data || [];
     }
+    if (articlesRes?.ok) {
+      const data = await articlesRes.json();
+      articles = data?.data || [];
+    }
 
     const now = new Date().toISOString();
     const urls: string[] = [];
@@ -47,6 +55,7 @@ export async function GET() {
     urls.push(buildUrl(`${BASE_URL}/products`, now, 'hourly', '0.9'));
     urls.push(buildUrl(`${BASE_URL}/services`, now, 'hourly', '0.9'));
     urls.push(buildUrl(`${BASE_URL}/jobs`, now, 'hourly', '0.8'));
+    urls.push(buildUrl(`${BASE_URL}/articles`, now, 'daily', '0.8'));
     urls.push(buildUrl(`${BASE_URL}/register`, now, 'monthly', '0.6'));
     urls.push(buildUrl(`${BASE_URL}/login`, now, 'monthly', '0.5'));
 
@@ -87,6 +96,20 @@ export async function GET() {
         lastmod,
         'daily',
         '0.7',
+      ));
+    }
+
+    // Article pages
+    for (const article of articles) {
+      if (!article.slug) continue;
+      const lastmod = safeDate(article.updatedAt || article.publishedAt || article.createdAt);
+      const imageUrl = article.thumbnail || article.ogImage;
+      urls.push(buildUrl(
+        `${BASE_URL}/articles/${encodeURIComponent(article.slug)}`,
+        lastmod,
+        'weekly',
+        '0.7',
+        imageUrl ? { loc: ensureAbsoluteUrl(imageUrl), title: article.title } : undefined,
       ));
     }
 

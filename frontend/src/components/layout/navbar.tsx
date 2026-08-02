@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "@/stores/auth.store";
@@ -23,6 +24,7 @@ import {
   ShoppingBag,
   Briefcase,
   Palette,
+  Newspaper,
 } from "lucide-react";
 
 interface NavbarProps {
@@ -81,6 +83,7 @@ export function Navbar({ settings = {} }: NavbarProps) {
     { href: "/products", label: "Produk", icon: ShoppingBag },
     { href: "/services", label: "Jasa", icon: Palette },
     { href: "/jobs", label: "Cari Vendor", icon: Briefcase },
+    { href: "/articles", label: "Artikel", icon: Newspaper },
   ];
 
   return (
@@ -144,9 +147,11 @@ export function Navbar({ settings = {} }: NavbarProps) {
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2 shrink-0">
               {siteLogo ? (
-                <img
+                <Image
                   src={siteLogo}
                   alt={siteName}
+                  width={32}
+                  height={32}
                   className="h-8 w-8 object-contain"
                 />
               ) : (

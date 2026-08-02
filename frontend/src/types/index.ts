@@ -59,6 +59,50 @@ export interface PaginationParams {
 }
 
 // ============================================
+// ARTICLE
+// ============================================
+
+export type ArticleStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
+export type ArticleSource = "MANUAL" | "CSV" | "AI";
+
+export interface ArticleCategory {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+  _count?: { articles?: number };
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface Article {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt?: string;
+  content?: string;
+  thumbnail?: string;
+  youtubeUrl?: string;
+  categoryId?: string | null;
+  category?: ArticleCategory | null;
+  tags: string[];
+  status: ArticleStatus;
+  source: ArticleSource;
+  wordCount: number;
+  readingTimeMinutes: number;
+  viewCount: number;
+  metaTitle?: string;
+  metaDescription?: string;
+  metaKeywords?: string;
+  ogImage?: string;
+  publishedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============================================
 // TENANT / STORE
 // ============================================
 

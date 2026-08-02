@@ -125,6 +125,7 @@ enum FileCategory {
   BANNER
   LOGO
   KYC_DOCUMENT
+  ARTICLE_THUMBNAIL
 }
 
 enum PackageTier {
@@ -215,6 +216,18 @@ enum CmsPageStatus {
   ARCHIVED
 }
 
+enum ArticleStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ArticleSource {
+  MANUAL
+  CSV
+  AI
+}
+
 enum BannerStatus {
   ACTIVE
   INACTIVE
@@ -248,23 +261,23 @@ model User {
   whatsappNumber String?
 
   // Role & Status
-  role                UserRole           @default(BUYER)
-  isEmailVerified     Boolean            @default(false)
-  isPhoneVerified     Boolean            @default(false)
-  phoneVerifiedAt     DateTime?
-  verificationMethod  VerificationMethod @default(NONE)
-  isActive            Boolean            @default(true)
+  role               UserRole           @default(BUYER)
+  isEmailVerified    Boolean            @default(false)
+  isPhoneVerified    Boolean            @default(false)
+  phoneVerifiedAt    DateTime?
+  verificationMethod VerificationMethod @default(NONE)
+  isActive           Boolean            @default(true)
 
   // KYC Verification
   kycStatus     KycStatus @default(NOT_SUBMITTED)
   kycVerifiedAt DateTime?
 
   // Auth tokens
-  resetToken              String?
-  resetTokenExpiry        DateTime?
-  verificationToken       String?
-  verificationTokenExpiry DateTime?
-  emailVerifiedAt         DateTime?
+  resetToken                  String?
+  resetTokenExpiry            DateTime?
+  verificationToken           String?
+  verificationTokenExpiry     DateTime?
+  emailVerifiedAt             DateTime?
   lastVerificationEmailSentAt DateTime?
 
   // Two-Factor Authentication (2FA)
@@ -369,11 +382,11 @@ model User {
 
   @@index([email])
   @@index([isActive])
-  @@index([role])
   @@index([isEmailVerified])
+  @@index([role])
   @@index([firstName])
-  @@index([accountStatus])
   @@index([verificationToken])
+  @@index([accountStatus])
   @@index([lastName])
 }
 
@@ -518,8 +531,8 @@ model Tenant {
   @@index([isActive])
   @@index([isVerified])
   @@index([isFeatured])
-  @@index([city])
   @@index([isSeoActive])
+  @@index([city])
   @@index([referredBy])
   @@index([name])
   @@index([referredBy, deletedAt])
@@ -589,21 +602,21 @@ model StoreMenu {
 // ============================================
 
 model AccountAppeal {
-  id        String       @id @default(cuid())
-  userId    String
-  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Appeal content
-  reason    String       @db.Text // Why user wants account restored
-  evidence  String?      // Optional: URL to evidence/proof
+  reason   String  @db.Text // Why user wants account restored
+  evidence String? // Optional: URL to evidence/proof
 
   // Status
-  status    AppealStatus @default(PENDING)
+  status AppealStatus @default(PENDING)
 
   // Admin review
-  reviewedBy   String?
-  reviewedAt   DateTime?
-  adminNote    String?   // Admin's internal note
+  reviewedBy String?
+  reviewedAt DateTime?
+  adminNote  String? // Admin's internal note
 
   // Timestamps
   createdAt DateTime @default(now())
@@ -2562,6 +2575,83 @@ model FaqItem {
 }
 
 // ============================================
+// ARTICLE SYSTEM
+// ============================================
+
+model ArticleCategory {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  sortOrder   Int       @default(0)
+  isActive    Boolean   @default(true)
+  articles    Article[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([sortOrder])
+}
+
+model Article {
+  id         String           @id @default(cuid())
+  categoryId String?
+  category   ArticleCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  title   String
+  slug    String  @unique
+  excerpt String?
+  content String  @db.Text
+
+  thumbnail  String?
+  youtubeUrl String?
+  tags       String[]
+
+  status ArticleStatus @default(DRAFT)
+  source ArticleSource @default(MANUAL)
+
+  wordCount          Int @default(0)
+  readingTimeMinutes Int @default(1)
+  viewCount          Int @default(0)
+
+  metaTitle       String?
+  metaDescription String?
+  metaKeywords    String?
+  ogImage         String?
+
+  aiPrompt    String?   @db.Text
+  aiModel     String?
+  generatedAt DateTime?
+  reviewedBy  String?
+
+  createdBy   String?
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([slug])
+  @@index([status])
+  @@index([categoryId])
+  @@index([publishedAt])
+  @@index([status, publishedAt])
+  @@index([source])
+}
+
+model ArticleImportBatch {
+  id           String   @id @default(cuid())
+  fileName     String
+  totalRows    Int      @default(0)
+  successCount Int      @default(0)
+  failedCount  Int      @default(0)
+  errors       Json?
+  createdBy    String?
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// ============================================
 // PROMOTION / COUPON SYSTEM
 // ============================================
 
@@ -2813,7 +2903,7 @@ model OTP {
   type  OTPType
 
   expiresAt DateTime // OTP expires after 1 minute
-  isUsed    Boolean  @default(false)
+  isUsed    Boolean   @default(false)
   usedAt    DateTime?
 
   attempts Int @default(0) // Track verification attempts

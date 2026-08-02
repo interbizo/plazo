@@ -5,3 +5,4 @@ export { sellerApi } from "./seller.service";
 export { chatApi } from "./chat.service";
 export { adminApi } from "./admin.service";
 export { uploadApi } from "./upload.service";
+export { articleApi } from "./article.service";

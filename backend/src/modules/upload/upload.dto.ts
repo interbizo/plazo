@@ -9,6 +9,7 @@ export enum UploadCategory {
   ATTACHMENT = "ATTACHMENT",
   BANNER = "BANNER",
   LOGO = "LOGO",
+  ARTICLE_THUMBNAIL = "ARTICLE_THUMBNAIL",
 }
 
 export class UploadFileDto {

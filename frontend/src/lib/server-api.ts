@@ -179,6 +179,35 @@ export const serverApi = {
       tags: ["job-detail"],
     }),
 
+  // Articles
+  getArticles: (params?: Record<string, string | number>) => {
+    const searchParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== "") {
+          searchParams.set(k, String(v));
+        }
+      });
+    }
+    const qs = searchParams.toString();
+    return serverFetch<any>(`/api/public/articles${qs ? `?${qs}` : ""}`, {
+      revalidate: 60,
+      tags: ["articles"],
+    });
+  },
+
+  getArticleBySlug: (slug: string) =>
+    serverFetch<any>(`/api/public/articles/${slug}`, {
+      revalidate: 60,
+      tags: ["article-detail"],
+    }),
+
+  getArticleCategories: () =>
+    serverFetch<any>("/api/public/article-categories", {
+      revalidate: 300,
+      tags: ["article-categories"],
+    }),
+
   // Categories
   getCategories: (type?: string) => {
     const qs = type ? `?type=${type}` : "";
