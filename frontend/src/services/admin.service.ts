@@ -168,6 +168,7 @@ export const adminApi = {
     status?: string;
     targetType?: string;
   }) => api.get(`${BASE}/reports`, { params }),
+  getReportDetail: (id: string) => api.get(`${BASE}/reports/${id}`),
   resolveReport: (id: string, data: { action: string; adminNotes?: string }) =>
     api.put(`${BASE}/reports/${id}/resolve`, data),
 

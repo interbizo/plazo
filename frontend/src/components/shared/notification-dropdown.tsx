@@ -65,11 +65,11 @@ export function NotificationDropdown({ role }: NotificationDropdownProps) {
     return () => document.removeEventListener("keydown", handleKey);
   }, [isOpen, setOpen]);
 
-  const handleNotifClick = async (notif: Notification) => {
-    if (!notif.isRead) {
-      await markAsRead(notif.id);
-    }
+  const handleNotifClick = (notif: Notification) => {
     const route = getNotificationRoute(notif, role);
+    if (!notif.isRead) {
+      void markAsRead(notif.id);
+    }
     if (route) {
       router.push(route);
       setOpen(false);

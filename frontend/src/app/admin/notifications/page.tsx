@@ -1,17 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Bell, CheckCheck } from "lucide-react";
 import toast from "react-hot-toast";
 import api, { getErrorMessage } from "@/lib/api";
 import { formatRelativeTime } from "@/lib/utils";
-import { getNotificationUiMeta } from "@/lib/notification-ui";
+import {
+  getNotificationRoute,
+  getNotificationUiMeta,
+} from "@/lib/notification-ui";
 import { Spinner } from "@/components/ui/spinner";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import type { Notification } from "@/types";
 
 export default function AdminNotificationsPage() {
+  const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [markingAll, setMarkingAll] = useState(false);
@@ -46,6 +51,16 @@ export default function AdminNotificationsPage() {
       );
     } catch (err) {
       toast.error(getErrorMessage(err));
+    }
+  };
+
+  const handleNotificationClick = (notification: Notification) => {
+    const route = getNotificationRoute(notification, "ADMIN");
+    if (!notification.isRead) {
+      void handleMarkAsRead(notification.id);
+    }
+    if (route) {
+      router.push(route);
     }
   };
 
@@ -113,7 +128,7 @@ export default function AdminNotificationsPage() {
             return (
               <button
                 key={notif.id}
-                onClick={() => !notif.isRead && handleMarkAsRead(notif.id)}
+                onClick={() => handleNotificationClick(notif)}
                 className={`w-full rounded-xl border p-4 text-left transition-colors ${
                   notif.isRead
                     ? "border-gray-100 bg-white hover:border-gray-200"

@@ -101,7 +101,7 @@ function ChatContent() {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
   const [typingUser, setTypingUser] = useState<string | null>(null);
-  const [showMobileChat, setShowMobileChat] = useState(false);
+  const [showMobileChat, setShowMobileChat] = useState(Boolean(initialRoom));
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [transactions, setTransactions] = useState<ChatTransaction[]>([]);
@@ -111,6 +111,7 @@ function ChatContent() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const syncedRoomParamRef = useRef(initialRoom);
 
   const updateRoomActivity = (
     roomId: string,
@@ -177,6 +178,14 @@ function ChatContent() {
     if (p.role === "SUPER_ADMIN") return "Super Admin";
     return "Admin";
   };
+
+  useEffect(() => {
+    if (!initialRoom || syncedRoomParamRef.current === initialRoom) return;
+
+    syncedRoomParamRef.current = initialRoom;
+    setActiveRoomId(initialRoom);
+    setShowMobileChat(true);
+  }, [initialRoom]);
 
   useEffect(() => {
     const fetchRooms = async () => {

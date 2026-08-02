@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useRef, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useState, useRef, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { adminApi } from "@/services/admin.service";
 import api from "@/lib/api";
 import { formatDate } from "@/lib/utils";
@@ -50,7 +50,6 @@ interface Message {
 }
 
 function ReportsContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [reports, setReports] = useState<Report[]>([]);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
@@ -61,6 +60,7 @@ function ReportsContent() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<Socket | null>(null);
   const page = Number(searchParams.get("page") || "1");
+  const reportIdFromNotification = searchParams.get("reportId");
 
   // Initialize Socket.io
   useEffect(() => {
@@ -134,7 +134,7 @@ function ReportsContent() {
     fetchReports();
   }, [page]);
 
-  const loadMessages = async (reportId: string) => {
+  const loadMessages = useCallback(async (reportId: string) => {
     try {
       const token = localStorage.getItem("token") || localStorage.getItem("plazo_access_token");
       
@@ -175,12 +175,51 @@ function ReportsContent() {
       console.error("Failed to load messages:", error);
       toast.error("Gagal memuat pesan");
     }
-  };
+  }, []);
 
-  const handleSelectReport = async (report: Report) => {
+  const handleSelectReport = useCallback(async (report: Report) => {
     setSelectedReport(report);
     await loadMessages(report.id);
-  };
+  }, [loadMessages]);
+
+  useEffect(() => {
+    if (
+      !reportIdFromNotification ||
+      isLoading ||
+      selectedReport?.id === reportIdFromNotification
+    ) {
+      return;
+    }
+
+    const reportFromList = reports.find(
+      (report) => report.id === reportIdFromNotification,
+    );
+
+    if (reportFromList) {
+      void handleSelectReport(reportFromList);
+      return;
+    }
+
+    const loadReportFromNotification = async () => {
+      try {
+        const { data } = await adminApi.getReportDetail(reportIdFromNotification);
+        const report = (data?.data || data) as Report;
+        setSelectedReport(report);
+        await loadMessages(reportIdFromNotification);
+      } catch {
+        toast.error("Gagal membuka laporan dari notifikasi");
+      }
+    };
+
+    void loadReportFromNotification();
+  }, [
+    reportIdFromNotification,
+    handleSelectReport,
+    isLoading,
+    loadMessages,
+    reports,
+    selectedReport?.id,
+  ]);
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedReport || isSending) return;

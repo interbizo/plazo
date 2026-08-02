@@ -1,4 +1,5 @@
 import { Injectable, Logger, Inject, Optional, forwardRef } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "@modules/database/prisma.service";
 import { EmailService } from "@modules/email/email.service";
 import { ChatGateway } from "@modules/websocket/chat.gateway";
@@ -63,6 +64,7 @@ export class NotificationEventsService {
     type: string;
     referenceId?: string;
     referenceType?: string;
+    metadata?: Prisma.InputJsonObject;
   }) {
     try {
       // Check for duplicate notification in the last 5 minutes
@@ -103,6 +105,7 @@ export class NotificationEventsService {
           type: params.type,
           referenceId: params.referenceId,
           referenceType: params.referenceType,
+          metadata: params.metadata,
         },
       });
 
@@ -125,6 +128,7 @@ export class NotificationEventsService {
       type: string;
       referenceId?: string;
       referenceType?: string;
+      metadata?: Prisma.InputJsonObject;
     },
   ) {
     const uniqueUserIds = [...new Set(userIds.filter(Boolean))];
@@ -152,6 +156,7 @@ export class NotificationEventsService {
       type: string;
       referenceId?: string;
       referenceType?: string;
+      metadata?: Prisma.InputJsonObject;
     }>,
   ) {
     // Create notifications individually to enable WebSocket push
@@ -169,6 +174,7 @@ export class NotificationEventsService {
     type: string;
     referenceId?: string;
     referenceType?: string;
+    metadata?: Prisma.InputJsonObject;
   }) {
     const admins = await this.prisma.user.findMany({
       where: {
@@ -1190,6 +1196,7 @@ export class NotificationEventsService {
     buyerName: string;
     sellerId: string;
     transactionId: string;
+    roomId: string;
     contextType: string;
     contextTitle: string;
     price?: number;
@@ -1212,6 +1219,11 @@ export class NotificationEventsService {
         type: "chat_transaction",
         referenceId: params.transactionId,
         referenceType: "chat_transaction",
+        metadata: {
+          roomId: params.roomId,
+          transactionId: params.transactionId,
+          contextType: params.contextType,
+        },
       });
     } else {
       // Notify seller for regular products
@@ -1223,6 +1235,11 @@ export class NotificationEventsService {
         type: "chat_transaction",
         referenceId: params.transactionId,
         referenceType: "chat_transaction",
+        metadata: {
+          roomId: params.roomId,
+          transactionId: params.transactionId,
+          contextType: params.contextType,
+        },
       });
     }
   }
@@ -1234,6 +1251,7 @@ export class NotificationEventsService {
     tenantId: string;
     buyerId: string;
     transactionId: string;
+    roomId: string;
     itemTitle: string;
   }) {
     await this.createNotification({
@@ -1244,6 +1262,10 @@ export class NotificationEventsService {
       type: "transaction_completed",
       referenceId: params.transactionId,
       referenceType: "chat_transaction",
+      metadata: {
+        roomId: params.roomId,
+        transactionId: params.transactionId,
+      },
     });
   }
 

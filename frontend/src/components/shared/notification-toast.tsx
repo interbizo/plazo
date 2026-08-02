@@ -1,20 +1,24 @@
 "use client";
 
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { useNotificationSocket } from "@/hooks/use-socket";
 import { useNotificationSync } from "@/hooks/use-notification-sync";
 import { useNotificationStore } from "@/stores/notification.store";
 import { useAuthStore } from "@/stores/auth.store";
 import type { Notification } from "@/types";
-import { getNotificationUiMeta } from "@/lib/notification-ui";
+import {
+  getNotificationRoute,
+  getNotificationUiMeta,
+} from "@/lib/notification-ui";
 import {
   registerNotificationServiceWorker,
   requestBrowserNotificationPermission,
   showBrowserNotification,
 } from "@/lib/browser-notifications";
 
-function showNotificationToast(notif: Notification) {
+function showNotificationToast(notif: Notification, onOpen?: () => void) {
   const { Icon, iconClassName } = getNotificationUiMeta(notif.type);
 
   toast.custom(
@@ -23,7 +27,10 @@ function showNotificationToast(notif: Notification) {
         className={`${
           t.visible ? "animate-enter" : "animate-leave"
         } pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-xl bg-white p-4 shadow-lg ring-1 ring-gray-900/5`}
-        onClick={() => toast.dismiss(t.id)}
+        onClick={() => {
+          toast.dismiss(t.id);
+          onOpen?.();
+        }}
         role="alert"
       >
         <div className={`shrink-0 rounded-full p-2 ${iconClassName}`}>
@@ -68,6 +75,7 @@ function showNotificationToast(notif: Notification) {
 }
 
 export function NotificationToastListener() {
+  const router = useRouter();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const user = useAuthStore((s) => s.user);
   const addNotification = useNotificationStore((s) => s.addNotification);
@@ -78,7 +86,12 @@ export function NotificationToastListener() {
   useNotificationSocket((notif) => {
     if (!isAuthenticated) return;
     addNotification(notif);
-    showNotificationToast(notif);
+    const route = getNotificationRoute(notif, user?.role);
+    showNotificationToast(notif, () => {
+      if (route) {
+        router.push(route);
+      }
+    });
     void showBrowserNotification(notif, user?.role);
   });
 

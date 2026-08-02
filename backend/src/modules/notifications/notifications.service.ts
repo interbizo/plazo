@@ -57,8 +57,56 @@ export class NotificationsService {
       this.prisma.notification.count({ where }),
     ]);
 
+    // Notifikasi transaksi chat lama hanya menyimpan transactionId. Lengkapi
+    // respons dengan roomId agar tetap dapat membuka room chat yang benar.
+    const transactionIdsWithoutRoom = notifications.flatMap((notification) => {
+      const metadata = notification.metadata;
+      const hasRoomId =
+        metadata &&
+        typeof metadata === "object" &&
+        !Array.isArray(metadata) &&
+        typeof metadata.roomId === "string";
+
+      return notification.referenceType === "chat_transaction" &&
+        notification.referenceId &&
+        !hasRoomId
+        ? [notification.referenceId]
+        : [];
+    });
+
+    const chatTransactions = transactionIdsWithoutRoom.length
+      ? await this.prisma.chatTransaction.findMany({
+          where: { id: { in: [...new Set(transactionIdsWithoutRoom)] } },
+          select: { id: true, roomId: true },
+        })
+      : [];
+    const roomIdByTransactionId = new Map(
+      chatTransactions.map((transaction) => [transaction.id, transaction.roomId]),
+    );
+
+    const enrichedNotifications = notifications.map((notification) => {
+      if (notification.referenceType !== "chat_transaction" || !notification.referenceId) {
+        return notification;
+      }
+
+      const roomId = roomIdByTransactionId.get(notification.referenceId);
+      if (!roomId) return notification;
+
+      const metadata =
+        notification.metadata &&
+        typeof notification.metadata === "object" &&
+        !Array.isArray(notification.metadata)
+          ? notification.metadata
+          : {};
+
+      return {
+        ...notification,
+        metadata: { ...metadata, roomId },
+      };
+    });
+
     return PaginationHelper.formatPaginatedResponse(
-      notifications,
+      enrichedNotifications,
       total,
       page,
       limit,

@@ -129,60 +129,182 @@ function getRoleBase(role?: UserRole | string) {
   return "/dashboard";
 }
 
+// Memeriksa apakah penerima notifikasi menggunakan route dashboard admin.
+function isAdminRole(role?: UserRole | string) {
+  return role === "ADMIN" || role === "SUPER_ADMIN";
+}
+
+// Mengembalikan tujuan aman berdasarkan role bila detail notifikasi belum didukung.
+function getFallbackRoute(role?: UserRole | string) {
+  return isAdminRole(role)
+    ? "/admin/notifications"
+    : `${getRoleBase(role)}/notifications`;
+}
+
+// Menambahkan satu query parameter yang sudah di-encode bila nilainya tersedia.
+function appendQuery(path: string, key: string, value?: string | null) {
+  if (!value) return path;
+  return `${path}?${key}=${encodeURIComponent(value)}`;
+}
+
+// Membuat route chat sesuai role dan dapat memilih room chat tertentu.
+function getChatRoute(role?: UserRole | string, roomId?: string | null) {
+  const path = isAdminRole(role) ? "/admin/chat" : `${getRoleBase(role)}/chat`;
+  return appendQuery(path, "room", roomId);
+}
+
+// Menormalkan reference type dari backend sebelum dicocokkan dengan route.
+function normalizeReferenceType(referenceType?: string | null) {
+  return (referenceType || "").toLowerCase();
+}
+
+// Membaca string dari metadata notifikasi tanpa type cast yang tidak aman.
+function getMetadataString(notif: Notification, key: string) {
+  const value = notif.metadata?.[key];
+  return typeof value === "string" && value ? value : undefined;
+}
+
 export function getNotificationRoute(
   notif: Notification,
   role?: UserRole | string,
 ): string | null {
   const base = getRoleBase(role);
   const type = normalizeNotificationType(notif.type);
+  const referenceType = normalizeReferenceType(notif.referenceType);
+  const referenceId = notif.referenceId || undefined;
+  const roomId = getMetadataString(notif, "roomId");
 
-  if (type === "CHAT") {
-    return role === "ADMIN" || role === "SUPER_ADMIN"
-      ? "/admin/chats"
-      : `${base}/chat`;
+  switch (referenceType) {
+    case "chat":
+    case "chat_room":
+    case "chatroom":
+      return getChatRoute(role, roomId || referenceId);
+    case "chat_transaction":
+      return getChatRoute(role, roomId);
+    case "report":
+      if (isAdminRole(role)) return appendQuery("/admin/reports", "reportId", referenceId);
+      if (!referenceId) return `${base}/reports`;
+      return role === "SELLER"
+        ? `/seller/dashboard/reports/${referenceId}`
+        : `/dashboard/reports/${referenceId}`;
+    case "job":
+      if (isAdminRole(role)) return "/admin/jobs";
+      return role === "SELLER"
+        ? "/jobs"
+        : referenceId
+          ? `/dashboard/jobs/${referenceId}`
+          : `${base}/jobs`;
+    case "proposal":
+      return role === "SELLER"
+        ? "/seller/dashboard/proposals"
+        : isAdminRole(role)
+          ? "/admin/jobs"
+          : "/dashboard/jobs";
+    case "order":
+      return getChatRoute(role);
+    case "subscription_payment":
+      return isAdminRole(role)
+        ? appendQuery("/admin/subscription-payments", "paymentId", referenceId)
+        : "/seller/dashboard/subscription";
+    case "user":
+      if (type === "KYC") {
+        return isAdminRole(role)
+          ? appendQuery("/admin/kyc", "userId", referenceId)
+          : role === "SELLER"
+            ? "/seller/dashboard/verification"
+            : "/dashboard/kyc";
+      }
+      return isAdminRole(role)
+        ? appendQuery("/admin/users", "userId", referenceId)
+        : `${base}/profile`;
+    case "physical_verification":
+      return isAdminRole(role)
+        ? appendQuery("/admin/physical-verifications", "verificationId", referenceId)
+        : "/seller/dashboard/physical-verification";
+    case "product":
+      return isAdminRole(role)
+        ? appendQuery("/admin/products", "productId", referenceId)
+        : "/seller/dashboard/products";
+    case "service":
+      return isAdminRole(role)
+        ? appendQuery("/admin/services", "serviceId", referenceId)
+        : "/seller/dashboard/services";
+    case "review":
+      return isAdminRole(role)
+        ? appendQuery("/admin/reviews", "reviewId", referenceId)
+        : `${base}/reviews`;
+    case "affiliate_claim":
+      return isAdminRole(role)
+        ? appendQuery("/admin/affiliates", "claimId", referenceId)
+        : "/seller/dashboard/affiliate";
+    case "withdrawal":
+      return role === "SELLER" ? "/seller/dashboard" : getFallbackRoute(role);
   }
 
-  if (!notif.referenceId) {
-    if (role === "ADMIN" || role === "SUPER_ADMIN") return "/admin/notifications";
-    return `${base}/notifications`;
+  if (type === "CHAT") {
+    return getChatRoute(role, roomId || referenceId);
+  }
+
+  if (!referenceId) {
+    return getFallbackRoute(role);
   }
 
   switch (type) {
+    case "CHAT_TRANSACTION":
+    case "TRANSACTION_COMPLETED":
+      return getChatRoute(role, roomId);
     case "ORDER":
     case "PAYMENT":
-      if (role === "ADMIN" || role === "SUPER_ADMIN") {
-        return "/admin/subscription-payments";
-      }
-      return `${base}/chat`;
+      return getChatRoute(role, roomId);
     case "JOB":
       return role === "SELLER"
         ? "/jobs"
-        : role === "ADMIN" || role === "SUPER_ADMIN"
+        : isAdminRole(role)
           ? "/admin/jobs"
-          : `${base}/jobs/${notif.referenceId}`;
+          : `${base}/jobs/${referenceId}`;
     case "PROPOSAL":
       return role === "SELLER"
         ? `${base}/proposals`
-        : role === "ADMIN" || role === "SUPER_ADMIN"
+        : isAdminRole(role)
           ? "/admin/jobs"
           : `${base}/jobs`;
     case "REVIEW":
-      return role === "ADMIN" || role === "SUPER_ADMIN"
+      return isAdminRole(role)
         ? "/admin/reviews"
         : `${base}/reviews`;
     case "KYC":
-      return role === "ADMIN" || role === "SUPER_ADMIN"
+      return isAdminRole(role)
         ? "/admin/kyc"
-        : `${base}/notifications`;
+        : role === "SELLER"
+          ? "/seller/dashboard/verification"
+          : "/dashboard/kyc";
     case "SUBSCRIPTION":
       return role === "SELLER"
         ? "/seller/dashboard/subscription"
-        : role === "ADMIN" || role === "SUPER_ADMIN"
+        : isAdminRole(role)
           ? "/admin/subscriptions"
-          : `${base}/notifications`;
+          : getFallbackRoute(role);
+    case "VERIFICATION":
+      return isAdminRole(role)
+        ? "/admin/physical-verifications"
+        : "/seller/dashboard/physical-verification";
+    case "REPORT":
+      return isAdminRole(role)
+        ? appendQuery("/admin/reports", "reportId", referenceId)
+        : role === "SELLER"
+          ? `/seller/dashboard/reports/${referenceId}`
+          : `/dashboard/reports/${referenceId}`;
+    case "PRODUCT":
+      return isAdminRole(role)
+        ? appendQuery("/admin/products", "productId", referenceId)
+        : "/seller/dashboard/products";
+    case "SERVICE":
+      return isAdminRole(role)
+        ? appendQuery("/admin/services", "serviceId", referenceId)
+        : "/seller/dashboard/services";
+    case "AFFILIATE":
+      return isAdminRole(role) ? "/admin/affiliates" : "/seller/dashboard/affiliate";
     default:
-      return role === "ADMIN" || role === "SUPER_ADMIN"
-        ? "/admin/notifications"
-        : `${base}/notifications`;
+      return getFallbackRoute(role);
   }
 }

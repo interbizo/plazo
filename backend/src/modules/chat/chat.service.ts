@@ -578,6 +578,7 @@ export class ChatService {
       buyerName,
       sellerId: data.sellerId,
       transactionId: transaction.id,
+      roomId: data.roomId,
       contextType: data.contextType,
       contextTitle: data.contextTitle,
       price: data.price,
@@ -660,6 +661,7 @@ export class ChatService {
       tenantId: transaction.tenantId,
       buyerId: transaction.buyerId,
       transactionId: transaction.id,
+      roomId: transaction.roomId,
       itemTitle: transaction.contextTitle,
     });
 

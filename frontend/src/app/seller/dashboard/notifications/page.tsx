@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useState, startTransition } from "react";
+import { useRouter } from "next/navigation";
 import { sellerApi } from "@/services/seller.service";
-import { getNotificationUiMeta } from "@/lib/notification-ui";
+import {
+  getNotificationRoute,
+  getNotificationUiMeta,
+} from "@/lib/notification-ui";
 import { formatRelativeTime } from "@/lib/utils";
 import { Spinner } from "@/components/ui/spinner";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -13,6 +17,7 @@ import { getErrorMessage } from "@/lib/api";
 import type { Notification } from "@/types";
 
 export default function SellerNotificationsPage() {
+  const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [markingAll, setMarkingAll] = useState(false);
@@ -44,6 +49,16 @@ export default function SellerNotificationsPage() {
       );
     } catch (err) {
       toast.error(getErrorMessage(err));
+    }
+  };
+
+  const handleNotificationClick = (notification: Notification) => {
+    const route = getNotificationRoute(notification, "SELLER");
+    if (!notification.isRead) {
+      void handleMarkAsRead(notification.id);
+    }
+    if (route) {
+      router.push(route);
     }
   };
 
@@ -105,7 +120,7 @@ export default function SellerNotificationsPage() {
             return (
               <button
                 key={n.id}
-                onClick={() => !n.isRead && handleMarkAsRead(n.id)}
+                onClick={() => handleNotificationClick(n)}
                 className={`w-full rounded-lg border p-4 text-left transition-colors ${
                   n.isRead
                     ? "border-gray-100 bg-white hover:border-gray-200"

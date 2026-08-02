@@ -1,6 +1,6 @@
 "use client";
 
-import type { Notification } from "@/types";
+import type { Notification, UserRole } from "@/types";
 import { getNotificationRoute, getNotificationUiMeta } from "@/lib/notification-ui";
 
 let registrationPromise: Promise<ServiceWorkerRegistration | null> | null = null;
@@ -10,6 +10,29 @@ type NotificationOptionsWithRenotify = NotificationOptions & {
   renotify?: boolean;
 };
 
+// Mengubah route aplikasi menjadi URL absolut untuk navigasi service worker.
+function toAbsoluteAppUrl(route: string) {
+  if (typeof window === "undefined") return route;
+
+  try {
+    return new URL(route, window.location.origin).href;
+  } catch {
+    return window.location.origin;
+  }
+}
+
+// Menentukan role dashboard dari URL bila data pengguna belum tersedia.
+function getRoleFromCurrentPath(): UserRole | undefined {
+  if (typeof window === "undefined") return undefined;
+
+  const pathname = window.location.pathname;
+  if (pathname.startsWith("/seller/dashboard")) return "SELLER";
+  if (pathname.startsWith("/admin")) return "ADMIN";
+  if (pathname.startsWith("/dashboard")) return "BUYER";
+
+  return undefined;
+}
+
 export function registerNotificationServiceWorker() {
   if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
     return Promise.resolve(null);
@@ -18,7 +41,10 @@ export function registerNotificationServiceWorker() {
   if (!registrationPromise) {
     registrationPromise = navigator.serviceWorker
       .register("/notification-sw.js")
-      .then(() => navigator.serviceWorker.ready)
+      .then((registration) => {
+        void registration.update();
+        return navigator.serviceWorker.ready;
+      })
       .catch(() => null);
   }
 
@@ -82,8 +108,10 @@ export async function showBrowserNotification(
   const registration = await registerNotificationServiceWorker();
   if (!registration) return;
 
-  const route = getNotificationRoute(notif, role);
+  const effectiveRole = role || getRoleFromCurrentPath();
+  const route = getNotificationRoute(notif, effectiveRole);
   const meta = getNotificationUiMeta(notif.type);
+  const url = toAbsoluteAppUrl(route || "/");
 
   playTone(meta.sound);
 
@@ -96,7 +124,9 @@ export async function showBrowserNotification(
     tag: `${notif.type}-${notif.referenceId || notif.id}`,
     renotify: meta.sound === "important",
     data: {
-      url: route || "/",
+      url,
+      route: route || "/",
+      role: effectiveRole,
       notificationId: notif.id,
     },
   };

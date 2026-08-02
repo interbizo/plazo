@@ -476,12 +476,11 @@ function NavbarNotificationPanel({ role }: { role: string }) {
   };
   void ICON_MAP;
 
-  const handleClick = async (notif: { id: string; isRead: boolean; type: string; referenceId?: string }) => {
-    if (!notif.isRead) await markAsRead(notif.id);
-    const type: string = notif.type;
-    const base = role === "SELLER" ? "/seller/dashboard" : "/dashboard";
-    let route = getNotificationRoute(notif as Notification, role) || "/dashboard";
-      if (type === "ORDER" || type === "PAYMENT") route = `${base}/chat`; // Orders disabled — redirect ke chat
+  const handleClick = (notif: Notification) => {
+    const route = getNotificationRoute(notif, role) || "/dashboard";
+    if (!notif.isRead) {
+      void markAsRead(notif.id);
+    }
     router.push(route);
     setOpen(false);
   };
