@@ -1,17 +1,21 @@
 "use client";
 
-import { useState, useEffect, Suspense, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect, Suspense, useRef, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/stores/auth.store";
 import { getErrorMessage } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Turnstile, TurnstileRef } from "@/components/ui/turnstile";
 import { Eye, EyeOff } from "lucide-react";
 import toast from "react-hot-toast";
 import { PageTitle } from "@/components/shared/page-title";
 import { Spinner } from "@/components/ui/spinner";
+
+const DEV_TURNSTILE_TOKEN = "development-turnstile-bypass";
+const USE_DEV_TURNSTILE_BYPASS =
+  process.env.NODE_ENV === "development" &&
+  !process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim();
 
 function getSafeReturnUrl(url: string | null): string | null {
   if (!url || !url.startsWith("/")) return null;
@@ -19,20 +23,34 @@ function getSafeReturnUrl(url: string | null): string | null {
 }
 
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useAuthStore();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState<string>("");
+  const [turnstileToken, setTurnstileToken] = useState<string>(
+    USE_DEV_TURNSTILE_BYPASS ? DEV_TURNSTILE_TOKEN : "",
+  );
   const turnstileRef = useRef<TurnstileRef>(null);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>(
     {},
   );
   const [returnUrl, setReturnUrl] = useState<string | null>(null);
   const referralCode = searchParams.get("ref");
+
+  const handleTurnstileSuccess = useCallback((token: string) => {
+    setTurnstileToken(token);
+  }, []);
+
+  const handleTurnstileError = useCallback(() => {
+    setTurnstileToken("");
+    toast.error("Verifikasi keamanan gagal. Silakan coba lagi.");
+  }, []);
+
+  const handleTurnstileExpire = useCallback(() => {
+    setTurnstileToken("");
+  }, []);
 
   useEffect(() => {
     const url =
@@ -186,14 +204,9 @@ function LoginForm() {
           <div className="flex justify-center">
             <Turnstile
               ref={turnstileRef}
-              onSuccess={(token) => setTurnstileToken(token)}
-              onError={() => {
-                setTurnstileToken("");
-                toast.error("Verifikasi keamanan gagal. Silakan coba lagi.");
-              }}
-              onExpire={() => {
-                setTurnstileToken("");
-              }}
+              onSuccess={handleTurnstileSuccess}
+              onError={handleTurnstileError}
+              onExpire={handleTurnstileExpire}
             />
           </div>
 

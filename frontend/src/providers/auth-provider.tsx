@@ -22,6 +22,7 @@ function isPublicPath(pathname: string) {
     "/products",
     "/services",
     "/jobs",
+    "/articles",
     "/store",
     "/browse",
   ];
