@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CalendarDays, Clock, Eye } from "lucide-react";
+import { ArrowLeft, CalendarDays } from "lucide-react";
 import { serverApi } from "@/lib/server-api";
 import { resolveImageUrl } from "@/lib/image-url";
+import { ArticleViewTracker } from "@/components/articles/article-view-tracker";
 import { SafeHtml } from "@/components/ui/safe-html";
 import type { Article } from "@/types";
 
@@ -47,12 +48,14 @@ export async function generateMetadata({
     article.metaDescription ||
     article.excerpt ||
     "Baca artikel lengkap di Plazo.";
+  const keywords = article.metaKeywords || article.tags?.join(", ");
   const image = article.ogImage || article.thumbnail;
   const url = `/articles/${article.slug}`;
 
   return {
     title,
     description,
+    keywords: keywords || undefined,
     alternates: {
       canonical: url,
     },
@@ -135,14 +138,10 @@ export default async function ArticleDetailPage({ params }: ArticleDetailPagePro
                 <CalendarDays className="h-4 w-4" />
                 {formatDate(article.publishedAt || article.createdAt)}
               </span>
-              <span className="inline-flex items-center gap-1">
-                <Clock className="h-4 w-4" />
-                {article.readingTimeMinutes} menit baca
-              </span>
-              <span className="inline-flex items-center gap-1">
-                <Eye className="h-4 w-4" />
-                {article.viewCount} views
-              </span>
+              <ArticleViewTracker
+                articleId={article.id}
+                initialViewCount={article.viewCount}
+              />
             </div>
 
             <h1 className="text-3xl font-bold leading-tight text-gray-900 sm:text-4xl">
@@ -225,6 +224,9 @@ export default async function ArticleDetailPage({ params }: ArticleDetailPagePro
                 <h3 className="line-clamp-2 text-sm font-semibold text-gray-900">
                   {item.title}
                 </h3>
+                <p className="mt-2 line-clamp-2 text-xs leading-5 text-gray-600">
+                  {item.excerpt || "Baca artikel lengkap di Plazo."}
+                </p>
                 <p className="mt-2 text-xs text-gray-500">
                   {formatDate(item.publishedAt || item.createdAt)}
                 </p>

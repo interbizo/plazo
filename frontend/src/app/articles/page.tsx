@@ -183,7 +183,6 @@ export default async function ArticlesPage({ searchParams }: ArticlesPageProps) 
                         <CalendarDays className="h-3.5 w-3.5" />
                         {formatDate(article.publishedAt || article.createdAt)}
                       </span>
-                      <span>{article.readingTimeMinutes} menit baca</span>
                     </div>
                     <h3 className="line-clamp-2 text-base font-semibold text-gray-900 group-hover:text-blue-700">
                       {article.title}

@@ -28,6 +28,12 @@ export const articleApi = {
       `/api/public/articles/${slug}`,
     ),
 
+  trackArticleView: (articleId: string) =>
+    api.post<{ counted: boolean; viewCount: number }>(
+      `/api/public/articles/${articleId}/view`,
+      {},
+    ),
+
   getCategories: () =>
     api.get<ArticleCategory[]>("/api/public/article-categories"),
 };
