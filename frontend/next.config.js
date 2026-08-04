@@ -1,17 +1,28 @@
-const path = require("path");
+const isProduction = process.env.NODE_ENV === 'production';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  allowedDevOrigins: [
+    'localhost',
+    '127.0.0.1',
+  ],
   typescript: {
     ignoreBuildErrors: true,
   },
-  experimental: {
-    workerThreads: true,
-    optimizePackageImports: ['lucide-react', 'react-hot-toast', 'date-fns', 'zustand'],
-    cpus: 2,
-  },
+  ...(isProduction
+    ? {
+        experimental: {
+          optimizePackageImports: [
+            'lucide-react',
+            'react-hot-toast',
+            'date-fns',
+            'zustand',
+          ],
+        },
+      }
+    : {}),
   compiler: {
-    removeConsole: process.env.NODE_ENV === 'production' ? {
+    removeConsole: isProduction ? {
       exclude: ['error', 'warn'],
     } : false,
   },
@@ -22,6 +33,22 @@ const nextConfig = {
 
   // Performance: Power headers for SEO & caching
   async headers() {
+    if (!isProduction) {
+      return [
+        {
+          source: '/:path*',
+          headers: [
+            { key: 'Cache-Control', value: 'no-store, max-age=0' },
+            { key: 'X-Content-Type-Options', value: 'nosniff' },
+            { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+            { key: 'X-XSS-Protection', value: '1; mode=block' },
+            { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+            { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+          ],
+        },
+      ];
+    }
+
     return [
       {
         // Static assets — aggressive caching (1 year)
@@ -77,6 +104,10 @@ const nextConfig = {
   },
 
   webpack: (config, { isServer }) => {
+    if (!isProduction) {
+      return config;
+    }
+
     config.optimization = {
       ...config.optimization,
       moduleIds: 'deterministic',
