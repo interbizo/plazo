@@ -535,7 +535,7 @@ export function ArticleForm({ mode, articleId }: ArticleFormProps) {
                     metaTitle: event.target.value,
                   }))
                 }
-                placeholder="Otomatis dari judul"
+                placeholder="Jika dikosongkan, diambil dari judul artikel"
               />
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">
@@ -552,7 +552,7 @@ export function ArticleForm({ mode, articleId }: ArticleFormProps) {
                   }
                   rows={3}
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
-                  placeholder="Otomatis dari ringkasan"
+                  placeholder="Jika dikosongkan, diambil dari ringkasan artikel"
                 />
               </div>
               <Input
@@ -564,7 +564,7 @@ export function ArticleForm({ mode, articleId }: ArticleFormProps) {
                     metaKeywords: event.target.value,
                   }))
                 }
-                placeholder="Otomatis dari tags"
+                placeholder="Jika dikosongkan, diambil dari tags artikel"
               />
             </div>
 
