@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "@/stores/auth.store";
 import { useNotificationStore } from "@/stores/notification.store";
-import { Avatar } from "@/components/ui";
+import { Avatar } from "@/components/ui/avatar";
 import {
   getNotificationRoute,
 } from "@/lib/notification-ui";
