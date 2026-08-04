@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -12,62 +12,22 @@ import {
   Plus,
   Search,
   Trash2,
-  Upload,
-  X,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { articleAdminApi } from "@/services/article.service";
-import { uploadApi } from "@/services/upload.service";
 import { getErrorMessage } from "@/lib/api";
 import { resolveImageUrl } from "@/lib/image-url";
-import type { Article, ArticleCategory, ArticleStatus } from "@/types";
+import type { Article, ArticleCategory } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import { EmptyState } from "@/components/ui/empty-state";
-import { CKEditor4 } from "@/components/ui/ckeditor4";
-import { countWords } from "@/components/ui/word-counter";
-
-const MIN_WORDS = 800;
-const MAX_WORDS = 1600;
-
-type ArticleFormState = {
-  id?: string;
-  title: string;
-  slug: string;
-  excerpt: string;
-  content: string;
-  thumbnail: string;
-  youtubeUrl: string;
-  categoryId: string;
-  tags: string;
-  status: ArticleStatus;
-  metaTitle: string;
-  metaDescription: string;
-  metaKeywords: string;
-  ogImage: string;
-};
+import { ConfirmDialog, Modal } from "@/components/ui/modal";
 
 type ImportError = {
   row: number;
   title?: string;
   message: string;
-};
-
-const emptyForm: ArticleFormState = {
-  title: "",
-  slug: "",
-  excerpt: "",
-  content: "",
-  thumbnail: "",
-  youtubeUrl: "",
-  categoryId: "",
-  tags: "",
-  status: "DRAFT",
-  metaTitle: "",
-  metaDescription: "",
-  metaKeywords: "",
-  ogImage: "",
 };
 
 function statusVariant(status: string) {
@@ -84,176 +44,103 @@ function statusLabel(status: string) {
 
 function slugify(value: string) {
   return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-");
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/[\s-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 export default function AdminArticlesPage() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [categories, setCategories] = useState<ArticleCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState<ArticleFormState>(emptyForm);
+  const [isSavingCategory, setIsSavingCategory] = useState(false);
+  const [isDeletingArticle, setIsDeletingArticle] = useState(false);
+  const [isDeletingCategory, setIsDeletingCategory] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [categoryName, setCategoryName] = useState("");
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [categoryFormName, setCategoryFormName] = useState("");
+  const [editingCategory, setEditingCategory] = useState<ArticleCategory | null>(null);
+  const [articleDeleteTarget, setArticleDeleteTarget] = useState<Article | null>(null);
+  const [categoryDeleteTarget, setCategoryDeleteTarget] =
+    useState<ArticleCategory | null>(null);
   const [importErrors, setImportErrors] = useState<ImportError[]>([]);
   const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
 
-  const wordCount = useMemo(() => countWords(form.content), [form.content]);
-  const canPublish = wordCount >= MIN_WORDS && wordCount <= MAX_WORDS;
-  const isOverLimit = wordCount > MAX_WORDS;
+  const fetchData = useCallback(
+    async (page = 1) => {
+      setIsLoading(true);
+      try {
+        const [articlesRes, categoriesRes] = await Promise.all([
+          articleAdminApi.getArticles({
+            page,
+            limit: 12,
+            ...(searchInput.trim() && { search: searchInput.trim() }),
+            ...(statusFilter && { status: statusFilter }),
+          }),
+          articleAdminApi.getCategories(),
+        ]);
 
-  const fetchData = useCallback(async (page = pagination.page) => {
-    setIsLoading(true);
-    try {
-      const [articlesRes, categoriesRes] = await Promise.all([
-        articleAdminApi.getArticles({
-          page,
-          limit: 12,
-          ...(searchInput.trim() && { search: searchInput.trim() }),
-          ...(statusFilter && { status: statusFilter }),
-        }),
-        articleAdminApi.getCategories(),
-      ]);
-
-      const articlePayload = articlesRes.data;
-      setArticles(articlePayload.data || []);
-      setPagination({
-        page: articlePayload.pagination?.page || page,
-        pages: articlePayload.pagination?.pages || 1,
-        total: articlePayload.pagination?.total || 0,
-      });
-      setCategories(categoriesRes.data || []);
-    } catch (error) {
-      toast.error(getErrorMessage(error));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [pagination.page, searchInput, statusFilter]);
+        const articlePayload = articlesRes.data;
+        setArticles(articlePayload.data || []);
+        setPagination({
+          page: articlePayload.pagination?.page || page,
+          pages: articlePayload.pagination?.pages || 1,
+          total: articlePayload.pagination?.total || 0,
+        });
+        setCategories(categoriesRes.data || []);
+      } catch (error) {
+        toast.error(getErrorMessage(error));
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [searchInput, statusFilter],
+  );
 
   useEffect(() => {
     fetchData(1);
   }, [fetchData]);
 
-  const resetForm = () => {
-    setForm(emptyForm);
-    setShowForm(false);
+  const refreshCategories = async () => {
+    const { data } = await articleAdminApi.getCategories();
+    setCategories(data || []);
   };
 
-  const startCreate = () => {
-    setForm(emptyForm);
-    setShowForm(true);
+  const closeCategoryModal = () => {
+    setCategoryModalOpen(false);
+    setEditingCategory(null);
+    setCategoryFormName("");
   };
 
-  const startEdit = (article: Article) => {
-    setForm({
-      id: article.id,
-      title: article.title || "",
-      slug: article.slug || "",
-      excerpt: article.excerpt || "",
-      content: article.content || "",
-      thumbnail: article.thumbnail || "",
-      youtubeUrl: article.youtubeUrl || "",
-      categoryId: article.categoryId || "",
-      tags: (article.tags || []).join(", "),
-      status: article.status || "DRAFT",
-      metaTitle: article.metaTitle || "",
-      metaDescription: article.metaDescription || "",
-      metaKeywords: article.metaKeywords || "",
-      ogImage: article.ogImage || "",
-    });
-    setShowForm(true);
+  const openCreateCategoryModal = () => {
+    setEditingCategory(null);
+    setCategoryFormName("");
+    setCategoryModalOpen(true);
   };
 
-  const handleSave = async () => {
-    if (!form.title.trim()) {
-      toast.error("Judul artikel wajib diisi");
-      return;
-    }
-    if (!form.content.trim()) {
-      toast.error("Konten artikel wajib diisi");
-      return;
-    }
-    if (isOverLimit) {
-      toast.error(`Artikel maksimal ${MAX_WORDS} kata`);
-      return;
-    }
-    if (form.status === "PUBLISHED" && !canPublish) {
-      toast.error(`Artikel publish wajib ${MIN_WORDS}-${MAX_WORDS} kata`);
-      return;
-    }
+  const openEditCategoryModal = (category: ArticleCategory) => {
+    setEditingCategory(category);
+    setCategoryFormName(category.name);
+    setCategoryModalOpen(true);
+  };
 
-    setIsSaving(true);
+  const handleDeleteArticle = async () => {
+    if (!articleDeleteTarget) return;
+    setIsDeletingArticle(true);
     try {
-      const payload = {
-        title: form.title,
-        slug: form.slug || undefined,
-        excerpt: form.excerpt || undefined,
-        content: form.content,
-        thumbnail: form.thumbnail || undefined,
-        youtubeUrl: form.youtubeUrl || undefined,
-        categoryId: form.categoryId || undefined,
-        tags: form.tags
-          .split(",")
-          .map((tag) => tag.trim())
-          .filter(Boolean),
-        status: form.status,
-        metaTitle: form.metaTitle || undefined,
-        metaDescription: form.metaDescription || undefined,
-        metaKeywords: form.metaKeywords || undefined,
-        ogImage: form.ogImage || undefined,
-      };
-
-      if (form.id) {
-        await articleAdminApi.updateArticle(form.id, payload);
-        toast.success("Artikel diperbarui");
-      } else {
-        await articleAdminApi.createArticle(payload);
-        toast.success("Artikel dibuat");
-      }
-
-      resetForm();
-      fetchData(1);
-    } catch (error) {
-      toast.error(getErrorMessage(error));
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleUploadThumbnail = async (file?: File) => {
-    if (!file) return;
-    setIsUploading(true);
-    try {
-      const { data } = await uploadApi.uploadFile(file, "ARTICLE_THUMBNAIL");
-      setForm((current) => ({
-        ...current,
-        thumbnail: data.file.url,
-        ogImage: current.ogImage || data.file.url,
-      }));
-      toast.success("Thumbnail diupload");
-    } catch (error) {
-      toast.error(getErrorMessage(error));
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm("Yakin hapus artikel ini?")) return;
-    try {
-      await articleAdminApi.deleteArticle(id);
+      await articleAdminApi.deleteArticle(articleDeleteTarget.id);
       toast.success("Artikel dihapus");
-      fetchData();
+      setArticleDeleteTarget(null);
+      fetchData(pagination.page);
     } catch (error) {
       toast.error(getErrorMessage(error));
+    } finally {
+      setIsDeletingArticle(false);
     }
   };
 
@@ -266,7 +153,7 @@ export default function AdminArticlesPage() {
         await articleAdminApi.publishArticle(article.id);
         toast.success("Artikel dipublish");
       }
-      fetchData();
+      fetchData(pagination.page);
     } catch (error) {
       toast.error(getErrorMessage(error));
     }
@@ -290,50 +177,48 @@ export default function AdminArticlesPage() {
     }
   };
 
-  const handleCreateCategory = async () => {
-    if (!categoryName.trim()) {
+  const handleSaveCategory = async () => {
+    const name = categoryFormName.trim();
+    if (!name) {
       toast.error("Nama kategori wajib diisi");
       return;
     }
+
+    setIsSavingCategory(true);
     try {
-      await articleAdminApi.createCategory({ name: categoryName });
-      setCategoryName("");
-      const { data } = await articleAdminApi.getCategories();
-      setCategories(data || []);
-      toast.success("Kategori dibuat");
+      if (editingCategory) {
+        await articleAdminApi.updateCategory(editingCategory.id, {
+          name,
+          slug: slugify(name),
+        });
+        toast.success("Kategori diperbarui");
+      } else {
+        await articleAdminApi.createCategory({ name });
+        toast.success("Kategori dibuat");
+      }
+
+      closeCategoryModal();
+      await refreshCategories();
     } catch (error) {
       toast.error(getErrorMessage(error));
+    } finally {
+      setIsSavingCategory(false);
     }
   };
 
-  const handleEditCategory = async (category: ArticleCategory) => {
-    const name = prompt("Nama kategori", category.name);
-    if (!name?.trim()) return;
+  const handleDeleteCategory = async () => {
+    if (!categoryDeleteTarget) return;
+    setIsDeletingCategory(true);
     try {
-      await articleAdminApi.updateCategory(category.id, {
-        name,
-        slug: slugify(name),
-      });
-      const { data } = await articleAdminApi.getCategories();
-      setCategories(data || []);
-      toast.success("Kategori diperbarui");
-    } catch (error) {
-      toast.error(getErrorMessage(error));
-    }
-  };
-
-  const handleDeleteCategory = async (category: ArticleCategory) => {
-    if (!confirm(`Hapus kategori "${category.name}"? Artikel terkait akan jadi tanpa kategori.`)) {
-      return;
-    }
-    try {
-      await articleAdminApi.deleteCategory(category.id);
-      const { data } = await articleAdminApi.getCategories();
-      setCategories(data || []);
-      fetchData();
+      await articleAdminApi.deleteCategory(categoryDeleteTarget.id);
+      await refreshCategories();
+      fetchData(pagination.page);
+      setCategoryDeleteTarget(null);
       toast.success("Kategori dihapus");
     } catch (error) {
       toast.error(getErrorMessage(error));
+    } finally {
+      setIsDeletingCategory(false);
     }
   };
 
@@ -347,7 +232,7 @@ export default function AdminArticlesPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50">
             <FileUp className="h-4 w-4" />
             {isImporting ? "Importing..." : "Import CSV"}
             <input
@@ -358,301 +243,15 @@ export default function AdminArticlesPage() {
               disabled={isImporting}
             />
           </label>
-          <Button size="sm" onClick={startCreate}>
-            <Plus className="mr-1 h-4 w-4" />
+          <Link
+            href="/admin/articles/create"
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+          >
+            <Plus className="h-4 w-4" />
             Tambah Artikel
-          </Button>
+          </Link>
         </div>
       </div>
-
-      {showForm && (
-        <div className="rounded-lg border border-gray-200 bg-white">
-          <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
-            <div>
-              <h2 className="text-base font-semibold text-gray-900">
-                {form.id ? "Edit Artikel" : "Tambah Artikel"}
-              </h2>
-              <p className="text-xs text-gray-500">
-                Draft bisa disimpan kapan saja. Publish wajib {MIN_WORDS}-{MAX_WORDS} kata.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={resetForm}
-              className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-
-          <div className="grid gap-5 p-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-            <div className="space-y-4">
-              <div className="grid gap-3 md:grid-cols-2">
-                <label className="block">
-                  <span className="mb-1 block text-sm font-medium text-gray-700">
-                    Judul
-                  </span>
-                  <input
-                    value={form.title}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        title: event.target.value,
-                        slug: current.id || current.slug ? current.slug : slugify(event.target.value),
-                      }))
-                    }
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
-                    placeholder="Judul artikel"
-                  />
-                </label>
-                <label className="block">
-                  <span className="mb-1 block text-sm font-medium text-gray-700">
-                    Slug URL
-                  </span>
-                  <input
-                    value={form.slug}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        slug: slugify(event.target.value),
-                      }))
-                    }
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
-                    placeholder="otomatis dari judul"
-                  />
-                </label>
-              </div>
-
-              <label className="block">
-                <span className="mb-1 block text-sm font-medium text-gray-700">
-                  Ringkasan
-                </span>
-                <textarea
-                  value={form.excerpt}
-                  onChange={(event) =>
-                    setForm((current) => ({ ...current, excerpt: event.target.value }))
-                  }
-                  rows={3}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
-                  placeholder="Ringkasan singkat untuk listing dan meta fallback"
-                />
-              </label>
-
-              <div>
-                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-sm font-medium text-gray-700">Konten</span>
-                  <span
-                    className={`text-xs font-medium ${
-                      isOverLimit
-                        ? "text-red-600"
-                        : wordCount < MIN_WORDS
-                          ? "text-amber-600"
-                          : "text-green-700"
-                    }`}
-                  >
-                    {wordCount.toLocaleString("id-ID")} kata
-                  </span>
-                </div>
-                <CKEditor4
-                  key={form.id || "new-article"}
-                  value={form.content}
-                  onChange={(value) =>
-                    setForm((current) => ({ ...current, content: value }))
-                  }
-                  placeholder="Tulis artikel 800 sampai 1600 kata..."
-                  minHeight="460px"
-                />
-                <p className="mt-2 text-xs text-gray-500">
-                  Gunakan input YouTube di panel kanan untuk embed video yang konsisten.
-                </p>
-              </div>
-            </div>
-
-            <aside className="space-y-4">
-              <div className="rounded-lg border border-gray-200 p-4">
-                <h3 className="mb-3 text-sm font-semibold text-gray-900">Publikasi</h3>
-                <div className="space-y-3">
-                  <label className="block">
-                    <span className="mb-1 block text-sm font-medium text-gray-700">
-                      Status
-                    </span>
-                    <select
-                      value={form.status}
-                      onChange={(event) =>
-                        setForm((current) => ({
-                          ...current,
-                          status: event.target.value as ArticleStatus,
-                        }))
-                      }
-                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
-                    >
-                      <option value="DRAFT">Draft</option>
-                      <option value="PUBLISHED">Published</option>
-                      <option value="ARCHIVED">Archived</option>
-                    </select>
-                  </label>
-                  <label className="block">
-                    <span className="mb-1 block text-sm font-medium text-gray-700">
-                      Kategori
-                    </span>
-                    <select
-                      value={form.categoryId}
-                      onChange={(event) =>
-                        setForm((current) => ({
-                          ...current,
-                          categoryId: event.target.value,
-                        }))
-                      }
-                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
-                    >
-                      <option value="">Tanpa kategori</option>
-                      {categories.map((category) => (
-                        <option key={category.id} value={category.id}>
-                          {category.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="block">
-                    <span className="mb-1 block text-sm font-medium text-gray-700">
-                      Tags
-                    </span>
-                    <input
-                      value={form.tags}
-                      onChange={(event) =>
-                        setForm((current) => ({ ...current, tags: event.target.value }))
-                      }
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
-                      placeholder="seo, marketplace, umkm"
-                    />
-                  </label>
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-gray-200 p-4">
-                <h3 className="mb-3 text-sm font-semibold text-gray-900">Media</h3>
-                <div className="space-y-3">
-                  {form.thumbnail ? (
-                    <Image
-                      src={resolveImageUrl(form.thumbnail)}
-                      alt="Thumbnail artikel"
-                      width={640}
-                      height={360}
-                      className="h-40 w-full rounded-lg object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 text-gray-400">
-                      <ImageIcon className="h-8 w-8" />
-                    </div>
-                  )}
-                  <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                    <Upload className="h-4 w-4" />
-                    {isUploading ? "Uploading..." : "Upload Thumbnail"}
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      className="hidden"
-                      onChange={(event) =>
-                        handleUploadThumbnail(event.target.files?.[0])
-                      }
-                      disabled={isUploading}
-                    />
-                  </label>
-                  <input
-                    value={form.thumbnail}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        thumbnail: event.target.value,
-                      }))
-                    }
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs outline-none focus:border-blue-500"
-                    placeholder="URL thumbnail"
-                  />
-                  <input
-                    value={form.youtubeUrl}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        youtubeUrl: event.target.value,
-                      }))
-                    }
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
-                    placeholder="URL YouTube"
-                  />
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-gray-200 p-4">
-                <h3 className="mb-3 text-sm font-semibold text-gray-900">SEO</h3>
-                <div className="space-y-3">
-                  <input
-                    value={form.metaTitle}
-                    maxLength={70}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        metaTitle: event.target.value,
-                      }))
-                    }
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
-                    placeholder="Meta title"
-                  />
-                  <textarea
-                    value={form.metaDescription}
-                    maxLength={180}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        metaDescription: event.target.value,
-                      }))
-                    }
-                    rows={3}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
-                    placeholder="Meta description"
-                  />
-                  <input
-                    value={form.metaKeywords}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        metaKeywords: event.target.value,
-                      }))
-                    }
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
-                    placeholder="Meta keywords"
-                  />
-                  <input
-                    value={form.ogImage}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        ogImage: event.target.value,
-                      }))
-                    }
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
-                    placeholder="OG image"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  className="flex-1"
-                  onClick={handleSave}
-                  isLoading={isSaving}
-                >
-                  Simpan
-                </Button>
-                <Button type="button" variant="outline" onClick={resetForm}>
-                  Batal
-                </Button>
-              </div>
-            </aside>
-          </div>
-        </div>
-      )}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <section className="rounded-lg border border-gray-200 bg-white">
@@ -747,21 +346,23 @@ export default function AdminArticlesPage() {
                             Lihat
                           </Link>
                         )}
-                        <button
-                          onClick={() => startEdit(article)}
+                        <Link
+                          href={`/admin/articles/${article.id}/edit`}
                           className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
                         >
                           <Edit className="h-3.5 w-3.5" />
                           Edit
-                        </button>
+                        </Link>
                         <button
+                          type="button"
                           onClick={() => handleTogglePublish(article)}
                           className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
                         >
                           {article.status === "PUBLISHED" ? "Unpublish" : "Publish"}
                         </button>
                         <button
-                          onClick={() => handleDelete(article.id)}
+                          type="button"
+                          onClick={() => setArticleDeleteTarget(article)}
                           className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -804,42 +405,46 @@ export default function AdminArticlesPage() {
 
         <aside className="space-y-6">
           <section className="rounded-lg border border-gray-200 bg-white p-4">
-            <h2 className="mb-3 text-sm font-semibold text-gray-900">
-              Kategori Artikel
-            </h2>
-            <div className="mb-3 flex gap-2">
-              <input
-                value={categoryName}
-                onChange={(event) => setCategoryName(event.target.value)}
-                className="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
-                placeholder="Nama kategori"
-              />
-              <Button size="sm" onClick={handleCreateCategory}>
-                Add
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold text-gray-900">
+                  Kategori Artikel
+                </h2>
+                <p className="mt-1 text-xs text-gray-500">
+                  Kelola kategori untuk halaman artikel.
+                </p>
+              </div>
+              <Button size="sm" onClick={openCreateCategoryModal}>
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                Tambah
               </Button>
             </div>
             <div className="space-y-2">
               {categories.map((category) => (
                 <div
                   key={category.id}
-                  className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2"
+                  className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-3 transition-colors hover:bg-gray-50"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-gray-800">
                       {category.name}
                     </p>
-                    <p className="text-xs text-gray-500">/{category.slug}</p>
+                    <p className="truncate text-xs text-gray-500">/{category.slug}</p>
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex shrink-0 gap-1">
                     <button
-                      onClick={() => handleEditCategory(category)}
-                      className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100"
+                      type="button"
+                      onClick={() => openEditCategoryModal(category)}
+                      className="rounded-md p-1.5 text-gray-500 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                      aria-label={`Edit kategori ${category.name}`}
                     >
                       <Edit className="h-3.5 w-3.5" />
                     </button>
                     <button
-                      onClick={() => handleDeleteCategory(category)}
-                      className="rounded-md p-1.5 text-red-500 hover:bg-red-50"
+                      type="button"
+                      onClick={() => setCategoryDeleteTarget(category)}
+                      className="rounded-md p-1.5 text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600"
+                      aria-label={`Hapus kategori ${category.name}`}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -859,7 +464,10 @@ export default function AdminArticlesPage() {
               </h2>
               <div className="space-y-2">
                 {importErrors.slice(0, 8).map((error) => (
-                  <div key={`${error.row}-${error.message}`} className="text-xs text-amber-900">
+                  <div
+                    key={`${error.row}-${error.message}`}
+                    className="text-xs text-amber-900"
+                  >
                     Row {error.row}: {error.message}
                   </div>
                 ))}
@@ -868,6 +476,89 @@ export default function AdminArticlesPage() {
           )}
         </aside>
       </div>
+
+      <Modal
+        isOpen={categoryModalOpen}
+        onClose={() => {
+          if (!isSavingCategory) closeCategoryModal();
+        }}
+        title={editingCategory ? "Edit Kategori Artikel" : "Tambah Kategori Artikel"}
+        description="Kategori digunakan untuk mengelompokkan artikel di halaman publik."
+        size="sm"
+      >
+        <form
+          className="space-y-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            handleSaveCategory();
+          }}
+        >
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-gray-700">
+              Nama kategori
+            </span>
+            <input
+              value={categoryFormName}
+              onChange={(event) => setCategoryFormName(event.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+              placeholder="Contoh: Panduan Seller"
+              autoFocus
+            />
+          </label>
+
+          {categoryFormName.trim() && (
+            <div className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500">
+              Slug: /{slugify(categoryFormName)}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={closeCategoryModal}
+              disabled={isSavingCategory}
+            >
+              Batal
+            </Button>
+            <Button
+              type="submit"
+              isLoading={isSavingCategory}
+              disabled={!categoryFormName.trim()}
+            >
+              {editingCategory ? "Simpan Perubahan" : "Tambah Kategori"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      <ConfirmDialog
+        isOpen={Boolean(articleDeleteTarget)}
+        onClose={() => {
+          if (!isDeletingArticle) setArticleDeleteTarget(null);
+        }}
+        onConfirm={handleDeleteArticle}
+        title="Hapus Artikel"
+        message={`Hapus artikel "${articleDeleteTarget?.title || ""}"? Tindakan ini tidak bisa dibatalkan.`}
+        confirmText="Hapus"
+        cancelText="Batal"
+        variant="danger"
+        isLoading={isDeletingArticle}
+      />
+
+      <ConfirmDialog
+        isOpen={Boolean(categoryDeleteTarget)}
+        onClose={() => {
+          if (!isDeletingCategory) setCategoryDeleteTarget(null);
+        }}
+        onConfirm={handleDeleteCategory}
+        title="Hapus Kategori"
+        message={`Hapus kategori "${categoryDeleteTarget?.name || ""}"? Artikel terkait akan menjadi tanpa kategori.`}
+        confirmText="Hapus"
+        cancelText="Batal"
+        variant="danger"
+        isLoading={isDeletingCategory}
+      />
     </div>
   );
 }

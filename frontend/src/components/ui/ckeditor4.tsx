@@ -2,12 +2,106 @@
 
 import { useEffect, useState, useRef } from "react";
 
+const CKEDITOR_URL = "https://cdn.ckeditor.com/4.22.1/full/ckeditor.js";
+
+type CKEditor4Preset = "default" | "article";
+
+const ARTICLE_TOOLBAR_GROUPS = [
+  { name: "document", groups: ["mode"] },
+  { name: "clipboard", groups: ["undo"] },
+  { name: "styles", groups: ["styles"] },
+  { name: "basicstyles", groups: ["basicstyles", "cleanup"] },
+  { name: "paragraph", groups: ["list", "indent", "blocks", "align"] },
+  { name: "links", groups: ["links"] },
+  { name: "insert", groups: ["insert"] },
+];
+
+const DEFAULT_REMOVE_BUTTONS =
+  "Flash,Form,Checkbox,Radio,TextField,Textarea,Select,Button,ImageButton,HiddenField";
+
+const ARTICLE_REMOVE_BUTTONS = [
+  DEFAULT_REMOVE_BUTTONS,
+  "Save",
+  "NewPage",
+  "Preview",
+  "Print",
+  "Templates",
+  "About",
+  "Smiley",
+  "Iframe",
+  "PageBreak",
+  "Language",
+  "BidiLtr",
+  "BidiRtl",
+  "ShowBlocks",
+  "ExportPdf",
+  "SpecialChar",
+  "CreateDiv",
+  "Font",
+  "FontSize",
+  "TextColor",
+  "BGColor",
+  "CopyFormatting",
+  "PasteFromWord",
+  "PasteText",
+  "Find",
+  "Replace",
+  "SelectAll",
+  "Maximize",
+].join(",");
+
+const ARTICLE_REMOVE_PLUGINS = [
+  "exportpdf",
+  "save",
+  "newpage",
+  "preview",
+  "print",
+  "templates",
+  "about",
+  "smiley",
+  "iframe",
+  "forms",
+  "flash",
+  "scayt",
+  "language",
+  "bidi",
+  "showblocks",
+  "pagebreak",
+  "colordialog",
+  "colorbutton",
+].join(",");
+
+const ARTICLE_EXTRA_PLUGINS = [
+  "basicstyles",
+  "blockquote",
+  "clipboard",
+  "elementspath",
+  "format",
+  "horizontalrule",
+  "image",
+  "indent",
+  "indentblock",
+  "indentlist",
+  "justify",
+  "link",
+  "list",
+  "removeformat",
+  "sourcearea",
+  "table",
+  "tabletools",
+  "tableselection",
+  "toolbar",
+  "undo",
+  "wysiwygarea",
+].join(",");
+
 interface CKEditor4Props {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   disabled?: boolean;
   minHeight?: string;
+  preset?: CKEditor4Preset;
 }
 
 export function CKEditor4({
@@ -16,24 +110,92 @@ export function CKEditor4({
   placeholder = "Tulis deskripsi...",
   disabled = false,
   minHeight = "400px",
+  preset = "default",
 }: CKEditor4Props) {
   const [CKEditor, setCKEditor] = useState<any>(null);
   const [isClient, setIsClient] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const editorReady = useRef(false);
+  const isArticlePreset = preset === "article";
 
   useEffect(() => {
+    let isMounted = true;
+
     setIsClient(true);
-    
-    // Dynamic import untuk menghindari SSR issues
-    import("ckeditor4-react")
-      .then((module) => {
-        setCKEditor(() => module.CKEditor);
-      })
-      .catch((error) => {
-        console.error("Failed to load CKEditor:", error);
+
+    const applyEditorConfig = () => {
+      const ckeditor = (window as any).CKEDITOR;
+      if (ckeditor?.config) {
+        ckeditor.config.versionCheck = false;
+        ckeditor.config.notification_duration = 0;
+      }
+    };
+
+    const loadEditorComponent = () => {
+      import("ckeditor4-react")
+        .then((module) => {
+          if (isMounted && module.CKEditor) {
+            setCKEditor(() => module.CKEditor);
+          } else if (isMounted) {
+            setLoadError(true);
+          }
+        })
+        .catch((error) => {
+          console.error("Failed to load CKEditor:", error);
+          if (isMounted) setLoadError(true);
+        });
+    };
+
+    if ((window as any).CKEDITOR) {
+      applyEditorConfig();
+      loadEditorComponent();
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    (window as any).CKEDITOR_BASEPATH = "https://cdn.ckeditor.com/4.22.1/full/";
+
+    const existingScript = document.querySelector<HTMLScriptElement>(
+      `script[src="${CKEDITOR_URL}"]`,
+    );
+    const script = existingScript || document.createElement("script");
+
+    const handleLoad = () => {
+      if (!isMounted) return;
+      if ((window as any).CKEDITOR) {
+        applyEditorConfig();
+        loadEditorComponent();
+      } else {
         setLoadError(true);
-      });
+      }
+    };
+
+    const handleError = () => {
+      if (isMounted) setLoadError(true);
+    };
+
+    script.addEventListener("load", handleLoad);
+    script.addEventListener("error", handleError);
+
+    if (!existingScript) {
+      script.src = CKEDITOR_URL;
+      script.async = true;
+      document.head.appendChild(script);
+    }
+
+    const timeoutId = setTimeout(() => {
+      if (isMounted && !(window as any).CKEDITOR) {
+        setLoadError(true);
+      }
+    }, 15000);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+      script.removeEventListener("load", handleLoad);
+      script.removeEventListener("error", handleError);
+    };
   }, []);
 
   // Fallback jika CKEditor gagal load
@@ -91,89 +253,94 @@ export function CKEditor4({
           // Hilangkan warning keamanan
           versionCheck: false,
           
-          // Toolbar LENGKAP dengan semua fitur yang tersedia
-          toolbarGroups: [
-            { name: 'document', groups: [ 'mode', 'document', 'doctools' ] },
-            { name: 'clipboard', groups: [ 'clipboard', 'undo' ] },
-            { name: 'editing', groups: [ 'find', 'selection', 'spellchecker', 'editing' ] },
-            '/',
-            { name: 'basicstyles', groups: [ 'basicstyles', 'cleanup' ] },
-            { name: 'paragraph', groups: [ 'list', 'indent', 'blocks', 'align', 'bidi', 'paragraph' ] },
-            { name: 'links', groups: [ 'links' ] },
-            { name: 'insert', groups: [ 'insert' ] },
-            '/',
-            { name: 'styles', groups: [ 'styles' ] },
-            { name: 'colors', groups: [ 'colors' ] },
-            { name: 'tools', groups: [ 'tools' ] },
-            { name: 'others', groups: [ 'others' ] },
-            { name: 'about', groups: [ 'about' ] }
-          ],
+          toolbarGroups: isArticlePreset
+            ? ARTICLE_TOOLBAR_GROUPS
+            : [
+                { name: 'document', groups: [ 'mode', 'document', 'doctools' ] },
+                { name: 'clipboard', groups: [ 'clipboard', 'undo' ] },
+                { name: 'editing', groups: [ 'find', 'selection', 'spellchecker', 'editing' ] },
+                '/',
+                { name: 'basicstyles', groups: [ 'basicstyles', 'cleanup' ] },
+                { name: 'paragraph', groups: [ 'list', 'indent', 'blocks', 'align', 'bidi', 'paragraph' ] },
+                { name: 'links', groups: [ 'links' ] },
+                { name: 'insert', groups: [ 'insert' ] },
+                '/',
+                { name: 'styles', groups: [ 'styles' ] },
+                { name: 'colors', groups: [ 'colors' ] },
+                { name: 'tools', groups: [ 'tools' ] },
+                { name: 'others', groups: [ 'others' ] },
+                { name: 'about', groups: [ 'about' ] }
+              ],
 
           // Hapus button yang deprecated atau tidak tersedia
-          removeButtons: 'Flash,Form,Checkbox,Radio,TextField,Textarea,Select,Button,ImageButton,HiddenField',
+          removeButtons: isArticlePreset
+            ? ARTICLE_REMOVE_BUTTONS
+            : DEFAULT_REMOVE_BUTTONS,
+          removePlugins: isArticlePreset ? ARTICLE_REMOVE_PLUGINS : "",
 
-          // Plugin LENGKAP - Tanpa deprecated plugins (flash, forms)
-          extraPlugins: [
-            'a11yhelp',
-            'about',
-            'basicstyles',
-            'bidi',
-            'blockquote',
-            'clipboard',
-            'colorbutton',
-            'colordialog',
-            'contextmenu',
-            'copyformatting',
-            'dialogadvtab',
-            'div',
-            'elementspath',
-            'enterkey',
-            'entities',
-            'filebrowser',
-            'find',
-            'floatingspace',
-            'font',
-            'format',
-            'horizontalrule',
-            'htmlwriter',
-            'iframe',
-            'image',
-            'indent',
-            'indentblock',
-            'indentlist',
-            'justify',
-            'language',
-            'link',
-            'list',
-            'liststyle',
-            'magicline',
-            'maximize',
-            'newpage',
-            'pagebreak',
-            'pastefromword',
-            'pastetext',
-            'preview',
-            'print',
-            'removeformat',
-            'resize',
-            'save',
-            'scayt',
-            'selectall',
-            'showblocks',
-            'showborders',
-            'smiley',
-            'sourcearea',
-            'specialchar',
-            'stylescombo',
-            'tab',
-            'table',
-            'tabletools',
-            'tableselection',
-            'templates',
-            'toolbar',
-            'undo',
-            'wysiwygarea'
-          ].join(','),
+          extraPlugins: isArticlePreset
+            ? ARTICLE_EXTRA_PLUGINS
+            : [
+                'a11yhelp',
+                'about',
+                'basicstyles',
+                'bidi',
+                'blockquote',
+                'clipboard',
+                'colorbutton',
+                'colordialog',
+                'contextmenu',
+                'copyformatting',
+                'dialogadvtab',
+                'div',
+                'elementspath',
+                'enterkey',
+                'entities',
+                'filebrowser',
+                'find',
+                'floatingspace',
+                'font',
+                'format',
+                'horizontalrule',
+                'htmlwriter',
+                'iframe',
+                'image',
+                'indent',
+                'indentblock',
+                'indentlist',
+                'justify',
+                'language',
+                'link',
+                'list',
+                'liststyle',
+                'magicline',
+                'maximize',
+                'newpage',
+                'pagebreak',
+                'pastefromword',
+                'pastetext',
+                'preview',
+                'print',
+                'removeformat',
+                'resize',
+                'save',
+                'scayt',
+                'selectall',
+                'showblocks',
+                'showborders',
+                'smiley',
+                'sourcearea',
+                'specialchar',
+                'stylescombo',
+                'tab',
+                'table',
+                'tabletools',
+                'tableselection',
+                'templates',
+                'toolbar',
+                'undo',
+                'wysiwygarea'
+              ].join(','),
           
           // Tinggi editor
           height: minHeight,
@@ -196,34 +363,40 @@ export function CKEditor4({
           // Readonly mode
           readOnly: disabled,
           
-          // Font options - Sangat lengkap
-          font_names: 
-            'Arial/Arial, Helvetica, sans-serif;' +
-            'Comic Sans MS/Comic Sans MS, cursive;' +
-            'Courier New/Courier New, Courier, monospace;' +
-            'Georgia/Georgia, serif;' +
-            'Lucida Sans Unicode/Lucida Sans Unicode, Lucida Grande, sans-serif;' +
-            'Tahoma/Tahoma, Geneva, sans-serif;' +
-            'Times New Roman/Times New Roman, Times, serif;' +
-            'Trebuchet MS/Trebuchet MS, Helvetica, sans-serif;' +
-            'Verdana/Verdana, Geneva, sans-serif;' +
-            'Roboto/Roboto, sans-serif;' +
-            'Open Sans/Open Sans, sans-serif;' +
-            'Lato/Lato, sans-serif;' +
-            'Montserrat/Montserrat, sans-serif;' +
-            'Poppins/Poppins, sans-serif;' +
-            'Raleway/Raleway, sans-serif;' +
-            'Ubuntu/Ubuntu, sans-serif;' +
-            'Playfair Display/Playfair Display, serif;' +
-            'Merriweather/Merriweather, serif;' +
-            'PT Sans/PT Sans, sans-serif;' +
-            'Noto Sans/Noto Sans, sans-serif',
+          font_names: isArticlePreset
+            ? 'Arial/Arial, Helvetica, sans-serif;' +
+              'Georgia/Georgia, serif;' +
+              'Times New Roman/Times New Roman, Times, serif;' +
+              'Verdana/Verdana, Geneva, sans-serif'
+            : 'Arial/Arial, Helvetica, sans-serif;' +
+              'Comic Sans MS/Comic Sans MS, cursive;' +
+              'Courier New/Courier New, Courier, monospace;' +
+              'Georgia/Georgia, serif;' +
+              'Lucida Sans Unicode/Lucida Sans Unicode, Lucida Grande, sans-serif;' +
+              'Tahoma/Tahoma, Geneva, sans-serif;' +
+              'Times New Roman/Times New Roman, Times, serif;' +
+              'Trebuchet MS/Trebuchet MS, Helvetica, sans-serif;' +
+              'Verdana/Verdana, Geneva, sans-serif;' +
+              'Roboto/Roboto, sans-serif;' +
+              'Open Sans/Open Sans, sans-serif;' +
+              'Lato/Lato, sans-serif;' +
+              'Montserrat/Montserrat, sans-serif;' +
+              'Poppins/Poppins, sans-serif;' +
+              'Raleway/Raleway, sans-serif;' +
+              'Ubuntu/Ubuntu, sans-serif;' +
+              'Playfair Display/Playfair Display, serif;' +
+              'Merriweather/Merriweather, serif;' +
+              'PT Sans/PT Sans, sans-serif;' +
+              'Noto Sans/Noto Sans, sans-serif',
 
-          // Font sizes - Sangat lengkap
-          fontSize_sizes: '8/8px;9/9px;10/10px;11/11px;12/12px;14/14px;16/16px;18/18px;20/20px;22/22px;24/24px;26/26px;28/28px;36/36px;48/48px;72/72px',
+          fontSize_sizes: isArticlePreset
+            ? '14/14px;16/16px;18/18px;20/20px;24/24px'
+            : '8/8px;9/9px;10/10px;11/11px;12/12px;14/14px;16/16px;18/18px;20/20px;22/22px;24/24px;26/26px;28/28px;36/36px;48/48px;72/72px',
 
           // Format tags
-          format_tags: 'p;h1;h2;h3;h4;h5;h6;pre;address;div',
+          format_tags: isArticlePreset
+            ? 'p;h2;h3;h4;pre'
+            : 'p;h1;h2;h3;h4;h5;h6;pre;address;div',
 
           // Color palette - Sangat lengkap
           colorButton_colors: 
@@ -294,10 +467,9 @@ export function CKEditor4({
           // Scayt (Spell Check As You Type)
           scayt_autoStartup: false,
           
-          // Gunakan CDN CKEditor 4.22.1
           customConfig: "",
         }}
-        editorUrl="https://cdn.ckeditor.com/4.22.1/full/ckeditor.js"
+        editorUrl={CKEDITOR_URL}
       />
       
       <style jsx global>{`
