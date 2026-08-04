@@ -14,6 +14,7 @@ const PUBLIC_PATHS = [
   "/products",
   "/services",
   "/jobs",
+  "/articles",
   "/store",
   "/terms",
   "/privacy",
@@ -40,7 +41,11 @@ function isTokenValid(token: string): boolean {
   try {
     const parts = token.split(".");
     if (parts.length !== 3) return false;
-    const payload = JSON.parse(atob(parts[1]));
+    const base64 = parts[1]
+      .replace(/-/g, "+")
+      .replace(/_/g, "/")
+      .padEnd(Math.ceil(parts[1].length / 4) * 4, "=");
+    const payload = JSON.parse(atob(base64));
     if (!payload.exp) return false;
     // Token is valid if expiry is in the future (with 10s buffer)
     return payload.exp * 1000 > Date.now() + 10_000;
