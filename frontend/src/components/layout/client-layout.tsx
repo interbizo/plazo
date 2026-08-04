@@ -24,6 +24,42 @@ export function ClientLayout({ children, isStorefrontHost = false }: ClientLayou
   const isStorefrontPath = pathname === "/store" || pathname.startsWith("/store/");
   const isStorefront = isStorefrontHost || isStorefrontPath;
 
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "development" || typeof window === "undefined") {
+      return;
+    }
+
+    if ("caches" in window) {
+      void caches
+        .keys()
+        .then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
+        .catch(() => undefined);
+    }
+
+    if ("serviceWorker" in navigator) {
+      void navigator.serviceWorker
+        .getRegistrations()
+        .then((registrations) =>
+          Promise.all(
+            registrations.map((registration) => {
+              const scriptUrl =
+                registration.active?.scriptURL ||
+                registration.waiting?.scriptURL ||
+                registration.installing?.scriptURL ||
+                "";
+
+              if (scriptUrl.endsWith("/notification-sw.js")) {
+                return Promise.resolve(false);
+              }
+
+              return registration.unregister();
+            }),
+          ),
+        )
+        .catch(() => undefined);
+    }
+  }, []);
+
   const fetchSettings = useCallback(async () => {
     if (isStorefront) return;
 
