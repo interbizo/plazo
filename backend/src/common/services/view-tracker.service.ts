@@ -12,8 +12,10 @@ import { PrismaService } from "@modules/database/prisma.service";
  * - No memory leak: entries auto-expire, periodic cleanup runs
  */
 
+type ViewItemType = "product" | "service" | "article";
+
 interface PendingView {
-  type: "product" | "service";
+  type: ViewItemType;
   itemId: string;
   count: number;
 }
@@ -41,11 +43,11 @@ export class ViewTrackerService {
   }
 
   /**
-   * Record a view for a product or service.
+   * Record a view for a marketplace item.
    * Returns true if the view was counted (unique), false if duplicate (cooldown).
    */
   trackView(
-    type: "product" | "service",
+    type: ViewItemType,
     itemId: string,
     ip: string,
     userId?: string,
@@ -85,20 +87,30 @@ export class ViewTrackerService {
   /**
    * Get current view count for an item (from DB).
    */
-  async getViewCount(type: "product" | "service", itemId: string): Promise<number> {
+  async getViewCount(type: ViewItemType, itemId: string): Promise<number> {
+    const pendingCount = this.pendingIncrements.get(`${type}:${itemId}`)?.count || 0;
+
     if (type === "product") {
       const product = await this.prisma.product.findUnique({
         where: { id: itemId },
         select: { viewCount: true },
       });
-      return product?.viewCount || 0;
-    } else {
+      return (product?.viewCount || 0) + pendingCount;
+    }
+
+    if (type === "service") {
       const service = await this.prisma.service.findUnique({
         where: { id: itemId },
         select: { viewCount: true },
       });
-      return service?.viewCount || 0;
+      return (service?.viewCount || 0) + pendingCount;
     }
+
+    const article = await this.prisma.article.findUnique({
+      where: { id: itemId },
+      select: { viewCount: true },
+    });
+    return (article?.viewCount || 0) + pendingCount;
   }
 
   /**
@@ -123,9 +135,16 @@ export class ViewTrackerService {
               data: { viewCount: { increment: view.count } },
             }).catch(() => {}), // Ignore if product deleted
           );
-        } else {
+        } else if (view.type === "service") {
           promises.push(
             this.prisma.service.update({
+              where: { id: view.itemId },
+              data: { viewCount: { increment: view.count } },
+            }).catch(() => {}),
+          );
+        } else {
+          promises.push(
+            this.prisma.article.update({
               where: { id: view.itemId },
               data: { viewCount: { increment: view.count } },
             }).catch(() => {}),

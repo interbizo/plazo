@@ -3,15 +3,18 @@ import {
   Controller,
   Delete,
   Get,
+  Ip,
   Param,
   Post,
   Put,
   Query,
+  Req,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
+import { Request } from "express";
 import { memoryStorage } from "multer";
 import { UserRole } from "@prisma/client";
 import { GetUser } from "@common/decorators/get-user.decorator";
@@ -121,6 +124,19 @@ export class ArticlesPublicController {
   @Get()
   listArticles(@Query() query: PublicArticleListQueryDto) {
     return this.articlesService.listPublic(query);
+  }
+
+  @Post(":id/view")
+  trackArticleView(
+    @Param("id") id: string,
+    @Ip() ip: string,
+    @Req() req: Request,
+  ) {
+    const clientIp =
+      (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || ip;
+    const userId = (req as any).user?.id;
+
+    return this.articlesService.trackArticleView(id, clientIp, userId);
   }
 
   @Get(":slug")

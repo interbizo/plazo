@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { PrismaService } from "@modules/database/prisma.service";
+import { ViewTrackerService } from "@common/services/view-tracker.service";
 import { PaginationHelper } from "@common/utils/pagination.helper";
 import { StringHelper } from "@common/utils/string.helper";
 import {
@@ -29,7 +30,10 @@ type CsvImportError = {
 
 @Injectable()
 export class ArticlesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private viewTracker: ViewTrackerService,
+  ) {}
 
   async listAdmin(query: ArticleListQueryDto) {
     const page = query.page || 1;
@@ -131,17 +135,11 @@ export class ArticlesService {
       throw new NotFoundException("Artikel tidak ditemukan");
     }
 
-    const updated = await this.prisma.article.update({
-      where: { id: article.id },
-      data: { viewCount: { increment: 1 } },
-      include: { category: true },
-    });
-
     const related = await this.prisma.article.findMany({
       where: {
-        id: { not: updated.id },
+        id: { not: article.id },
         status: ArticleStatusDto.PUBLISHED,
-        categoryId: updated.categoryId || undefined,
+        categoryId: article.categoryId || undefined,
       },
       select: {
         id: true,
@@ -159,7 +157,27 @@ export class ArticlesService {
       take: 3,
     });
 
-    return { article: updated, related };
+    return { article, related };
+  }
+
+  async trackArticleView(id: string, ip: string, userId?: string) {
+    const article = await this.prisma.article.findFirst({
+      where: {
+        id,
+        status: ArticleStatusDto.PUBLISHED,
+        OR: [{ categoryId: null }, { category: { isActive: true } }],
+      },
+      select: { id: true },
+    });
+
+    if (!article) {
+      throw new NotFoundException("Artikel tidak ditemukan");
+    }
+
+    const counted = this.viewTracker.trackView("article", id, ip, userId);
+    const viewCount = await this.viewTracker.getViewCount("article", id);
+
+    return { counted, viewCount };
   }
 
   async createArticle(dto: CreateArticleDto, userId: string) {
@@ -182,10 +200,10 @@ export class ArticlesService {
         source: "MANUAL",
         wordCount: contentStats.wordCount,
         readingTimeMinutes: contentStats.readingTimeMinutes,
-        metaTitle: this.cleanOptionalText(dto.metaTitle),
-        metaDescription: this.cleanOptionalText(dto.metaDescription),
-        metaKeywords: this.cleanOptionalText(dto.metaKeywords),
-        ogImage: this.cleanOptionalText(dto.ogImage) || this.cleanOptionalText(dto.thumbnail),
+        metaTitle: this.cleanNullableText(dto.metaTitle),
+        metaDescription: this.cleanNullableText(dto.metaDescription),
+        metaKeywords: this.cleanNullableText(dto.metaKeywords),
+        ogImage: this.cleanNullableText(dto.ogImage),
         aiPrompt: this.cleanOptionalText(dto.aiPrompt),
         aiModel: this.cleanOptionalText(dto.aiModel),
         createdBy: userId,
@@ -212,38 +230,40 @@ export class ArticlesService {
       title: dto.title ? dto.title.trim() : undefined,
       excerpt:
         dto.excerpt !== undefined
-          ? this.cleanOptionalText(dto.excerpt)
+          ? this.cleanNullableText(dto.excerpt)
           : undefined,
       content: dto.content,
       thumbnail:
         dto.thumbnail !== undefined
-          ? this.cleanOptionalText(dto.thumbnail)
+          ? this.cleanNullableText(dto.thumbnail)
           : undefined,
       youtubeUrl:
         dto.youtubeUrl !== undefined
-          ? this.normalizeYoutubeUrl(dto.youtubeUrl)
+          ? this.cleanOptionalText(dto.youtubeUrl)
+            ? this.normalizeYoutubeUrl(dto.youtubeUrl)
+            : null
           : undefined,
       categoryId:
         dto.categoryId !== undefined
-          ? this.cleanOptionalText(dto.categoryId)
+          ? this.cleanNullableText(dto.categoryId)
           : undefined,
       tags: dto.tags !== undefined ? this.normalizeTags(dto.tags) : undefined,
       wordCount: contentStats.wordCount,
       readingTimeMinutes: contentStats.readingTimeMinutes,
       metaTitle:
         dto.metaTitle !== undefined
-          ? this.cleanOptionalText(dto.metaTitle)
+          ? this.cleanNullableText(dto.metaTitle)
           : undefined,
       metaDescription:
         dto.metaDescription !== undefined
-          ? this.cleanOptionalText(dto.metaDescription)
+          ? this.cleanNullableText(dto.metaDescription)
           : undefined,
       metaKeywords:
         dto.metaKeywords !== undefined
-          ? this.cleanOptionalText(dto.metaKeywords)
+          ? this.cleanNullableText(dto.metaKeywords)
           : undefined,
       ogImage:
-        dto.ogImage !== undefined ? this.cleanOptionalText(dto.ogImage) : undefined,
+        dto.ogImage !== undefined ? this.cleanNullableText(dto.ogImage) : undefined,
       aiPrompt:
         dto.aiPrompt !== undefined
           ? this.cleanOptionalText(dto.aiPrompt)
@@ -491,12 +511,12 @@ export class ArticlesService {
             source: "CSV",
             wordCount: contentStats.wordCount,
             readingTimeMinutes: contentStats.readingTimeMinutes,
-            metaTitle: this.cleanOptionalText(get("metaTitle", "meta_title")),
-            metaDescription: this.cleanOptionalText(
+            metaTitle: this.cleanNullableText(get("metaTitle", "meta_title")),
+            metaDescription: this.cleanNullableText(
               get("metaDescription", "meta_description"),
             ),
-            metaKeywords: this.cleanOptionalText(get("metaKeywords", "meta_keywords")),
-            ogImage: this.cleanOptionalText(get("ogImage", "og_image")) || thumbnail,
+            metaKeywords: this.cleanNullableText(get("metaKeywords", "meta_keywords")),
+            ogImage: this.cleanNullableText(get("ogImage", "og_image")),
             createdBy: userId,
             publishedAt: status === ArticleStatusDto.PUBLISHED ? new Date() : null,
           },
@@ -663,6 +683,11 @@ export class ArticlesService {
   private cleanOptionalText(value?: string | null) {
     const clean = value?.trim();
     return clean ? clean : undefined;
+  }
+
+  private cleanNullableText(value?: string | null) {
+    const clean = value?.trim();
+    return clean ? clean : null;
   }
 
   private async generateUniqueArticleSlug(seed: string, excludeId?: string) {
