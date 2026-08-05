@@ -228,6 +228,11 @@ enum ArticleSource {
   AI
 }
 
+enum ForumPostStatus {
+  PUBLISHED
+  REMOVED
+}
+
 enum BannerStatus {
   ACTIVE
   INACTIVE
@@ -267,6 +272,9 @@ model User {
   phoneVerifiedAt    DateTime?
   verificationMethod VerificationMethod @default(NONE)
   isActive           Boolean            @default(true)
+  isForumBanned      Boolean            @default(false)
+  forumBannedAt      DateTime?
+  forumBannedReason  String?            @db.Text
 
   // KYC Verification
   kycStatus     KycStatus @default(NOT_SUBMITTED)
@@ -312,6 +320,13 @@ model User {
   // Reviews
   reviewsGiven    Review[] @relation("ReviewGiver")
   reviewsReceived Review[] @relation("ReviewReceiver")
+
+  // Forum
+  forumPosts          ForumPost[]    @relation("ForumPostAuthor")
+  forumComments       ForumComment[] @relation("ForumCommentAuthor")
+  forumLikes          ForumLike[]
+  forumStrikes        ForumStrike[]  @relation("ForumStrikeRecipient")
+  forumStrikesIssued  ForumStrike[]  @relation("ForumStrikeModerator")
 
   // Notifications
   notifications Notification[]
@@ -2821,6 +2836,83 @@ model Village {
   @@index([districtId])
   @@index([isActive])
   @@index([sortOrder])
+}
+
+// ============================================
+// FORUM DISKUSI
+// ============================================
+
+model ForumPost {
+  id        String          @id @default(cuid())
+  slug      String          @unique
+  title     String
+  content   String          @db.Text
+  status    ForumPostStatus @default(PUBLISHED)
+  authorId  String
+  author    User            @relation("ForumPostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  comments  ForumComment[]
+  likes     ForumLike[]
+  strikes   ForumStrike[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([status, createdAt])
+  @@index([authorId, createdAt])
+}
+
+model ForumComment {
+  id        String          @id @default(cuid())
+  content   String          @db.Text
+  status    ForumPostStatus @default(PUBLISHED)
+  postId    String
+  post      ForumPost       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User            @relation("ForumCommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  strikes   ForumStrike[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([postId, status, createdAt])
+  @@index([authorId, createdAt])
+}
+
+model ForumLike {
+  id        String    @id @default(cuid())
+  postId    String
+  post      ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+
+  @@unique([postId, userId])
+  @@index([postId])
+}
+
+model ForumModerationSettings {
+  id                     String   @id
+  isAntiSpamEnabled      Boolean  @default(true)
+  rateLimitWindowMinutes Int      @default(10)
+  postLimitPerWindow     Int      @default(3)
+  commentLimitPerWindow  Int      @default(12)
+  duplicateWindowMinutes Int      @default(10)
+  updatedBy              String?
+  updatedAt              DateTime @updatedAt
+}
+
+model ForumStrike {
+  id          String        @id @default(cuid())
+  reason      String        @db.Text
+  userId      String
+  user        User          @relation("ForumStrikeRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  moderatorId String
+  moderator   User          @relation("ForumStrikeModerator", fields: [moderatorId], references: [id], onDelete: Cascade)
+  postId      String?
+  post        ForumPost?    @relation(fields: [postId], references: [id], onDelete: SetNull)
+  commentId   String?
+  comment     ForumComment? @relation(fields: [commentId], references: [id], onDelete: SetNull)
+  createdAt   DateTime      @default(now())
+
+  @@index([userId, createdAt])
 }
 
 // ============================================

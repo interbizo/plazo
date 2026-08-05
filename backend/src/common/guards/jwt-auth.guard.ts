@@ -66,7 +66,13 @@ export class JwtAuthGuard implements CanActivate {
       // Verify user still exists and is active
       const user = await this.prisma.user.findUnique({
         where: { id: decoded.sub },
-        select: { id: true, email: true, role: true, isActive: true, accountStatus: true },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          isActive: true,
+          accountStatus: true,
+        },
       });
 
       if (!user) {

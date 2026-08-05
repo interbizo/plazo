@@ -24,6 +24,8 @@ export class TenantMiddleware implements NestMiddleware {
     // Admin panel operates across all tenants
     /^\/api\/admin\//,
     /^\/admin\//,
+    // Forum is a cross-tenant community area
+    /^\/api\/forum\//,
     // Public marketplace browsing (cross-tenant by design)
     /^\/api\/public\//,
     // Subscription plans listing (global)

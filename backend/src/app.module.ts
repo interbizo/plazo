@@ -37,6 +37,7 @@ import { TutorialModule } from "@modules/tutorial/tutorial.module";
 import { PhysicalVerificationModule } from "@modules/physical-verification/physical-verification.module";
 import { SeoModule } from "@modules/seo/seo.module";
 import { AccountAppealModule } from "@modules/account-appeal/account-appeal.module";
+import { ForumModule } from "@modules/forum/forum.module";
 import { TenantMiddleware } from "@common/middleware/tenant.middleware";
 import { ActivityTrackerMiddleware } from "@common/middleware/activity-tracker.middleware";
 import { SecurityMiddleware } from "@common/middleware/security.middleware";
@@ -82,6 +83,7 @@ import { RequestLoggerMiddleware } from "@common/middleware/request-logger.middl
     PhysicalVerificationModule,
     SeoModule,
     AccountAppealModule,
+    ForumModule,
   ],
 })
 export class AppModule implements NestModule {
