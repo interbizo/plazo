@@ -83,6 +83,12 @@ const MENU_SECTIONS: MenuSection[] = [
         countKey: "notifications",
       },
       {
+        href: "/forum",
+        label: "Forum",
+        icon: MessageSquare,
+        desc: "Diskusi bersama komunitas Plazo",
+      },
+      {
         href: "/seller/dashboard/products",
         label: "Produk",
         icon: Package,

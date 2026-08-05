@@ -23,6 +23,7 @@ import {
   Store,
   ShoppingBag,
   Briefcase,
+  MessageSquare,
   Palette,
   Newspaper,
 } from "lucide-react";
@@ -83,6 +84,7 @@ export function Navbar({ settings = {} }: NavbarProps) {
     { href: "/products", label: "Produk", icon: ShoppingBag },
     { href: "/services", label: "Jasa", icon: Palette },
     { href: "/jobs", label: "Cari Vendor", icon: Briefcase },
+    { href: "/forum", label: "Forum", icon: MessageSquare },
     { href: "/articles", label: "Artikel", icon: Newspaper },
   ];
 

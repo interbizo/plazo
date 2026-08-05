@@ -23,6 +23,7 @@ function isPublicPath(pathname: string) {
     "/services",
     "/jobs",
     "/articles",
+    "/forum",
     "/store",
     "/browse",
   ];

@@ -131,6 +131,12 @@ const MENU_SECTIONS: MenuSection[] = [
         icon: Flag,
         desc: "Tangani laporan pelanggaran dari user",
       },
+      {
+        href: "/admin/forum",
+        label: "Forum",
+        icon: MessageSquare,
+        desc: "Moderasi post, anti-spam, dan strike komunitas",
+      },
     ],
   },
   {
