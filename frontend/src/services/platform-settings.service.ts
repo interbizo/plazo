@@ -17,6 +17,18 @@ export interface MaintenanceStatus {
   estimatedEnd: string | null;
 }
 
+export interface CacheStats {
+  connected_clients?: string;
+  used_memory_human?: string;
+  uptime_in_seconds?: string;
+  total_commands_processed?: string;
+  keyspace_hits?: string;
+  keyspace_misses?: string;
+  redis_version?: string;
+  error?: string;
+  message?: string;
+}
+
 export const platformSettingsService = {
   async getAll(): Promise<PlatformSetting[]> {
     const res = await api.get("/admin/platform-settings");
@@ -37,6 +49,18 @@ export const platformSettingsService = {
 
   async getMaintenanceStatus(): Promise<MaintenanceStatus> {
     const res = await api.get("/admin/platform-settings/maintenance");
+    return res.data;
+  },
+
+  // Ambil statistik cache Redis
+  async getCacheStats(): Promise<CacheStats> {
+    const res = await api.get("/admin/platform-settings/cache/stats");
+    return res.data;
+  },
+
+  // Hapus seluruh Redis DB (SUPER_ADMIN only)
+  async flushAllCache(): Promise<{ result: string; skipped?: boolean }> {
+    const res = await api.post("/admin/platform-settings/cache/clear-all");
     return res.data;
   },
 

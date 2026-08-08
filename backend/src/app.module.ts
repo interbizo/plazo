@@ -1,6 +1,7 @@
 import { Module, MiddlewareConsumer, NestModule } from "@nestjs/common";
 import { CommonModule } from "@common/common.module";
 import { DatabaseModule } from "@modules/database/database.module";
+import { RedisModule } from "@modules/redis/redis.module";
 import { PlatformSettingsModule } from "@modules/platform-settings/platform-settings.module";
 import { MaintenanceMiddleware } from "@common/middleware/maintenance.middleware";
 import { AuthModule } from "@modules/auth/auth.module";
@@ -47,6 +48,7 @@ import { RequestLoggerMiddleware } from "@common/middleware/request-logger.middl
 
 @Module({
   imports: [
+    RedisModule,
     CommonModule,
     DatabaseModule,
     EmailModule,
@@ -105,7 +107,7 @@ export class AppModule implements NestModule {
     // (global routes, optional-tenant routes, and required-tenant routes).
     // No exclusions needed here — the middleware itself decides what to do.
     consumer.apply(TenantMiddleware).forRoutes("*");
-    
+
     // Activity tracker middleware to update lastActiveAt for authenticated users
     consumer.apply(ActivityTrackerMiddleware).forRoutes("*");
   }

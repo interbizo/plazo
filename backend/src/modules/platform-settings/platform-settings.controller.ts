@@ -2,9 +2,12 @@ import {
   Controller,
   Get,
   Patch,
+  Post,
   Param,
   Body,
   UseGuards,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PlatformSettingsService } from './platform-settings.service';
@@ -21,6 +24,8 @@ import { UserRole } from '@prisma/client';
 @Controller('admin/platform-settings')
 export class PlatformSettingsController {
   constructor(private readonly service: PlatformSettingsService) {}
+
+  // Settings CRUD
 
   @Get()
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
@@ -40,11 +45,31 @@ export class PlatformSettingsController {
     return this.service.setFlag(key, dto.value, dto.description, adminId);
   }
 
+  // Maintenance Mode
+
   @Get('maintenance')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get maintenance mode status' })
   getMaintenanceStatus() {
     return this.service.getMaintenanceStatus();
+  }
+
+  // Manajemen Cache
+
+  @Get('cache/stats')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get Redis cache stats' })
+  getCacheStats() {
+    return this.service.getCacheStats();
+  }
+
+  @Post('cache/clear-all')
+  @Roles(UserRole.SUPER_ADMIN)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'NUCLEAR: Flush entire Redis DB (SUPER_ADMIN only)' })
+  async flushAll(@GetUser('id') adminId: string) {
+    console.warn(`[PlatformSettings] FLUSHDB requested by SUPER_ADMIN ${adminId}`);
+    return this.service.flushRedisDb();
   }
 }
 

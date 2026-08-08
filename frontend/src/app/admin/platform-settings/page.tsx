@@ -5,6 +5,8 @@ import toast from "react-hot-toast";
 import {
   SlidersHorizontal,
   AlertTriangle,
+  Database,
+  Trash2,
   Shield,
   Zap,
   BookOpen,
@@ -15,6 +17,7 @@ import {
 import {
   platformSettingsService,
   PlatformSetting,
+  CacheStats,
 } from "@/services/platform-settings.service";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,9 +42,12 @@ const MODULE_LABELS: Record<string, string> = {
 
 export default function PlatformSettingsPage() {
   const [settings, setSettings] = useState<PlatformSetting[]>([]);
+  const [cacheStats, setCacheStats] = useState<CacheStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [updatingKey, setUpdatingKey] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"modules" | "maintenance">("modules");
+  const [clearingCache, setClearingCache] = useState(false);
+  const [activeTab, setActiveTab] = useState<"modules" | "maintenance" | "cache">("modules");
+  const [confirmFlush, setConfirmFlush] = useState("");
 
   const [pendingToggle, setPendingToggle] = useState<{
     key: string;
@@ -74,9 +80,19 @@ export default function PlatformSettingsPage() {
     }
   }, []);
 
+  const loadCacheStats = useCallback(async () => {
+    try {
+      const stats = await platformSettingsService.getCacheStats();
+      setCacheStats(stats);
+    } catch {
+      // Opsional
+    }
+  }, []);
+
   useEffect(() => {
     loadSettings();
-  }, [loadSettings]);
+    loadCacheStats();
+  }, [loadSettings, loadCacheStats]);
 
   const isEnabled = (key: string) => settings.find((s) => s.key === key)?.value === "true";
 
@@ -145,6 +161,28 @@ export default function PlatformSettingsPage() {
     }
   };
 
+  const handleFlushAll = async () => {
+    if (confirmFlush !== "CONFIRM") {
+      toast.error('Ketik "CONFIRM" terlebih dahulu');
+      return;
+    }
+    setClearingCache(true);
+    try {
+      const result = await platformSettingsService.flushAllCache();
+      if (result.skipped) {
+        toast.success("Penyimpanan cache tidak aktif, tidak ada yang perlu dibersihkan");
+      } else {
+        toast.success("Seluruh cache berhasil dibersihkan");
+      }
+      setConfirmFlush("");
+      loadCacheStats();
+    } catch (error) {
+      toast.error(`Gagal membersihkan cache: ${getErrorMessage(error)}`);
+    } finally {
+      setClearingCache(false);
+    }
+  };
+
   const moduleSettings = settings.filter((s) => s.key.startsWith("module."));
   const maintenanceEnabled = isEnabled("maintenance.enabled");
 
@@ -188,6 +226,7 @@ export default function PlatformSettingsPage() {
         {([
           { id: "modules", label: "Toggle Module", icon: <Zap className="h-4 w-4" /> },
           { id: "maintenance", label: "Maintenance Mode", icon: <Shield className="h-4 w-4" /> },
+          { id: "cache", label: "Cache", icon: <Database className="h-4 w-4" /> },
         ] as const).map((tab) => (
           <button
             key={tab.id}
@@ -325,6 +364,68 @@ export default function PlatformSettingsPage() {
             >
               Simpan Perubahan Pesan
             </Button>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "cache" && (
+        <div className="space-y-6">
+          {cacheStats && !cacheStats.error && (
+            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-3 w-3">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500"></span>
+                    </span>
+                    <h3 className="font-semibold text-gray-900">Penyimpanan Cache Aktif</h3>
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    Sistem memori sementara aktif untuk mempercepat respons dan performa aplikasi.
+                  </p>
+                </div>
+                <div className="rounded-lg bg-emerald-50 border border-emerald-100 px-4 py-3 text-left sm:text-right">
+                  <p className="text-xs font-medium text-emerald-800">Kapasitas Terpakai</p>
+                  <p className="text-2xl font-bold text-emerald-900">
+                    {cacheStats.used_memory_human || "-"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {cacheStats?.error && (
+            <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800">
+              Penyimpanan cache tidak aktif (Aplikasi tetap berjalan normal menggunakan database).
+            </div>
+          )}
+
+          <div className="rounded-xl border border-red-200 bg-white p-6 shadow-sm space-y-4">
+            <div className="flex items-center gap-2 text-red-600">
+              <Trash2 className="h-5 w-5" />
+              <h3 className="font-semibold">Hapus Semua Cache</h3>
+            </div>
+            <p className="text-sm text-gray-500">
+              Menghapus seluruh data cache secara permanen (termasuk cache modul, notifikasi, dan lainnya). Data di database tetap aman. Gunakan hanya jika diperlukan.
+            </p>
+            <div className="flex gap-3">
+              <input
+                type="text"
+                value={confirmFlush}
+                onChange={(e) => setConfirmFlush(e.target.value)}
+                placeholder='Ketik "CONFIRM" untuk membuka tombol'
+                className="flex-1 rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
+              />
+              <Button
+                variant="danger"
+                onClick={handleFlushAll}
+                disabled={clearingCache || confirmFlush !== "CONFIRM"}
+                isLoading={clearingCache}
+              >
+                Hapus Semua Cache
+              </Button>
+            </div>
           </div>
         </div>
       )}
