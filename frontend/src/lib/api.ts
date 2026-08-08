@@ -36,6 +36,14 @@ function isRetryableError(error: AxiosError): boolean {
   return status >= 500 || status === 429 || status === 408;
 }
 
+// Deteksi 503 maintenance mode (body membawa `maintenance: true`). Ini bukan error sementara — retry hanya menunda redirect, jadi lewati.
+function isMaintenanceError(error: AxiosError): boolean {
+  return (
+    error.response?.status === 503 &&
+    (error.response?.data as { maintenance?: boolean } | undefined)?.maintenance === true
+  );
+}
+
 /**
  * Delay function for retry backoff
  */
@@ -216,7 +224,7 @@ api.interceptors.response.use(
     const isIdempotent = originalRequest.method?.toUpperCase() === 'GET' || 
                          originalRequest.method?.toUpperCase() === 'DELETE';
     
-    if (isRetryableError(error) && !originalRequest._retry && isIdempotent) {
+    if (isRetryableError(error) && !isMaintenanceError(error) && !originalRequest._retry && isIdempotent) {
       const retryCount = originalRequest._retryCount || 0;
       
       if (retryCount < MAX_RETRIES) {
@@ -231,6 +239,35 @@ api.interceptors.response.use(
         await delay(delayMs);
         
         return api(originalRequest);
+      }
+    }
+
+    // ============================================
+    // CEK MAINTENANCE MODE (503)
+    // ============================================
+    if (error.response?.status === 503) {
+      const responseData = error.response?.data as
+        | {
+            maintenance?: boolean;
+            title?: string;
+            message?: string;
+            estimatedEnd?: string | null;
+          }
+        | undefined;
+      if (responseData?.maintenance) {
+        // Tidak redirect ke /maintenance — layar maintenance dirender inline (URL tidak diubah) sehingga refresh membuka kembali halaman yang diminta. Bawa detail dari body 503 agar layar tetap muncul meskipun endpoint flags publik tidak terjangkau.
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("plazo:maintenance-active", {
+              detail: {
+                title: responseData.title,
+                message: responseData.message,
+                estimatedEnd: responseData.estimatedEnd,
+              },
+            }),
+          );
+        }
+        return Promise.reject(error);
       }
     }
 
