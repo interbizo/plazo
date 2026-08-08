@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import {
   ShoppingBag,
   Palette,
@@ -9,15 +8,14 @@ import {
   Newspaper,
   MessageSquare,
   ChevronRight,
-  BookOpen,
-  MessagesSquare,
 } from "lucide-react";
-import { resolveImageUrl } from "@/lib/image-url";
 import type { Product, Service, Job, Article } from "@/types";
 import type { ForumPost } from "@/types/forum";
 import { ProductCard } from "@/components/shared/product-card";
 import { ServiceCard } from "@/components/shared/service-card";
 import { JobCard } from "@/components/shared/job-card";
+import { ArticleCard } from "@/components/shared/article-card";
+import { ForumCard } from "@/components/shared/forum-card";
 
 function ModuleSection({
   headerClass,
@@ -60,67 +58,6 @@ function ModuleSection({
         </div>
       </div>
     </section>
-  );
-}
-
-function ArticleCard({ article }: { article: Article }) {
-  return (
-    <Link
-      href={`/articles/${article.slug}`}
-      className="group flex h-full flex-col overflow-hidden rounded-lg border border-gray-200 bg-white transition hover:border-blue-200 hover:shadow-md"
-    >
-      <div className="aspect-[16/9] bg-gray-100">
-        {article.thumbnail ? (
-          <Image
-            src={resolveImageUrl(article.thumbnail)}
-            alt={article.title}
-            width={400}
-            height={225}
-            className="h-full w-full object-cover transition group-hover:scale-[1.02]"
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center text-gray-300">
-            <BookOpen className="h-8 w-8" />
-          </div>
-        )}
-      </div>
-      <div className="flex flex-1 flex-col p-3">
-        {article.category && (
-          <span className="mb-1.5 w-fit rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">
-            {article.category.name}
-          </span>
-        )}
-        <h3 className="line-clamp-2 text-sm font-semibold text-gray-900 group-hover:text-blue-700">
-          {article.title}
-        </h3>
-        <p className="mt-1 line-clamp-2 text-xs text-gray-500">
-          {article.excerpt || "Baca artikel lengkap di Plazo."}
-        </p>
-      </div>
-    </Link>
-  );
-}
-
-function ForumCard({ post }: { post: ForumPost }) {
-  return (
-    <Link
-      href={`/forum/${post.slug}`}
-      className="group flex h-full flex-col rounded-lg border border-gray-200 bg-white p-3 transition hover:border-blue-200 hover:shadow-md"
-    >
-      <h3 className="line-clamp-2 text-sm font-semibold text-gray-900 group-hover:text-blue-700">
-        {post.title}
-      </h3>
-      <p className="mt-1 line-clamp-3 flex-1 text-xs text-gray-500">{post.content}</p>
-      <div className="mt-2 flex items-center justify-between text-[11px] text-gray-400">
-        <span className="truncate">
-          {post.author ? `${post.author.firstName} ${post.author.lastName}`.trim() : "Anonim"}
-        </span>
-        <span className="flex shrink-0 items-center gap-1">
-          <MessagesSquare className="h-3 w-3" />
-          {post._count?.comments ?? 0}
-        </span>
-      </div>
-    </Link>
   );
 }
 
