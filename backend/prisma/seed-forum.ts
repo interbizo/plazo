@@ -1,7 +1,7 @@
 import { AccountStatus, PrismaClient, UserRole } from "@prisma/client";
 
-const prisma = new PrismaClient();
-const db = prisma as any;
+let prisma = new PrismaClient();
+let db = prisma as any;
 
 const SETTINGS_ID = "default";
 
@@ -189,7 +189,11 @@ async function clearForumDemoData() {
   await db.forumPost.deleteMany({ where: { id: { in: postIds } } });
 }
 
-async function main() {
+export async function seedForum(prismaClient?: PrismaClient) {
+  if (prismaClient) {
+    prisma = prismaClient;
+    db = prismaClient as any;
+  }
   await ensureForumClient();
 
   const { moderator, buyer, seller, watched, banned } =
@@ -410,12 +414,15 @@ async function main() {
   ]);
 }
 
-main()
-  .catch((error) => {
-    console.error("Failed to seed forum dummy data.");
-    console.error(error);
-    process.exitCode = 1;
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+// Jalankan langsung hanya ketika file ini dieksekusi sebagai script utama.
+if (require.main === module) {
+  seedForum()
+    .catch((error) => {
+      console.error("Failed to seed forum dummy data.");
+      console.error(error);
+      process.exitCode = 1;
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}

@@ -6,7 +6,7 @@ import {
   UserRole,
 } from "@prisma/client";
 
-const prisma = new PrismaClient();
+let prisma = new PrismaClient();
 
 const MIN_PUBLISH_WORDS = 800;
 const MAX_ARTICLE_WORDS = 1600;
@@ -275,7 +275,8 @@ async function getAuthorId() {
   return user.id;
 }
 
-async function main() {
+export async function seedArticles(prismaClient?: PrismaClient) {
+  if (prismaClient) prisma = prismaClient;
   const authorId = await getAuthorId();
   const categoryIds = new Map<string, string>();
 
@@ -365,12 +366,15 @@ async function main() {
   );
 }
 
-main()
-  .catch((error) => {
-    console.error("Failed to seed article dummy data.");
-    console.error(error);
-    process.exitCode = 1;
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+// Jalankan langsung hanya ketika file ini dieksekusi sebagai script utama.
+if (require.main === module) {
+  seedArticles()
+    .catch((error) => {
+      console.error("Failed to seed article dummy data.");
+      console.error(error);
+      process.exitCode = 1;
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}

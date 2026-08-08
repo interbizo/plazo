@@ -21,6 +21,8 @@ import {
 } from "@prisma/client";
 import * as bcrypt from "bcryptjs";
 import * as crypto from "crypto";
+import { seedArticles } from "./prisma/seed-articles";
+import { seedForum } from "./prisma/seed-forum";
 
 const prisma = new PrismaClient();
 const PASSWORD = "Password@123";
@@ -1783,6 +1785,8 @@ async function main() {
 
   await seedInteractions(categories, users, listings);
   await seedKyc(users.sellers);
+  await seedArticles(prisma);
+  await seedForum(prisma);
   await seedPlatformContent(users.superAdmin.id);
   await seedPlatformSettings();
 
