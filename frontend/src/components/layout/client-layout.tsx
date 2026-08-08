@@ -11,6 +11,8 @@ import { ToastProvider } from "@/providers/toast-provider";
 import { SocketProvider } from "@/providers/socket-provider";
 import { marketplaceApi } from "@/services/marketplace.service";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { MaintenanceScreen } from "@/components/maintenance/maintenance-screen";
+import { useMaintenanceStore } from "@/stores/maintenance.store";
 
 interface ClientLayoutProps {
   children: React.ReactNode;
@@ -23,6 +25,42 @@ export function ClientLayout({ children, isStorefrontHost = false }: ClientLayou
   const [settings, setSettings] = useState<Record<string, string>>({});
   const isStorefrontPath = pathname === "/store" || pathname.startsWith("/store/");
   const isStorefront = isStorefrontHost || isStorefrontPath;
+  const maintenanceEnabled = useMaintenanceStore((s) => s.enabled);
+  const checkMaintenance = useMaintenanceStore((s) => s.checkMaintenance);
+  const applyMaintenance = useMaintenanceStore((s) => s.applyMaintenance);
+
+  // Halaman auth harus tetap dapat digunakan agar admin masih bisa login saat maintenance.
+  const isAuthPath =
+    ["/login", "/register", "/forgot-password", "/reset-password"].some(
+      (p) => pathname === p || pathname.startsWith(p + "/"),
+    ) || pathname.startsWith("/verify-");
+  const showMaintenanceScreen =
+    maintenanceEnabled &&
+    !pathname.startsWith("/admin") &&
+    !isAuthPath;
+
+    // Pertahankan status maintenance tetap sinkron (endpoint publik dibypass saat maintenance aktif) dan tanggapi 503
+  useEffect(() => {
+    void checkMaintenance();
+    const interval = setInterval(() => {
+      void checkMaintenance();
+    }, 30000);
+    const onMaintenanceActive = (e: Event) => {
+      const detail = (e as CustomEvent<{
+        title?: string;
+        message?: string;
+        estimatedEnd?: string | null;
+      }>).detail;
+      // Terapkan status maintenance segera dari body 503, lalu refresh detail dari endpoint publik sebagai fallback.
+      applyMaintenance(detail || {});
+      void checkMaintenance();
+    };
+    window.addEventListener("plazo:maintenance-active", onMaintenanceActive);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("plazo:maintenance-active", onMaintenanceActive);
+    };
+  }, [checkMaintenance, applyMaintenance]);
 
   useEffect(() => {
     if (process.env.NODE_ENV !== "development" || typeof window === "undefined") {
@@ -61,7 +99,7 @@ export function ClientLayout({ children, isStorefrontHost = false }: ClientLayou
   }, []);
 
   const fetchSettings = useCallback(async () => {
-    if (isStorefront) return;
+    if (isStorefront || showMaintenanceScreen) return;
 
     try {
       const { data } = await marketplaceApi.getSiteSettings();
@@ -78,7 +116,7 @@ export function ClientLayout({ children, isStorefrontHost = false }: ClientLayou
     } catch {
       // Silently fail - keep defaults
     }
-  }, [isStorefront]);
+  }, [isStorefront, showMaintenanceScreen]);
 
   useEffect(() => {
     fetchSettings();
@@ -86,7 +124,7 @@ export function ClientLayout({ children, isStorefrontHost = false }: ClientLayou
 
   // Apply global theme from CMS settings
   useEffect(() => {
-    if (isStorefront || Object.keys(settings).length === 0) return;
+    if (isStorefront || showMaintenanceScreen || Object.keys(settings).length === 0) return;
 
     const root = document.documentElement;
 
@@ -111,11 +149,6 @@ export function ClientLayout({ children, isStorefrontHost = false }: ClientLayou
       }
     }
 
-    console.log('[Theme] Global theme applied:', {
-      primary: settings.primary_color,
-      accent: settings.accent_color,
-    });
-
     // Cleanup
     return () => {
       root.style.removeProperty('--color-primary');
@@ -123,7 +156,18 @@ export function ClientLayout({ children, isStorefrontHost = false }: ClientLayou
       root.style.removeProperty('--color-accent');
       root.style.removeProperty('--color-accent-rgb');
     };
-  }, [settings, isStorefront]);
+  }, [settings, isStorefront, showMaintenanceScreen]);
+
+  // Layout standalone saat maintenance aktif (URL TIDAK diubah).
+  if (showMaintenanceScreen) {
+    return (
+      <ErrorBoundary>
+        <main className="min-h-screen flex-1 bg-gray-50">
+          <MaintenanceScreen />
+        </main>
+      </ErrorBoundary>
+    );
+  }
 
   return (
     <ErrorBoundary>

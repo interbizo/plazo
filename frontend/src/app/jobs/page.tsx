@@ -18,6 +18,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { JobListSkeleton } from "@/components/ui/skeleton";
 import { FileText } from "lucide-react";
 import { PageTitle } from "@/components/shared/page-title";
+import { FeatureFlagGate } from "@/components/shared/feature-flag-gate";
 
 const STATUS_OPTIONS = [
   { value: "", label: "Semua Status" },
@@ -185,14 +186,16 @@ function BrowseJobsContent() {
 
 export default function BrowseJobsPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="mx-auto max-w-7xl px-4 py-8">
-          <JobListSkeleton count={6} />
-        </div>
-      }
-    >
-      <BrowseJobsContent />
-    </Suspense>
+    <FeatureFlagGate flag="module.jobs" showNotFound={true}>
+      <Suspense
+        fallback={
+          <div className="mx-auto max-w-7xl px-4 py-8">
+            <JobListSkeleton count={6} />
+          </div>
+        }
+      >
+        <BrowseJobsContent />
+      </Suspense>
+    </FeatureFlagGate>
   );
 }

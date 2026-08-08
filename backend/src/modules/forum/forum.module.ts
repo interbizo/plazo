@@ -6,11 +6,12 @@ import {
   ForumPublicController,
 } from "./forum.controller";
 import { ForumService } from "./forum.service";
+import { FeatureFlagGuard } from "@common/guards/feature-flag.guard";
 
 @Module({
   imports: [DatabaseModule],
   controllers: [ForumPublicController, ForumMemberController, ForumModerationController],
-  providers: [ForumService],
+  providers: [ForumService, FeatureFlagGuard],
   exports: [ForumService],
 })
 export class ForumModule {}

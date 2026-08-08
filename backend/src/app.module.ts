@@ -1,6 +1,8 @@
 import { Module, MiddlewareConsumer, NestModule } from "@nestjs/common";
 import { CommonModule } from "@common/common.module";
 import { DatabaseModule } from "@modules/database/database.module";
+import { PlatformSettingsModule } from "@modules/platform-settings/platform-settings.module";
+import { MaintenanceMiddleware } from "@common/middleware/maintenance.middleware";
 import { AuthModule } from "@modules/auth/auth.module";
 import { MarketplaceModule } from "@modules/marketplace/marketplace.module";
 import { JobsModule } from "@modules/jobs/jobs.module";
@@ -84,10 +86,14 @@ import { RequestLoggerMiddleware } from "@common/middleware/request-logger.middl
     SeoModule,
     AccountAppealModule,
     ForumModule,
+    PlatformSettingsModule,
   ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
+    // Global maintenance mode check
+    consumer.apply(MaintenanceMiddleware).forRoutes("*");
+
     // Request logger for debugging (only admin endpoints)
     consumer.apply(RequestLoggerMiddleware).forRoutes("*");
 

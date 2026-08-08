@@ -21,6 +21,8 @@ import { GetUser } from "@common/decorators/get-user.decorator";
 import { Roles } from "@common/decorators/roles.decorator";
 import { JwtAuthGuard } from "@common/guards/jwt-auth.guard";
 import { RolesGuard } from "@common/guards/roles.guard";
+import { FeatureFlagGuard } from "@common/guards/feature-flag.guard";
+import { RequireFeatureFlag } from "@common/decorators/require-feature-flag.decorator";
 import { ArticlesService } from "./articles.service";
 import {
   ArticleListQueryDto,
@@ -32,7 +34,8 @@ import {
 } from "./articles.dto";
 
 @Controller("api/admin/articles")
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, FeatureFlagGuard)
+@RequireFeatureFlag('module.article')
 @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
 export class ArticlesAdminController {
   constructor(private articlesService: ArticlesService) {}
@@ -88,7 +91,8 @@ export class ArticlesAdminController {
 }
 
 @Controller("api/admin/article-categories")
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, FeatureFlagGuard)
+@RequireFeatureFlag('module.article')
 @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
 export class ArticleCategoriesAdminController {
   constructor(private articlesService: ArticlesService) {}
@@ -117,6 +121,8 @@ export class ArticleCategoriesAdminController {
   }
 }
 
+@UseGuards(FeatureFlagGuard)
+@RequireFeatureFlag('module.article')
 @Controller("api/public/articles")
 export class ArticlesPublicController {
   constructor(private articlesService: ArticlesService) {}
@@ -145,6 +151,8 @@ export class ArticlesPublicController {
   }
 }
 
+@UseGuards(FeatureFlagGuard)
+@RequireFeatureFlag('module.article')
 @Controller("api/public/article-categories")
 export class ArticleCategoriesPublicController {
   constructor(private articlesService: ArticlesService) {}

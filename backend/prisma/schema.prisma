@@ -3008,3 +3008,19 @@ model OTP {
   @@index([expiresAt])
   @@index([isUsed])
 }
+
+// ============================================
+// PLATFORM SETTINGS (Feature Flags & Maintenance Mode)
+// ============================================
+
+model PlatformSetting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  description String?
+  updatedBy   String?
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  @@index([key])
+}

@@ -79,6 +79,16 @@ export async function generateMetadata({
 
 export default async function ArticleDetailPage({ params }: ArticleDetailPageProps) {
   const { slug } = await params;
+
+  try {
+    const flags = await serverApi.getPublicFlags();
+    if (flags["module.article"] === "false") {
+      notFound();
+    }
+  } catch {
+    // Fail-open: if flags endpoint is unreachable, continue rendering.
+  }
+
   const payload = await getArticle(slug);
 
   if (!payload?.article) {

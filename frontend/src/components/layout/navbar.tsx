@@ -28,6 +28,8 @@ import {
   Newspaper,
 } from "lucide-react";
 
+import { useFeatureFlagsStore } from "@/stores/feature-flags.store";
+
 interface NavbarProps {
   settings?: Record<string, string>;
 }
@@ -41,11 +43,19 @@ export function Navbar({ settings = {} }: NavbarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchCategory, setSearchCategory] = useState<"products" | "services" | "jobs">("products");
+  const [mounted, setMounted] = useState(false);
+  const flags = useFeatureFlagsStore((s) => s.flags);
+  const fetchFlags = useFeatureFlagsStore((s) => s.fetchFlags);
   const profileRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const siteName = settings.site_name || "Plazo";
   const siteLogo = settings.site_logo;
+
+  // Track client mount to avoid hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Fetch counts on auth
   useEffect(() => {
@@ -53,6 +63,10 @@ export function Navbar({ settings = {} }: NavbarProps) {
       fetchUnreadCount();
     }
   }, [isAuthenticated, fetchUnreadCount]);
+
+  useEffect(() => {
+    fetchFlags();
+  }, [fetchFlags]);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -76,17 +90,24 @@ export function Navbar({ settings = {} }: NavbarProps) {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      router.push(`/${searchCategory}?search=${encodeURIComponent(searchQuery)}`);
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
     }
   };
 
-  const navLinks = [
+  const allNavLinks = [
     { href: "/products", label: "Produk", icon: ShoppingBag },
     { href: "/services", label: "Jasa", icon: Palette },
-    { href: "/jobs", label: "Cari Vendor", icon: Briefcase },
-    { href: "/forum", label: "Forum", icon: MessageSquare },
-    { href: "/articles", label: "Artikel", icon: Newspaper },
+    { href: "/jobs", label: "Cari Vendor", icon: Briefcase, flagKey: "module.jobs" },
+    { href: "/forum", label: "Forum", icon: MessageSquare, flagKey: "module.forum" },
+    { href: "/articles", label: "Artikel", icon: Newspaper, flagKey: "module.article" },
   ];
+
+  const navLinks = allNavLinks.filter((link) => {
+    if (!link.flagKey) return true;
+    // Hide flagged links until client has mounted to avoid hydration mismatch
+    if (!mounted) return false;
+    return flags[link.flagKey] !== "false";
+  });
 
   return (
     <nav className="sticky top-0 z-40">
@@ -168,31 +189,32 @@ export function Navbar({ settings = {} }: NavbarProps) {
               </span>
             </Link>
 
-            {/* Search bar with category selector */}
+            {/* Global search bar */}
             <form onSubmit={handleSearch} className="flex-1 min-w-0 max-w-2xl">
               <div className="flex">
-                <select
-                  value={searchCategory}
-                  onChange={(e) => setSearchCategory(e.target.value as "products" | "services" | "jobs")}
-                  className="hidden sm:block rounded-l-sm border-r border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600 focus:outline-none cursor-pointer"
-                >
-                  <option value="products">Produk</option>
-                  <option value="services">Jasa</option>
-                  <option value="jobs">Cari Vendor</option>
-                </select>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={
-                    searchCategory === "products"
-                      ? "Cari produk..."
-                      : searchCategory === "services"
-                        ? "Cari jasa atau freelancer..."
-                        : "Cari vendor atau freelancer..."
-                  }
-                  className="w-full sm:rounded-l-none rounded-l-sm bg-white px-4 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
-                />
+                <div className="relative flex-1">
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Cari produk, jasa, artikel, forum, project..."
+                    className="w-full rounded-l-sm bg-white py-2 pl-4 pr-9 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery("");
+                        searchInputRef.current?.focus();
+                      }}
+                      aria-label="Hapus pencarian"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
                 <button
                   type="submit"
                   className="rounded-r-sm bg-blue-800 px-4 hover:bg-blue-900 transition-colors"

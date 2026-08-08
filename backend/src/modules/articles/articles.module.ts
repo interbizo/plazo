@@ -7,6 +7,7 @@ import {
   ArticlesPublicController,
 } from "./articles.controller";
 import { ArticlesService } from "./articles.service";
+import { FeatureFlagGuard } from "@common/guards/feature-flag.guard";
 
 @Module({
   imports: [DatabaseModule],
@@ -16,7 +17,7 @@ import { ArticlesService } from "./articles.service";
     ArticlesPublicController,
     ArticleCategoriesPublicController,
   ],
-  providers: [ArticlesService],
+  providers: [ArticlesService, FeatureFlagGuard],
   exports: [ArticlesService],
 })
 export class ArticlesModule {}

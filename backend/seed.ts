@@ -1747,6 +1747,29 @@ async function seedKyc(sellers: Awaited<ReturnType<typeof seedUsersAndStores>>["
   }
 }
 
+// --- Platform Settings seed ---
+async function seedPlatformSettings() {
+  const defaults = [
+    { key: 'module.forum', value: 'true', description: 'Toggle modul Forum Diskusi ON/OFF' },
+    { key: 'module.article', value: 'true', description: 'Toggle modul Artikel ON/OFF' },
+    { key: 'module.jobs', value: 'true', description: 'Toggle modul Job Board & Proposal ON/OFF' },
+    { key: 'module.referral', value: 'false', description: 'Toggle modul Referral ON/OFF (belum aktif)' },
+    { key: 'maintenance.enabled', value: 'false', description: 'Global maintenance mode — semua user non-admin akan melihat halaman maintenance' },
+    { key: 'maintenance.message', value: 'Kami sedang melakukan perbaikan untuk meningkatkan layanan. Silakan coba beberapa saat lagi.', description: 'Pesan yang ditampilkan di halaman maintenance' },
+    { key: 'maintenance.estimated_end', value: '', description: 'Estimasi waktu maintenance selesai (format ISO 8601, kosong jika tidak diketahui)' },
+    { key: 'maintenance.title', value: 'Sedang Dalam Perbaikan', description: 'Judul halaman maintenance' },
+  ];
+
+  for (const setting of defaults) {
+    await prisma.platformSetting.upsert({
+      where: { key: setting.key },
+      update: {},
+      create: setting,
+    });
+  }
+  console.log('✅ Platform settings seeded');
+}
+
 async function main() {
   console.log("Starting Plazo seed...");
 
@@ -1761,6 +1784,7 @@ async function main() {
   await seedInteractions(categories, users, listings);
   await seedKyc(users.sellers);
   await seedPlatformContent(users.superAdmin.id);
+  await seedPlatformSettings();
 
   console.log("");
   console.log("Seed completed.");

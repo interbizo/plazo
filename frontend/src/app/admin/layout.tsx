@@ -35,6 +35,7 @@ import {
   BookOpen,
   Newspaper,
   ShieldCheck,
+  SlidersHorizontal,
   type LucideIcon,
 } from "lucide-react";
 
@@ -74,12 +75,6 @@ const MENU_SECTIONS: MenuSection[] = [
         label: "Notifikasi",
         icon: Bell,
         desc: "Lihat notifikasi realtime untuk admin dan super admin",
-      },
-      {
-        href: "/admin/articles",
-        label: "Artikel",
-        icon: Newspaper,
-        desc: "Kelola artikel, kategori, SEO, dan import CSV",
       },
       {
         href: "/admin/chat-monitor",
@@ -136,6 +131,12 @@ const MENU_SECTIONS: MenuSection[] = [
         label: "Forum",
         icon: MessageSquare,
         desc: "Moderasi post, anti-spam, dan strike komunitas",
+      },
+      {
+        href: "/admin/articles",
+        label: "Artikel",
+        icon: Newspaper,
+        desc: "Kelola artikel, kategori, SEO, dan import CSV",
       },
     ],
   },
@@ -241,6 +242,13 @@ const MENU_SECTIONS: MenuSection[] = [
         label: "CMS",
         icon: Settings,
         desc: "Kelola halaman, banner, FAQ & pengaturan situs",
+        superOnly: true,
+      },
+      {
+        href: "/admin/platform-settings",
+        label: "Platform Settings",
+        icon: SlidersHorizontal,
+        desc: "Kelola konfigurasi platform, fitur flag, maintenance & cache",
         superOnly: true,
       },
       {

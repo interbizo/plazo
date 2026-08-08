@@ -12,6 +12,8 @@ import {
 import { UserRole } from "@prisma/client";
 import { GetUser } from "@common/decorators/get-user.decorator";
 import { Roles } from "@common/decorators/roles.decorator";
+import { RequireFeatureFlag } from "@common/decorators/require-feature-flag.decorator";
+import { FeatureFlagGuard } from "@common/guards/feature-flag.guard";
 import { JwtAuthGuard } from "@common/guards/jwt-auth.guard";
 import { RolesGuard } from "@common/guards/roles.guard";
 import {
@@ -27,6 +29,8 @@ import {
 } from "./forum.dto";
 import { ForumService } from "./forum.service";
 
+@UseGuards(FeatureFlagGuard)
+@RequireFeatureFlag('module.forum')
 @Controller("api/forum")
 export class ForumPublicController {
   constructor(private forumService: ForumService) {}
@@ -44,8 +48,9 @@ export class ForumPublicController {
   }
 }
 
+@UseGuards(JwtAuthGuard, RolesGuard, FeatureFlagGuard)
+@RequireFeatureFlag('module.forum')
 @Controller("api/forum")
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.BUYER, UserRole.SELLER)
 export class ForumMemberController {
   constructor(private forumService: ForumService) {}
@@ -120,8 +125,9 @@ export class ForumMemberController {
   }
 }
 
+@UseGuards(JwtAuthGuard, RolesGuard, FeatureFlagGuard)
+@RequireFeatureFlag('module.forum')
 @Controller("api/admin/forum")
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
 export class ForumModerationController {
   constructor(private forumService: ForumService) {}

@@ -13,11 +13,15 @@ import { JobsService } from "./jobs.service";
 import { CreateJobDto, UpdateJobDto } from "./jobs.dto";
 import { JwtAuthGuard } from "@common/guards/jwt-auth.guard";
 import { RolesGuard } from "@common/guards/roles.guard";
+import { FeatureFlagGuard } from "@common/guards/feature-flag.guard";
+import { RequireFeatureFlag } from "@common/decorators/require-feature-flag.decorator";
 import { Roles } from "@common/decorators/roles.decorator";
 import { GetTenant } from "@common/decorators/get-tenant.decorator";
 import { GetUser } from "@common/decorators/get-user.decorator";
 import { JobStatus, UserRole } from "@prisma/client";
 
+@UseGuards(FeatureFlagGuard)
+@RequireFeatureFlag('module.jobs')
 @Controller("api/jobs")
 export class JobsController {
   constructor(private jobsService: JobsService) {}

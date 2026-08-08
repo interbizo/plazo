@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { Pagination } from "@/components/shared/pagination";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { ConfirmDialog, Modal } from "@/components/ui/modal";
 import { Textarea } from "@/components/ui/textarea";
 import { getErrorMessage } from "@/lib/api";
@@ -248,16 +249,11 @@ export default function AdminForumPage() {
         <div className="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 sm:max-w-md">
           <div className="flex items-center justify-between gap-4">
             <div><p className="text-sm font-medium text-gray-900">Anti-spam</p><p className="text-xs text-gray-500">Batas post dan komentar per pengguna</p></div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={settings?.isAntiSpamEnabled || false}
-              onClick={() => setIsAntiSpamConfirmOpen(true)}
+            <Switch
+              checked={settings?.isAntiSpamEnabled || false}
+              onCheckedChange={() => setIsAntiSpamConfirmOpen(true)}
               disabled={isSavingSettings || !settings}
-              className={`inline-flex h-7 w-12 shrink-0 items-center rounded-full border p-1 transition-colors disabled:opacity-50 ${settings?.isAntiSpamEnabled ? "border-green-600 bg-green-600" : "border-gray-300 bg-gray-200"}`}
-            >
-              <span className={`h-5 w-5 rounded-full bg-white shadow-sm ring-1 ring-black/5 transition-transform ${settings?.isAntiSpamEnabled ? "translate-x-5" : "translate-x-0"}`} />
-            </button>
+            />
           </div>
           <div className="mt-3 flex items-center justify-end gap-3 border-t border-gray-100 pt-3">
             <p className="text-right text-xs text-gray-500">{settings ? `${settings.postLimitPerWindow} post & ${settings.commentLimitPerWindow} komentar / ${settings.rateLimitWindowMinutes} mnt` : "Memuat batas anti-spam..."}</p>

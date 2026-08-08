@@ -19,6 +19,7 @@ import { getErrorMessage } from "@/lib/api";
 import { forumApi } from "@/services/forum.service";
 import { useAuthStore } from "@/stores/auth.store";
 import type { ForumPost } from "@/types/forum";
+import { FeatureFlagGate } from "@/components/shared/feature-flag-gate";
 
 // Memformat waktu pembuatan post dalam format lokal yang ringkas.
 function formatPostDate(value: string) {
@@ -136,7 +137,8 @@ export default function ForumPage() {
   };
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <FeatureFlagGate flag="module.forum" showNotFound={true}>
+      <main className="min-h-screen bg-gray-50">
       <section className="border-b border-gray-200 bg-white">
         <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
           <p className="text-sm font-semibold text-blue-600">Komunitas Plazo</p>
@@ -284,6 +286,7 @@ export default function ForumPage() {
           </div>
         </aside>
       </div>
-    </main>
+      </main>
+    </FeatureFlagGate>
   );
 }

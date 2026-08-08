@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { BookOpen, CalendarDays, Search } from "lucide-react";
 import { serverApi } from "@/lib/server-api";
 import { resolveImageUrl } from "@/lib/image-url";
@@ -56,6 +57,15 @@ export default async function ArticlesPage({ searchParams }: ArticlesPageProps) 
   const categorySlug = params.category || "";
   const tag = params.tag || "";
 
+  try {
+    const flags = await serverApi.getPublicFlags();
+    if (flags["module.article"] === "false") {
+      notFound();
+    }
+  } catch {
+    // Fail-open: if flags endpoint is unreachable, continue rendering.
+  }
+
   let articlesPayload: any = { data: [], pagination: { total: 0, pages: 0 } };
   let categories: ArticleCategory[] = [];
 
@@ -72,7 +82,10 @@ export default async function ArticlesPage({ searchParams }: ArticlesPageProps) 
     ]);
     articlesPayload = articlesRes;
     categories = categoriesRes || [];
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.response?.status === 404 || error?.message?.includes("404")) {
+      notFound();
+    }
     console.error("Failed to fetch articles:", error);
   }
 

@@ -217,6 +217,30 @@ export const serverApi = {
     });
   },
 
+  // Public feature flags (server-side)
+  getPublicFlags: () =>
+    serverFetch<Record<string, string>>("/api/public/platform-settings", {
+      revalidate: 30,
+      tags: ["platform-settings"],
+    }),
+
+  // Forum (public posts — used by global search)
+  getForumPosts: (params?: Record<string, string | number>) => {
+    const searchParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== "") {
+          searchParams.set(k, String(v));
+        }
+      });
+    }
+    const qs = searchParams.toString();
+    return serverFetch<any>(`/api/forum/posts${qs ? `?${qs}` : ""}`, {
+      revalidate: 30,
+      tags: ["forum-posts"],
+    });
+  },
+
   // Storefront
   getStorefront: (subdomain: string) =>
     serverFetch<any>(`/api/public/store/${subdomain}`, {
