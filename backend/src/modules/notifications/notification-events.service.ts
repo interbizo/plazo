@@ -849,43 +849,44 @@ export class NotificationEventsService {
   }) {
     const { daysOffset } = params;
     const absDays = Math.abs(daysOffset);
+    const sellerName = params.sellerName || "Seller";
 
     const content =
       daysOffset === -3
         ? {
             event: "subscription.reminder.h_minus_3",
             title: "Subscription Akan Expired",
-            message: `Subscription ${params.plan} Anda akan berakhir dalam 3 hari. Perpanjang sekarang untuk terus menikmati layanan paket ${params.plan}.`,
+            message: `Halo ${sellerName},\n\nSubscription ${params.plan} Anda akan berakhir dalam 3 hari. Perpanjang sekarang untuk terus menikmati layanan paket ${params.plan}.\n\nTerima kasih,\nTim Plazo`,
           }
         : daysOffset === -1
           ? {
               event: "subscription.reminder.h_minus_1",
               title: "Subscription Berakhir Besok",
-              message: `Subscription ${params.plan} Anda akan berakhir besok. Segera perpanjang untuk terus menikmati layanan paket ${params.plan}.`,
+              message: `Halo ${sellerName},\n\nSubscription ${params.plan} Anda akan berakhir besok. Segera perpanjang untuk terus menikmati layanan paket ${params.plan}.\n\nTerima kasih,\nTim Plazo`,
             }
           : daysOffset === 0
             ? {
                 event: "subscription.expired",
                 title: "Subscription Berakhir",
-                message: `Subscription ${params.plan} Anda berakhir hari ini dan masuk masa tenggang. Layanan paket ${params.plan} tetap aktif hingga H+7. Segera perpanjang untuk terus menikmatinya.`,
+                message: `Halo ${sellerName},\n\nSubscription ${params.plan} Anda berakhir hari ini dan masuk masa tenggang. Layanan paket ${params.plan} tetap aktif hingga H+7. Segera perpanjang untuk terus menikmatinya.\n\nTerima kasih,\nTim Plazo`,
               }
             : daysOffset === 3
               ? {
                   event: "subscription.overdue.h_plus_3",
                   title: "Telat Pembayaran H+3",
-                  message: `Tagihan perpanjangan paket ${params.plan} Anda sudah terlewat 3 hari. Segera perpanjang untuk terus menikmati layanan paket ${params.plan} selama masa tenggang.`,
+                  message: `Halo ${sellerName},\n\nTagihan perpanjangan paket ${params.plan} Anda sudah terlewat 3 hari. Segera perpanjang untuk terus menikmati layanan paket ${params.plan} selama masa tenggang.\n\nTerima kasih,\nTim Plazo`,
                 }
               : {
                   event: "subscription.overdue.h_plus_7",
                   title: "Masa Tenggang Berakhir",
-                  message: `Masa tenggang paket ${params.plan} Anda telah berakhir dan paket Anda dikembalikan ke tier FREE. Perpanjang untuk kembali menikmati layanan paket ${params.plan}.`,
+                  message: `Halo ${sellerName},\n\nMasa tenggang paket ${params.plan} Anda telah berakhir dan paket Anda dikembalikan ke tier FREE. Perpanjang untuk kembali menikmati layanan paket ${params.plan}.\n\nTerima kasih,\nTim Plazo`,
                 };
 
     // Notifikasi ke admin (tetap, untuk monitoring platform)
     await this.notifyAdminRoles({
       tenantId: params.tenantId,
       title: content.title,
-      message: `Subscription ${params.plan} milik ${params.sellerName}: ${content.message}`,
+      message: `Subscription ${params.plan} milik ${sellerName}: ${content.message}`,
       type: "subscription",
       referenceId: params.sellerId,
       referenceType: "user",
