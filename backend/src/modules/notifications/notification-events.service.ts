@@ -1,13 +1,11 @@
 import { Injectable, Logger, Inject, Optional, forwardRef } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
+import { NotificationChannel, Prisma } from "@prisma/client";
 import { PrismaService } from "@modules/database/prisma.service";
 import { EmailService } from "@modules/email/email.service";
 import { ChatGateway } from "@modules/websocket/chat.gateway";
+import { NotificationEngineService } from "./notification-engine.service";
 
-/**
- * Centralized notification event helper.
- * Call from any service to create in-app + email notifications.
- */
+// Helper event notifikasi terpusat untuk in-app dan channel eksternal via engine.
 @Injectable()
 export class NotificationEventsService {
   private readonly logger = new Logger(NotificationEventsService.name);
@@ -15,15 +13,14 @@ export class NotificationEventsService {
   constructor(
     private prisma: PrismaService,
     private emailService: EmailService,
+    @Inject(forwardRef(() => NotificationEngineService))
+    private notificationEngine: NotificationEngineService,
     @Optional()
     @Inject(forwardRef(() => ChatGateway))
     private chatGateway?: ChatGateway,
   ) {}
 
-  /**
-   * Send notification via WebSocket with retry mechanism.
-   * If WebSocket fails, the notification is still saved in DB.
-   */
+  // Kirim notifikasi via WebSocket dengan retry dan tetap tersimpan di DB jika gagal.
   private async sendWebSocketNotification(
     userId: string,
     notification: any,
@@ -143,10 +140,7 @@ export class NotificationEventsService {
     );
   }
 
-  /**
-   * Bulk create notifications with WebSocket push support.
-   * Use this instead of prisma.notification.createMany() to ensure realtime delivery.
-   */
+  // Buat notifikasi massal dengan push WebSocket agar realtime.
   async bulkCreateNotifications(
     notifications: Array<{
       tenantId: string;
@@ -846,18 +840,66 @@ export class NotificationEventsService {
     });
   }
 
-  async onSubscriptionExpiringSoon(params: {
+  async onSubscriptionReminder(params: {
     tenantId: string;
     sellerId: string;
     sellerName: string;
     plan: string;
-    daysLeft: number;
+    daysOffset: -3 | -1 | 0 | 3 | 7;
   }) {
+    const { daysOffset } = params;
+    const absDays = Math.abs(daysOffset);
+
+    const content =
+      daysOffset === -3
+        ? {
+            event: "subscription.reminder.h_minus_3",
+            title: "Subscription Akan Expired",
+            message: `Subscription ${params.plan} Anda akan berakhir dalam 3 hari. Perpanjang sekarang untuk terus menikmati layanan paket ${params.plan}.`,
+          }
+        : daysOffset === -1
+          ? {
+              event: "subscription.reminder.h_minus_1",
+              title: "Subscription Berakhir Besok",
+              message: `Subscription ${params.plan} Anda akan berakhir besok. Segera perpanjang untuk terus menikmati layanan paket ${params.plan}.`,
+            }
+          : daysOffset === 0
+            ? {
+                event: "subscription.expired",
+                title: "Subscription Berakhir",
+                message: `Subscription ${params.plan} Anda berakhir hari ini dan masuk masa tenggang. Layanan paket ${params.plan} tetap aktif hingga H+7. Segera perpanjang untuk terus menikmatinya.`,
+              }
+            : daysOffset === 3
+              ? {
+                  event: "subscription.overdue.h_plus_3",
+                  title: "Telat Pembayaran H+3",
+                  message: `Tagihan perpanjangan paket ${params.plan} Anda sudah terlewat 3 hari. Segera perpanjang untuk terus menikmati layanan paket ${params.plan} selama masa tenggang.`,
+                }
+              : {
+                  event: "subscription.overdue.h_plus_7",
+                  title: "Masa Tenggang Berakhir",
+                  message: `Masa tenggang paket ${params.plan} Anda telah berakhir dan paket Anda dikembalikan ke tier FREE. Perpanjang untuk kembali menikmati layanan paket ${params.plan}.`,
+                };
+
+    // Notifikasi ke admin (tetap, untuk monitoring platform)
     await this.notifyAdminRoles({
       tenantId: params.tenantId,
-      title: "Subscription Akan Expired",
-      message: `Subscription ${params.plan} milik ${params.sellerName} akan expired dalam ${params.daysLeft} hari`,
+      title: content.title,
+      message: `Subscription ${params.plan} milik ${params.sellerName}: ${content.message}`,
       type: "subscription",
+      referenceId: params.sellerId,
+      referenceType: "user",
+    });
+
+    // Kirim reminder ke seller via engine (in-app + WA)
+    await this.notificationEngine.dispatch({
+      tenantId: params.tenantId,
+      userId: params.sellerId,
+      event: content.event,
+      fallbackTitle: content.title,
+      fallbackMessage: content.message,
+      vars: { sellerName: params.sellerName, plan: params.plan, daysLeft: absDays },
+      channels: [NotificationChannel.IN_APP, NotificationChannel.WHATSAPP],
       referenceId: params.sellerId,
       referenceType: "user",
     });
@@ -1186,10 +1228,7 @@ export class NotificationEventsService {
 
   // === CHAT TRANSACTION EVENTS ===
 
-  /**
-   * Notify when a new chat transaction is created (buyer contacts seller/admin about product/service)
-   * For internal products (platform tenant), notify all admins
-   */
+  // Notifikasi saat chat transaction baru dibuat dan semua admin untuk produk internal.
   async onNewChatTransaction(params: {
     tenantId: string;
     buyerId: string;
@@ -1244,9 +1283,7 @@ export class NotificationEventsService {
     }
   }
 
-  /**
-   * Notify buyer when transaction is marked as completed
-   */
+  // Notifikasi buyer saat transaksi ditandai selesai.
   async onTransactionCompleted(params: {
     tenantId: string;
     buyerId: string;
@@ -1269,9 +1306,7 @@ export class NotificationEventsService {
     });
   }
 
-  /**
-   * Notify admin when buyer gives review for internal product/service
-   */
+  // Notifikasi admin saat buyer memberi review untuk produk/layanan internal.
   async onInternalProductReview(params: {
     tenantId: string;
     buyerName: string;

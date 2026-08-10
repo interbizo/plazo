@@ -4,12 +4,7 @@ import { SubscriptionService } from "./subscription.service";
 import { PrismaService } from "@modules/database/prisma.service";
 import { NotificationEventsService } from "@modules/notifications/notification-events.service";
 
-/**
- * Subscription Cron Jobs:
- * 1. Check expired subscriptions daily → downgrade to FREE
- * 2. Send expiry warning 3 days before → notify seller to renew
- * 3. Auto-expire flash sale events that passed endDate
- */
+// Subscription cron jobs untuk downgrade H+7, reminder langganan, dan auto-expire flash sale.
 @Injectable()
 export class SubscriptionCronService {
   private readonly logger = new Logger(SubscriptionCronService.name);
@@ -20,9 +15,7 @@ export class SubscriptionCronService {
     private notificationEvents: NotificationEventsService,
   ) {}
 
-  /**
-   * Run daily at 1:00 AM — Check and downgrade expired subscriptions
-   */
+  // Run daily at 1:00 AM untuk downgrade subscription yang melewati masa tenggang.
   @Cron("0 1 * * *") // Every day at 01:00
   async handleExpiredSubscriptions() {
     this.logger.log("Running scheduled task: check expired subscriptions");
@@ -36,65 +29,63 @@ export class SubscriptionCronService {
     }
   }
 
-  /**
-   * Run daily at 9:00 AM — Warn sellers 3 days before subscription expires
-   */
+  // Run daily at 9:00 AM untuk reminder H-3, H-1, H, dan H+3; H+7 dikirim saat downgrade.
   @Cron("0 9 * * *") // Every day at 09:00
   async handleExpiryWarnings() {
-    this.logger.log("Running scheduled task: subscription expiry warnings");
+    this.logger.log("Running scheduled task: subscription expiry reminders");
     try {
-      const threeDaysFromNow = new Date();
-      threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
-
       const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
-      // Find tenants expiring in the next 3 days that haven't been warned yet
-      const expiringTenants = await this.prisma.tenant.findMany({
-        where: {
-          subscriptionPlan: { not: "FREE" },
-          subscriptionExpiresAt: {
-            gte: today,
-            lte: threeDaysFromNow,
+      const offsets = [-3, -1, 0, 3] as const;
+
+      for (const offset of offsets) {
+        const targetDate = new Date(today);
+        targetDate.setDate(targetDate.getDate() - offset);
+        const targetDateEnd = new Date(targetDate);
+        targetDateEnd.setDate(targetDateEnd.getDate() + 1);
+
+        const tenants = await this.prisma.tenant.findMany({
+          where: {
+            subscriptionPlan: { not: "FREE" },
+            subscriptionExpiresAt: {
+              gte: targetDate,
+              lt: targetDateEnd,
+            },
+            isActive: true,
           },
-          isActive: true,
-        },
-        select: {
-          id: true,
-          name: true,
-          ownerId: true,
-          subscriptionPlan: true,
-          subscriptionExpiresAt: true,
-          owner: { select: { firstName: true, lastName: true } },
-        },
-      });
-
-      for (const tenant of expiringTenants) {
-        const daysLeft = Math.ceil(
-          ((tenant.subscriptionExpiresAt?.getTime() || 0) - today.getTime()) / (1000 * 60 * 60 * 24),
-        );
-
-        const sellerName = `${tenant.owner?.firstName || ""} ${tenant.owner?.lastName || ""}`.trim();
-
-        await this.notificationEvents.onSubscriptionExpiringSoon({
-          tenantId: tenant.id,
-          sellerId: tenant.ownerId,
-          sellerName,
-          plan: tenant.subscriptionPlan,
-          daysLeft,
+          select: {
+            id: true,
+            name: true,
+            ownerId: true,
+            subscriptionPlan: true,
+            subscriptionExpiresAt: true,
+            owner: { select: { firstName: true, lastName: true } },
+          },
         });
-      }
 
-      if (expiringTenants.length > 0) {
-        this.logger.log(`Sent expiry warnings to ${expiringTenants.length} sellers`);
+        for (const tenant of tenants) {
+          const sellerName = `${tenant.owner?.firstName || ""} ${tenant.owner?.lastName || ""}`.trim();
+
+          await this.notificationEvents.onSubscriptionReminder({
+            tenantId: tenant.id,
+            sellerId: tenant.ownerId,
+            sellerName,
+            plan: tenant.subscriptionPlan,
+            daysOffset: offset,
+          });
+        }
+
+        if (tenants.length > 0) {
+          this.logger.log(`Sent subscription reminder (H${offset > 0 ? "+" : ""}${offset}) to ${tenants.length} sellers`);
+        }
       }
     } catch (error) {
-      this.logger.error("Failed to send expiry warnings:", error);
+      this.logger.error("Failed to send subscription expiry reminders:", error);
     }
   }
 
-  /**
-   * Run every hour — Auto-expire flash sale events that passed endDate
-   */
+  // Run every hour untuk auto-expire flash sale event yang sudah melewati endDate.
   @Cron(CronExpression.EVERY_HOUR)
   async handleExpiredFlashSales() {
     try {

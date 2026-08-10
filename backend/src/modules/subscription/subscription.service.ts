@@ -18,10 +18,7 @@ import {
   AffiliateClaimStatus,
 } from "@prisma/client";
 
-/**
- * Fallback config — used ONLY if DB has no plan configs yet (first boot).
- * After seeding, all config is read from SubscriptionPlanConfig table.
- */
+// Fallback config dipakai hanya saat DB belum memiliki plan config.
 const DEFAULT_PLANS = [
   {
     plan: "FREE" as SubscriptionPlan,
@@ -137,9 +134,7 @@ export class SubscriptionService implements OnModuleInit {
     private emailService: EmailService,
   ) {}
 
-  /**
-   * Auto-seed plan configs on first boot if DB is empty
-   */
+  // Auto-seed plan config saat boot pertama jika DB kosong.
   async onModuleInit() {
     const count = await this.prisma.subscriptionPlanConfig.count();
     if (count === 0) {
@@ -174,9 +169,7 @@ export class SubscriptionService implements OnModuleInit {
     }
   }
 
-  /**
-   * Get plan config from DB (cached per request)
-   */
+  // Ambil plan config dari DB dengan cache per request.
   private async getPlanConfig(plan: SubscriptionPlan) {
     const config = await this.prisma.subscriptionPlanConfig.findUnique({
       where: { plan },
@@ -587,13 +580,20 @@ export class SubscriptionService implements OnModuleInit {
   // ============================================
 
   async checkExpiredSubscriptions() {
+    // Downgrade ke FREE baru terjadi setelah masa tenggang H+7 terlewati, bukan di hari H.
+    const graceCutoff = new Date();
+    graceCutoff.setDate(graceCutoff.getDate() - 7);
+
     const expiredTenants = await this.prisma.tenant.findMany({
       where: {
         subscriptionPlan: { not: "FREE" },
-        subscriptionExpiresAt: { lt: new Date() },
+        subscriptionExpiresAt: { lt: graceCutoff },
         subscription: { autoRenew: false },
       },
-      include: { subscription: true },
+      include: {
+        subscription: true,
+        owner: { select: { firstName: true, lastName: true } },
+      },
     });
 
     const freeConfig = await this.prisma.subscriptionPlanConfig.findUnique({
@@ -635,6 +635,16 @@ export class SubscriptionService implements OnModuleInit {
           },
         }),
       ]);
+
+      // Notifikasi ke seller via engine bahwa masa tenggang berakhir dan paket kembali ke FREE.
+      const sellerName = `${tenant.owner?.firstName || ""} ${tenant.owner?.lastName || ""}`.trim();
+      await this.notificationEvents.onSubscriptionReminder({
+        tenantId: tenant.id,
+        sellerId: tenant.ownerId,
+        sellerName: sellerName || "Seller",
+        plan: tenant.subscriptionPlan,
+        daysOffset: 7,
+      });
     }
 
     return { expired: expiredTenants.length };
@@ -815,9 +825,7 @@ export class SubscriptionService implements OnModuleInit {
     return { message: `Paket ${updated.name} berhasil diperbarui`, config: updated };
   }
 
-  /**
-   * Get platform payment accounts (for subscription payment page — seller-facing, active only)
-   */
+  // Ambil rekening platform aktif untuk halaman pembayaran seller.
   async getPlatformPaymentAccounts() {
     const accounts = await this.prisma.paymentAccount.findMany({
       where: {
@@ -830,9 +838,7 @@ export class SubscriptionService implements OnModuleInit {
     return { data: accounts };
   }
 
-  /**
-   * Get ALL platform payment accounts (admin — includes inactive)
-   */
+  // Ambil semua rekening platform untuk admin termasuk yang nonaktif.
   async getAdminPlatformPaymentAccounts() {
     const accounts = await this.prisma.paymentAccount.findMany({
       where: { tenantId: null },
@@ -842,9 +848,7 @@ export class SubscriptionService implements OnModuleInit {
     return { data: accounts };
   }
 
-  /**
-   * Create a platform payment account (admin)
-   */
+  // Buat rekening platform baru oleh admin.
   async createPlatformPaymentAccount(data: {
     type: string;
     bankName?: string;
@@ -880,9 +884,7 @@ export class SubscriptionService implements OnModuleInit {
     return { message: "Rekening berhasil ditambahkan", data: account };
   }
 
-  /**
-   * Update a platform payment account (admin)
-   */
+  // Ubah rekening platform oleh admin.
   async updatePlatformPaymentAccount(
     id: string,
     data: {
@@ -932,9 +934,7 @@ export class SubscriptionService implements OnModuleInit {
     return { message: "Rekening berhasil diperbarui", data: account };
   }
 
-  /**
-   * Delete a platform payment account (admin)
-   */
+  // Hapus rekening platform oleh admin.
   async deletePlatformPaymentAccount(id: string) {
     const existing = await this.prisma.paymentAccount.findUnique({
       where: { id },
@@ -948,9 +948,7 @@ export class SubscriptionService implements OnModuleInit {
     return { message: "Rekening berhasil dihapus" };
   }
 
-  /**
-   * Create a new plan config (Super Admin)
-   */
+  // Buat plan config baru oleh Super Admin.
   async createPlanConfig(data: {
     plan: string;
     name: string;
@@ -1017,10 +1015,7 @@ export class SubscriptionService implements OnModuleInit {
     return { message: `Paket "${config.name}" berhasil dibuat`, config };
   }
 
-  /**
-   * Delete a plan config (Super Admin)
-   * Cannot delete if there are active tenants using this plan.
-   */
+  // Hapus plan config oleh Super Admin dan ditolak jika masih ada tenant aktif pemakainya.
   async deletePlanConfig(id: string) {
     const config = await this.prisma.subscriptionPlanConfig.findUnique({
       where: { id },
@@ -1389,10 +1384,7 @@ export class SubscriptionService implements OnModuleInit {
     };
   }
 
-  /**
-   * Search Affiliators - Scalable search for sellers who used the referral code
-   * Supports searching by name, email, or tenant ID with pagination
-   */
+  // Cari affiliate berdasarkan nama, email, atau tenant ID dengan pagination.
   async searchAffiliators(
     userId: string,
     options: {
@@ -1642,10 +1634,21 @@ export class SubscriptionService implements OnModuleInit {
     });
 
     if (dto.status === "APPROVED") {
-      // Activate subscription
+      // Jika tenant masih dalam masa tenggang, renewal dihitung dari expired lama karena fitur premium tetap aktif.
       const startDate = new Date();
-      const renewalDate = new Date();
+      let renewalDate = new Date(startDate);
       renewalDate.setDate(renewalDate.getDate() + payment.durationDays);
+
+      const currentExpiry = payment.tenant.subscriptionExpiresAt;
+      const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+      if (
+        currentExpiry &&
+        currentExpiry.getTime() < startDate.getTime() &&
+        startDate.getTime() - currentExpiry.getTime() <= sevenDaysMs
+      ) {
+        renewalDate = new Date(currentExpiry);
+        renewalDate.setDate(renewalDate.getDate() + payment.durationDays);
+      }
 
       const existingSub = await this.prisma.subscription.findUnique({
         where: { tenantId: payment.tenantId },
@@ -2240,9 +2243,7 @@ export class SubscriptionService implements OnModuleInit {
 
   // ============ SUBSCRIPTION FEATURES ============
 
-  /**
-   * Get tenant features based on subscription plan
-   */
+  // Ambil fitur tenant berdasarkan plan subscription.
   async getTenantFeatures(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -2294,9 +2295,7 @@ export class SubscriptionService implements OnModuleInit {
     };
   }
 
-  /**
-   * Check if user has a specific feature
-   */
+  // Cek apakah user memiliki fitur tertentu.
   async checkFeature(userId: string, featureKey: string) {
     const result = await this.getTenantFeatures(userId);
     const hasFeature = (result.features as any)[featureKey] === true;
@@ -2308,9 +2307,7 @@ export class SubscriptionService implements OnModuleInit {
     };
   }
 
-  /**
-   * Get default features (all disabled)
-   */
+  // Default semua fitur nonaktif.
   private getDefaultFeatures() {
     return {
       canPublishToMarketplace: false,

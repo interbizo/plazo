@@ -330,6 +330,7 @@ model User {
 
   // Notifications
   notifications Notification[]
+  notificationDeliveries NotificationDelivery[] @relation("NotificationDeliveryUser")
 
   // OTP
   otps OTP[]
@@ -527,6 +528,7 @@ model Tenant {
   orders               Order[]
   chatRooms            ChatRoom[]
   notifications        Notification[]
+  notificationDeliveries NotificationDelivery[] @relation("NotificationDeliveryTenant")
   subscription         Subscription?
   subscriptionPayments SubscriptionPayment[]
   affiliateBonuses     AffiliateBonus[]
@@ -1537,6 +1539,18 @@ model ReviewReply {
 // NOTIFICATION SYSTEM
 // ============================================
 
+enum NotificationChannel {
+  IN_APP
+  WHATSAPP
+  EMAIL
+}
+
+enum NotificationDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
 model Notification {
   id       String @id @default(cuid())
   tenantId String
@@ -1572,6 +1586,41 @@ model Notification {
   @@index([createdAt])
   @@index([userId, isRead])
   @@index([tenantId, userId, isRead])
+}
+
+// ============================================
+// NOTIFICATION DELIVERY — outbox untuk pengiriman WA.
+// ============================================
+
+model NotificationDelivery {
+  id          String  @id @default(cuid())
+  tenantId    String?
+  tenant      Tenant? @relation("NotificationDeliveryTenant", fields: [tenantId], references: [id])
+  userId      String?
+  user        User?   @relation("NotificationDeliveryUser", fields: [userId], references: [id])
+
+  channel     NotificationChannel
+  event       String
+  recipient   String? // nomor WhatsApp tujuan
+  title       String?
+  message     String?  @db.Text
+
+  status  NotificationDeliveryStatus @default(PENDING)
+  attempts Int @default(0)
+  lastError String? @db.Text
+  sentAt  DateTime?
+  scheduledFor DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([channel])
+  @@index([status])
+  @@index([createdAt])
+  @@index([userId, channel, status])
+  @@index([event])
 }
 
 // ============================================
