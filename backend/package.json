@@ -26,6 +26,7 @@
     "db:seed:full": "ts-node prisma/seed-full.ts"
   },
   "dependencies": {
+    "@googleapis/drive": "^21.0.0",
     "@json2csv/plainjs": "^7.0.6",
     "@nestjs/common": "^10.2.10",
     "@nestjs/config": "^4.0.4",

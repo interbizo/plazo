@@ -435,4 +435,6 @@ export const adminApi = {
     api.delete(`${BASE}/database/backups/${filename}`),
   restoreDatabaseBackup: (filename: string) => 
     api.post(`${BASE}/database/backups/${filename}/restore`),
+  getBackupConfig: () => api.get(`${BASE}/database/backup-config`),
+  testDriveConnection: () => api.post(`${BASE}/database/backup-config/test-drive`),
 };

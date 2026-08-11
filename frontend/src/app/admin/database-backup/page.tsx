@@ -2,22 +2,23 @@
 
 import { useEffect, useState } from "react";
 import { adminApi } from "@/services/admin.service";
-import { formatDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ConfirmDialog, Modal } from "@/components/ui/modal";
 import {
   Database,
   Download,
   Trash2,
   RefreshCw,
-  AlertTriangle,
   CheckCircle,
   HardDrive,
   Table,
   FileText,
   RotateCcw,
+  Cloud,
+  Clock,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -33,15 +34,38 @@ interface BackupInfo {
   size: number;
   createdAt: string;
   type: "manual" | "auto";
+  driveFileId?: string;
+}
+
+interface BackupConfig {
+  autoBackup: {
+    enabled: boolean;
+    cronSchedule: string;
+  };
+  googleDrive: {
+    enabled: boolean;
+    configured: boolean;
+    authMode: "oauth";
+    folderId: string | null;
+  };
 }
 
 export default function DatabaseBackupPage() {
   const [stats, setStats] = useState<DatabaseStats | null>(null);
   const [backups, setBackups] = useState<BackupInfo[]>([]);
+  const [config, setConfig] = useState<BackupConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreatingBackup, setIsCreatingBackup] = useState(false);
   const [deletingBackup, setDeletingBackup] = useState<string | null>(null);
   const [restoringBackup, setRestoringBackup] = useState<string | null>(null);
+  const [isTestingDrive, setIsTestingDrive] = useState(false);
+
+  // Modal states
+  const [confirmCreate, setConfirmCreate] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [confirmRestore, setConfirmRestore] = useState<string | null>(null);
+  const [restoreConfirmText, setRestoreConfirmText] = useState("");
+  const [isRestoring, setIsRestoring] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -50,13 +74,15 @@ export default function DatabaseBackupPage() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [statsRes, backupsRes] = await Promise.all([
+      const [statsRes, backupsRes, configRes] = await Promise.all([
         adminApi.getDatabaseStats(),
         adminApi.listDatabaseBackups(),
+        adminApi.getBackupConfig(),
       ]);
 
       setStats(statsRes.data || null);
       setBackups(backupsRes.data?.data || []);
+      setConfig(configRes.data?.data || configRes.data || null);
     } catch (error: any) {
       console.error("Error loading backup data:", error);
       toast.error(error?.response?.data?.message || "Gagal memuat data backup");
@@ -65,14 +91,29 @@ export default function DatabaseBackupPage() {
     }
   };
 
-  const handleCreateBackup = async () => {
-    if (!confirm("Apakah Anda yakin ingin membuat backup database?")) {
-      return;
+  const handleTestDrive = async () => {
+    setIsTestingDrive(true);
+    try {
+      const response = await adminApi.testDriveConnection();
+      const result = response.data?.data || response.data;
+      if (result?.ok) {
+        toast.success(result.message || "Koneksi Google Drive berhasil!");
+      } else {
+        toast.error(result?.message || "Koneksi Google Drive gagal");
+      }
+    } catch (error: any) {
+      console.error("Error testing drive connection:", error);
+      toast.error(error?.response?.data?.message || "Gagal menguji koneksi Google Drive");
+    } finally {
+      setIsTestingDrive(false);
     }
+  };
 
+  const handleCreateBackup = async () => {
+    setConfirmCreate(false);
     setIsCreatingBackup(true);
     try {
-      const response = await adminApi.createDatabaseBackup();
+      await adminApi.createDatabaseBackup();
       toast.success("Backup database berhasil dibuat!");
       loadData();
     } catch (error: any) {
@@ -87,13 +128,9 @@ export default function DatabaseBackupPage() {
     try {
       toast.loading("Mempersiapkan download...", { id: "download-backup" });
       
-      // Use adminApi method which includes authorization
       const response = await adminApi.downloadDatabaseBackup(filename);
       
-      // Create blob from response
       const blob = new Blob([response.data], { type: "application/sql" });
-      
-      // Create download link
       const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = downloadUrl;
@@ -101,7 +138,6 @@ export default function DatabaseBackupPage() {
       document.body.appendChild(link);
       link.click();
       
-      // Cleanup
       document.body.removeChild(link);
       window.URL.revokeObjectURL(downloadUrl);
       
@@ -112,15 +148,10 @@ export default function DatabaseBackupPage() {
     }
   };
 
-  const handleDeleteBackup = async (filename: string) => {
-    if (
-      !confirm(
-        `Apakah Anda yakin ingin menghapus backup "${filename}"?\n\nTindakan ini tidak dapat dibatalkan.`
-      )
-    ) {
-      return;
-    }
-
+  const handleDeleteBackup = async () => {
+    const filename = confirmDelete;
+    if (!filename) return;
+    setConfirmDelete(null);
     setDeletingBackup(filename);
     try {
       await adminApi.deleteDatabaseBackup(filename);
@@ -134,39 +165,21 @@ export default function DatabaseBackupPage() {
     }
   };
 
-  const handleRestoreBackup = async (filename: string) => {
-    if (
-      !confirm(
-        `⚠️ PERINGATAN PENTING ⚠️\n\nAnda akan me-restore database dari backup "${filename}".\n\nSemua data saat ini akan DIGANTI dengan data dari backup ini.\n\nSangat disarankan untuk membuat backup terlebih dahulu sebelum restore.\n\nApakah Anda yakin ingin melanjutkan?`
-      )
-    ) {
-      return;
-    }
-
-    // Double confirmation
-    const confirmText = prompt(
-      'Ketik "RESTORE" (huruf besar) untuk mengkonfirmasi restore database:'
-    );
-
-    if (confirmText !== "RESTORE") {
-      toast.error("Restore dibatalkan");
-      return;
-    }
-
-    setRestoringBackup(filename);
+  const handleRestoreBackup = async () => {
+    const filename = confirmRestore;
+    if (!filename) return;
+    setConfirmRestore(null);
+    setIsRestoring(true);
     try {
       await adminApi.restoreDatabaseBackup(filename);
-      toast.success("Database berhasil di-restore! Halaman akan di-refresh...");
-      
-      // Refresh page after 2 seconds
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
+      toast.success("Database berhasil di-restore!");
+      loadData();
     } catch (error: any) {
       console.error("Error restoring backup:", error);
       toast.error(error?.response?.data?.message || "Gagal restore database");
     } finally {
-      setRestoringBackup(null);
+      setIsRestoring(false);
+      setRestoreConfirmText("");
     }
   };
 
@@ -176,6 +189,18 @@ export default function DatabaseBackupPage() {
     const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
+  };
+
+  const formatDateTime = (date: string): string => {
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return "-";
+    return new Intl.DateTimeFormat("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(d);
   };
 
   if (isLoading) {
@@ -245,7 +270,7 @@ export default function DatabaseBackupPage() {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <Button
-            onClick={handleCreateBackup}
+            onClick={() => setConfirmCreate(true)}
             isLoading={isCreatingBackup}
             className="bg-emerald-600 hover:bg-emerald-700 text-white"
           >
@@ -257,27 +282,82 @@ export default function DatabaseBackupPage() {
             Refresh
           </Button>
         </div>
-        <Badge variant="warning" className="flex items-center gap-1">
-          <AlertTriangle className="h-3 w-3" />
+        <Badge variant="warning">
           Super Admin Only
         </Badge>
       </div>
 
-      {/* Warning Notice */}
-      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 mb-6">
-        <div className="flex items-start gap-3">
-          <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <h3 className="text-sm font-semibold text-amber-900 mb-1">
-              Peringatan Penting
-            </h3>
-            <ul className="text-xs text-amber-800 space-y-1">
-              <li>• Backup database berisi semua data sensitif sistem</li>
-              <li>• Simpan file backup di tempat yang aman</li>
-              <li>• Restore database akan mengganti semua data saat ini</li>
-              <li>• Selalu buat backup sebelum melakukan restore</li>
-              <li>• Proses backup/restore dapat memakan waktu beberapa menit</li>
-            </ul>
+      {/* Auto Backup & Google Drive Settings */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-100">
+              <Clock className="h-5 w-5 text-indigo-600" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900">Auto Backup</h3>
+              <p className="text-xs text-gray-500">Backup terjadwal otomatis</p>
+            </div>
+          </div>
+          <div className="space-y-2 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-gray-500">Status</span>
+              {config?.autoBackup.enabled ? (
+                <Badge variant="success">Aktif</Badge>
+              ) : (
+                <Badge variant="warning">Nonaktif</Badge>
+              )}
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-gray-500">Jadwal</span>
+              <span className="text-gray-900">
+                {config?.autoBackup.cronSchedule === "0 1 * * *" && "Setiap hari pukul 01.00"}
+                {config?.autoBackup.cronSchedule === "0 2 * * *" && "Setiap hari pukul 02.00"}
+                {config?.autoBackup.cronSchedule === "0 */5 * * *" && "Tiap 5 menit"}
+                {!["0 1 * * *", "0 2 * * *", "0 */5 * * *"].includes(config?.autoBackup.cronSchedule || "") && (config?.autoBackup.cronSchedule || "-")}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-gray-500">Penyimpanan</span>
+              <span className="text-gray-900">
+                {config?.googleDrive.enabled && config?.googleDrive.configured
+                  ? "Google Drive"
+                  : "Server"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sky-100">
+              <Cloud className="h-5 w-5 text-sky-600" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900">Google Drive</h3>
+              <p className="text-xs text-gray-500">Backup tersimpan ke cloud</p>
+            </div>
+          </div>
+          <div className="space-y-2 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-gray-500">Status</span>
+              {config?.googleDrive.enabled && config?.googleDrive.configured ? (
+                <Badge variant="success">Terhubung</Badge>
+              ) : (
+                <Badge variant="warning">Belum diatur</Badge>
+              )}
+            </div>
+            <div className="flex items-center justify-end gap-2 mt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleTestDrive}
+                isLoading={isTestingDrive}
+              >
+                <Cloud className="h-3.5 w-3.5 mr-1" />
+                Uji Koneksi
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -337,7 +417,7 @@ export default function DatabaseBackupPage() {
                       </Badge>
                     </td>
                     <td className="px-4 py-3 text-center text-xs text-gray-600">
-                      {formatDate(backup.createdAt)}
+                      {formatDateTime(backup.createdAt)}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-center gap-1">
@@ -352,7 +432,7 @@ export default function DatabaseBackupPage() {
 
                         {/* Restore */}
                         <button
-                          onClick={() => handleRestoreBackup(backup.filename)}
+                          onClick={() => setConfirmRestore(backup.filename)}
                           disabled={restoringBackup === backup.filename}
                           className="rounded-lg p-1.5 text-emerald-500 hover:bg-emerald-50 transition-colors disabled:opacity-50"
                           title="Restore Database"
@@ -366,7 +446,7 @@ export default function DatabaseBackupPage() {
 
                         {/* Delete */}
                         <button
-                          onClick={() => handleDeleteBackup(backup.filename)}
+                          onClick={() => setConfirmDelete(backup.filename)}
                           disabled={deletingBackup === backup.filename}
                           className="rounded-lg p-1.5 text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
                           title="Hapus Backup"
@@ -387,24 +467,74 @@ export default function DatabaseBackupPage() {
         </div>
       )}
 
-      {/* Info Footer */}
-      <div className="mt-6 rounded-xl border border-blue-200 bg-blue-50 p-4">
-        <div className="flex items-start gap-3">
-          <CheckCircle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <h3 className="text-sm font-semibold text-blue-900 mb-1">
-              Tips Backup Database
-            </h3>
-            <ul className="text-xs text-blue-800 space-y-1">
-              <li>• Buat backup secara rutin (minimal 1x seminggu)</li>
-              <li>• Simpan backup di multiple lokasi (local + cloud)</li>
-              <li>• Test restore backup secara berkala</li>
-              <li>• Hapus backup lama yang tidak diperlukan</li>
-              <li>• Sistem otomatis menyimpan maksimal 30 backup terakhir</li>
-            </ul>
+      {/* Confirm Dialog - Buat Backup */}
+      <ConfirmDialog
+        isOpen={confirmCreate}
+        onClose={() => setConfirmCreate(false)}
+        onConfirm={handleCreateBackup}
+        title="Buat Backup"
+        message="Buat backup database sekarang?"
+        confirmText="Ya, Buat Backup"
+        variant="info"
+        isLoading={isCreatingBackup}
+      />
+
+      {/* Confirm Dialog - Hapus Backup */}
+      <ConfirmDialog
+        isOpen={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={handleDeleteBackup}
+        title="Hapus Backup"
+        message={`Hapus backup "${confirmDelete}"? Tindakan ini tidak dapat dibatalkan.`}
+        confirmText="Hapus"
+        variant="danger"
+        isLoading={!!deletingBackup}
+      />
+
+      {/* Modal - Konfirmasi Restore */}
+      <Modal
+        isOpen={!!confirmRestore}
+        onClose={() => { setConfirmRestore(null); setRestoreConfirmText(""); }}
+        title="Restore Database"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+            <p className="text-sm text-red-800">
+              Data saat ini akan <strong>diganti</strong> dengan isi backup ini.
+              Data setelah waktu backup akan <strong>hilang</strong>.
+            </p>
+          </div>
+          <p className="text-sm text-gray-600">
+            Ketik <strong>RESTORE</strong> (huruf besar) untuk melanjutkan:
+          </p>
+          <input
+            type="text"
+            value={restoreConfirmText}
+            onChange={(e) => setRestoreConfirmText(e.target.value)}
+            placeholder="RESTORE"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+            autoFocus
+          />
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={() => { setConfirmRestore(null); setRestoreConfirmText(""); }}
+              disabled={isRestoring}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="danger"
+              onClick={handleRestoreBackup}
+              isLoading={isRestoring}
+              disabled={restoreConfirmText !== "RESTORE"}
+            >
+              Restore Sekarang
+            </Button>
           </div>
         </div>
-      </div>
+      </Modal>
     </div>
   );
 }

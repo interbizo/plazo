@@ -977,6 +977,18 @@ export class AdminController {
     return this.adminService.restoreDatabaseBackup(filename, adminId);
   }
 
+  @Get("database/backup-config")
+  @Roles(UserRole.SUPER_ADMIN)
+  getBackupConfig() {
+    return this.adminService.getBackupConfig();
+  }
+
+  @Post("database/backup-config/test-drive")
+  @Roles(UserRole.SUPER_ADMIN)
+  testGoogleDriveConnection() {
+    return this.adminService.testGoogleDriveConnection();
+  }
+
   // ============ DATA EXPORT FOR CRM ============
 
   @Get("export/users")

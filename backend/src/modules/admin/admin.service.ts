@@ -39,6 +39,7 @@ import * as bcrypt from "bcryptjs";
 import { SellerTier, SubscriptionPlan, UserRole } from "@prisma/client";
 import { SubscriptionService } from "../subscription/subscription.service";
 import { NotificationEventsService } from "../notifications/notification-events.service";
+import { DatabaseBackupService } from "./database-backup.service";
 import { Parser } from '@json2csv/plainjs';
 import * as ExcelJS from 'exceljs';
 import * as path from 'path';
@@ -49,6 +50,7 @@ export class AdminService {
     private prisma: PrismaService,
     private subscriptionService: SubscriptionService,
     private notificationEvents: NotificationEventsService,
+    private backupService: DatabaseBackupService,
   ) {}
 
   // ============ USER MANAGEMENT ============
@@ -4755,9 +4757,7 @@ export class AdminService {
 
   async getDatabaseStats() {
     try {
-      const { DatabaseBackupService } = await import('./database-backup.service');
-      const backupService = new DatabaseBackupService(this.prisma);
-      return await backupService.getDatabaseStats();
+      return await this.backupService.getDatabaseStats();
     } catch (error) {
       console.error('[Admin] Error getting database stats:', error);
       throw new BadRequestException('Failed to get database stats');
@@ -4767,11 +4767,8 @@ export class AdminService {
   async createDatabaseBackup(adminId: string): Promise<any> {
     try {
       console.log(`[Admin] Creating database backup by admin: ${adminId}`);
-      
-      const { DatabaseBackupService } = await import('./database-backup.service');
-      const backupService = new DatabaseBackupService(this.prisma);
-      
-      const backup = await backupService.createBackup(adminId, 'manual');
+
+      const backup = await this.backupService.createBackup(adminId, 'manual');
       
       return {
         success: true,
@@ -4786,10 +4783,7 @@ export class AdminService {
 
   async listDatabaseBackups(): Promise<any> {
     try {
-      const { DatabaseBackupService } = await import('./database-backup.service');
-      const backupService = new DatabaseBackupService(this.prisma);
-      
-      const backups = await backupService.listBackups();
+      const backups = await this.backupService.listBackups();
       
       return {
         success: true,
@@ -4803,10 +4797,7 @@ export class AdminService {
 
   async getBackupFilePath(filename: string): Promise<string> {
     try {
-      const { DatabaseBackupService } = await import('./database-backup.service');
-      const backupService = new DatabaseBackupService(this.prisma);
-      
-      return await backupService.getBackupPath(filename);
+      return await this.backupService.getBackupPath(filename);
     } catch (error) {
       console.error('[Admin] Error getting backup file path:', error);
       throw new NotFoundException('Backup file not found');
@@ -4817,10 +4808,7 @@ export class AdminService {
     try {
       console.log(`[Admin] Deleting database backup: ${filename} by admin: ${adminId}`);
       
-      const { DatabaseBackupService } = await import('./database-backup.service');
-      const backupService = new DatabaseBackupService(this.prisma);
-      
-      await backupService.deleteBackup(filename, adminId);
+      await this.backupService.deleteBackup(filename, adminId);
       
       return {
         success: true,
@@ -4836,10 +4824,7 @@ export class AdminService {
     try {
       console.log(`[Admin] Restoring database from backup: ${filename} by admin: ${adminId}`);
       
-      const { DatabaseBackupService } = await import('./database-backup.service');
-      const backupService = new DatabaseBackupService(this.prisma);
-      
-      await backupService.restoreBackup(filename, adminId);
+      await this.backupService.restoreBackup(filename, adminId);
       
       return {
         success: true,
@@ -4849,6 +4834,14 @@ export class AdminService {
       console.error('[Admin] Error restoring database backup:', error);
       throw error;
     }
+  }
+
+  async getBackupConfig() {
+    return this.backupService.getBackupConfig();
+  }
+
+  async testGoogleDriveConnection() {
+    return this.backupService.testGoogleDrive();
   }
 
   // ============ DATA EXPORT FOR CRM ============

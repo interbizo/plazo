@@ -1,9 +1,11 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
 import { PrismaService } from '../database/prisma.service';
+import { GoogleDriveService } from './google-drive.service';
 
 const execAsync = promisify(exec);
 
@@ -13,19 +15,30 @@ interface BackupInfo {
   size: number;
   createdAt: Date;
   type: 'manual' | 'auto';
+  driveFileId?: string;
 }
 
 export { BackupInfo };
 
 @Injectable()
 export class DatabaseBackupService {
+  private readonly logger = new Logger(DatabaseBackupService.name);
   private readonly backupDir: string;
   private readonly maxBackups: number = 30; // Keep last 30 backups
 
-  constructor(private prisma: PrismaService) {
+  constructor(
+    private prisma: PrismaService,
+    private googleDrive: GoogleDriveService,
+  ) {
     // Create backup directory if not exists
     this.backupDir = path.join(process.cwd(), 'backups', 'database');
     this.ensureBackupDirectory();
+  }
+
+  // True bila Google Drive aktif & terkonfigurasi -> penyimpanan utama adalah Drive.
+  // Bila false (Drive belum diatur), backup fallback ke folder lokal.
+  private isDriveStorage(): boolean {
+    return this.googleDrive.isEnabled() && this.googleDrive.isConfigured();
   }
 
   /**
@@ -62,15 +75,31 @@ export class DatabaseBackupService {
       const command = this.buildBackupCommand(dbConfig, filepath);
       
       console.log(`[Backup] Executing backup command...`);
-      await execAsync(command);
+      await execAsync(command, { env: { ...process.env, PGPASSWORD: dbConfig.password } });
 
       // Get file stats
       const stats = fs.statSync(filepath);
       
       console.log(`[Backup] Backup created successfully: ${filename} (${this.formatBytes(stats.size)})`);
 
+      // Upload to Google Drive bila diaktifkan
+      let driveFileId: string | undefined;
+      if (this.googleDrive.isEnabled() && this.googleDrive.isConfigured()) {
+        try {
+          driveFileId = await this.googleDrive.uploadFile(filepath, filename);
+        } catch (uploadError) {
+          console.error('[Backup] Error uploading to Google Drive:', uploadError);
+        }
+      }
+
+      // Mode Drive: hapus file lokal (temp) setelah upload sukses ke Drive
+      if (driveFileId) {
+        fs.unlinkSync(filepath);
+        console.log(`[Backup] Local temp file removed (${filename})`);
+      }
+
       // Log backup to database
-      await this.logBackup(adminId, filename, stats.size, type);
+      await this.logBackup(adminId, filename, stats.size, type, driveFileId);
 
       // Cleanup old backups
       await this.cleanupOldBackups();
@@ -81,6 +110,7 @@ export class DatabaseBackupService {
         size: stats.size,
         createdAt: new Date(),
         type,
+        driveFileId,
       };
     } catch (error) {
       console.error('[Backup] Error creating backup:', error);
@@ -88,6 +118,36 @@ export class DatabaseBackupService {
         `Failed to create backup: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
+  }
+
+  // Auto backup berjalan sesuai jadwal di env BACKUP_CRON_SCHEDULE (default setiap hari 01:00).
+  // Aktif bila BACKUP_AUTO_ENABLED=true.
+  @Cron(process.env.BACKUP_CRON_SCHEDULE || "0 1 * * *")
+  async handleAutoBackup(): Promise<void> {
+    if (process.env.BACKUP_AUTO_ENABLED !== "true") return;
+
+    this.logger.log("Running scheduled auto backup");
+    try {
+      await this.createBackup("system", "auto");
+    } catch (error) {
+      this.logger.error("Auto backup failed:", error);
+    }
+  }
+
+  // Status konfigurasi backup (auto + Google Drive) dari environment.
+  getBackupConfig() {
+    return {
+      autoBackup: {
+        enabled: process.env.BACKUP_AUTO_ENABLED === "true",
+        cronSchedule: process.env.BACKUP_CRON_SCHEDULE || "0 1 * * *",
+      },
+      googleDrive: this.googleDrive.getStatus(),
+    };
+  }
+
+  // Uji koneksi Google Drive untuk verifikasi konfigurasi dari UI.
+  async testGoogleDrive() {
+    return this.googleDrive.testConnection();
   }
 
   /**
@@ -131,11 +191,9 @@ export class DatabaseBackupService {
     // Use 127.0.0.1 instead of localhost to avoid IPv6 issues
     const host = config.host === 'localhost' ? '127.0.0.1' : config.host;
     
-    // Escape password for shell - replace single quotes with '\''
-    const escapedPassword = config.password.replace(/'/g, "'\\''");
-    
-    // Use pg_dump for PostgreSQL with proper escaping
-    return `PGPASSWORD='${escapedPassword}' pg_dump -h ${host} -p ${config.port} -U ${config.username} -d ${config.database} -F p -f "${filepath}"`;
+    // Use pg_dump for PostgreSQL. Password dikirim via env (PGPASSWORD) agar
+    // kompatibel lintas OS (prefix PGPASSWORD='...' hanya berfungsi di Unix shell).
+    return `pg_dump -h ${host} -p ${config.port} -U ${config.username} -d ${config.database} -F p -f "${filepath}"`;
   }
 
   /**
@@ -144,6 +202,22 @@ export class DatabaseBackupService {
   async listBackups(): Promise<BackupInfo[]> {
     try {
       console.log('[Backup] Listing backups');
+
+      // Mode Drive: baca daftar langsung dari Google Drive
+      if (this.isDriveStorage()) {
+        const driveFiles = await this.googleDrive.listBackupFiles();
+        const backups: BackupInfo[] = driveFiles.map((file) => ({
+          filename: file.name,
+          filepath: file.id, // gunakan fileId sebagai identitas
+          size: Number(file.size || 0),
+          createdAt: file.createdTime ? new Date(file.createdTime) : new Date(),
+          type: 'auto',
+          driveFileId: file.id,
+        }));
+
+        console.log(`[Backup] Found ${backups.length} backups on Google Drive`);
+        return backups;
+      }
 
       const files = fs.readdirSync(this.backupDir);
       const backups: BackupInfo[] = [];
@@ -178,6 +252,25 @@ export class DatabaseBackupService {
    * Get backup file path
    */
   async getBackupPath(filename: string): Promise<string> {
+    // Mode Drive: download dari Google Drive ke folder temp dulu
+    if (this.isDriveStorage()) {
+      const driveFiles = await this.googleDrive.listBackupFiles();
+      const driveFile = driveFiles.find((file) => file.name === filename);
+
+      if (!driveFile) {
+        throw new BadRequestException('Backup file not found on Google Drive');
+      }
+
+      const tempDir = path.join(this.backupDir, 'temp');
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+
+      const tempPath = path.join(tempDir, filename);
+      await this.googleDrive.downloadFile(driveFile.id, tempPath);
+      return tempPath;
+    }
+
     const filepath = path.join(this.backupDir, filename);
 
     if (!fs.existsSync(filepath)) {
@@ -193,6 +286,20 @@ export class DatabaseBackupService {
   async deleteBackup(filename: string, adminId: string): Promise<void> {
     try {
       console.log(`[Backup] Deleting backup: ${filename} by admin: ${adminId}`);
+
+      // Mode Drive: hapus dari Google Drive
+      if (this.isDriveStorage()) {
+        const driveFiles = await this.googleDrive.listBackupFiles();
+        const driveFile = driveFiles.find((file) => file.name === filename);
+
+        if (!driveFile) {
+          throw new BadRequestException('Backup file not found on Google Drive');
+        }
+
+        await this.googleDrive.deleteFile(driveFile.id);
+        console.log(`[Backup] Backup deleted from Google Drive: ${filename}`);
+        return;
+      }
 
       const filepath = path.join(this.backupDir, filename);
 
@@ -215,11 +322,7 @@ export class DatabaseBackupService {
     try {
       console.log(`[Backup] Starting restore from: ${filename} by admin: ${adminId}`);
 
-      const filepath = path.join(this.backupDir, filename);
-
-      if (!fs.existsSync(filepath)) {
-        throw new BadRequestException('Backup file not found');
-      }
+      const filepath = await this.getBackupPath(filename);
 
       // Get database connection info
       const databaseUrl = process.env.DATABASE_URL;
@@ -232,16 +335,18 @@ export class DatabaseBackupService {
       // Use 127.0.0.1 instead of localhost to avoid IPv6 issues
       const host = dbConfig.host === 'localhost' ? '127.0.0.1' : dbConfig.host;
       
-      // Escape password for shell
-      const escapedPassword = dbConfig.password.replace(/'/g, "'\\''");
-
-      // Restore using psql
-      const command = `PGPASSWORD='${escapedPassword}' psql -h ${host} -p ${dbConfig.port} -U ${dbConfig.username} -d ${dbConfig.database} -f "${filepath}"`;
+      // Restore using psql (password dikirim via env, kompatibel lintas OS)
+      const command = `psql -h ${host} -p ${dbConfig.port} -U ${dbConfig.username} -d ${dbConfig.database} -f "${filepath}"`;
 
       console.log(`[Backup] Executing restore command...`);
-      await execAsync(command);
+      await execAsync(command, { env: { ...process.env, PGPASSWORD: dbConfig.password } });
 
       console.log(`[Backup] Database restored successfully from: ${filename}`);
+
+      // Hapus file temp hasil download dari Drive setelah restore selesai
+      if (this.isDriveStorage() && fs.existsSync(filepath)) {
+        fs.unlinkSync(filepath);
+      }
 
       // Log restore action
       await this.logRestore(adminId, filename);
@@ -266,8 +371,34 @@ export class DatabaseBackupService {
         console.log(`[Backup] Cleaning up ${toDelete.length} old backups`);
 
         for (const backup of toDelete) {
-          fs.unlinkSync(backup.filepath);
+          if (this.isDriveStorage() && backup.driveFileId) {
+            await this.googleDrive.deleteFile(backup.driveFileId);
+          } else if (fs.existsSync(backup.filepath)) {
+            fs.unlinkSync(backup.filepath);
+          }
           console.log(`[Backup] Deleted old backup: ${backup.filename}`);
+        }
+      }
+
+      // Mode lokal: cleanup file backup lama di Google Drive juga (di luar retensi)
+      if (
+        !this.isDriveStorage() &&
+        this.googleDrive.isEnabled() &&
+        this.googleDrive.isConfigured()
+      ) {
+        const driveFiles = await this.googleDrive.listBackupFiles();
+        const driveToDelete = driveFiles.slice(this.maxBackups);
+
+        for (const file of driveToDelete) {
+          try {
+            await this.googleDrive.deleteFile(file.id);
+          } catch (error) {
+            console.error(`[Backup] Error deleting Google Drive file ${file.name}:`, error);
+          }
+        }
+
+        if (driveToDelete.length > 0) {
+          console.log(`[Backup] Deleted ${driveToDelete.length} old Google Drive backups`);
         }
       }
     } catch (error) {
@@ -278,7 +409,7 @@ export class DatabaseBackupService {
   /**
    * Log backup to database
    */
-  private async logBackup(adminId: string, filename: string, size: number, type: string): Promise<void> {
+  private async logBackup(adminId: string, filename: string, size: number, type: string, driveFileId?: string): Promise<void> {
     try {
       await this.prisma.activityLog.create({
         data: {
@@ -289,6 +420,7 @@ export class DatabaseBackupService {
             size,
             type,
             sizeFormatted: this.formatBytes(size),
+            driveFileId: driveFileId || null,
           },
         } as any,
       });
