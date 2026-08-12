@@ -79,6 +79,7 @@ export function NotificationToastListener() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const user = useAuthStore((s) => s.user);
   const addNotification = useNotificationStore((s) => s.addNotification);
+  const markAsRead = useNotificationStore((s) => s.markAsRead);
 
   // Enable cross-tab notification sync
   useNotificationSync();
@@ -88,6 +89,10 @@ export function NotificationToastListener() {
     addNotification(notif);
     const route = getNotificationRoute(notif, user?.role);
     showNotificationToast(notif, () => {
+      // Tandai dibaca saat toast diklik, supaya is_read benar-benar berubah.
+      if (!notif.isRead) {
+        void markAsRead(notif.id);
+      }
       if (route) {
         router.push(route);
       }

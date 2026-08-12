@@ -121,13 +121,25 @@ export class NotificationsService {
     userId: string,
     notificationId: string,
   ) {
-    const notification = await this.prisma.notification.findFirst({
-      where: {
-        id: notificationId,
-        userId,
-        ...(tenantId ? { tenantId } : {}),
-      },
+    const baseWhere = {
+      id: notificationId,
+      userId,
+      ...(tenantId ? { tenantId } : {}),
+    };
+
+    let notification = await this.prisma.notification.findFirst({
+      where: baseWhere,
     });
+
+    // Notifikasi admin/platform bisa dibuat dengan tenantId event source yang
+    // berbeda dari tenant header request (mis. SUPER_ADMIN dengan subdomain
+    // tersimpan dari kunjungan toko). Ulangi pencarian tanpa filter tenant
+    // agar mark-as-read tetap bekerja lintas tenant.
+    if (!notification && tenantId) {
+      notification = await this.prisma.notification.findFirst({
+        where: { id: notificationId, userId },
+      });
+    }
 
     if (!notification) {
       throw new BadRequestException("Notifikasi tidak ditemukan");

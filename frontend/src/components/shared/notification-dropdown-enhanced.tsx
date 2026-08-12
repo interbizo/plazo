@@ -34,6 +34,13 @@ type FilterType =
   | "payment"
   | "system";
 
+// Registry bersama semua instance dropdown yang sedang ter-mount. Layout
+// dashboard merender komponen ini dua kali (header mobile + sidebar desktop)
+// dan keduanya berbagi store singleton isOpen. Tanpa registry ini, instance
+// yang tersembunyi akan menutup dropdown ketika klik ada di instance lain,
+// sehingga panel ter-unmount sebelum event click sampai ke item notifikasi.
+const mountedDropdownRefs = new Set<HTMLDivElement>();
+
 export function NotificationDropdownEnhanced({
   role,
 }: NotificationDropdownEnhancedProps) {
@@ -70,13 +77,23 @@ export function NotificationDropdownEnhanced({
     fetchUnreadCount();
   }, [fetchUnreadCount]);
 
-  // Close on outside click
+  // Daftarkan container ke registry agar klik di instance lain tidak
+  // dianggap "klik di luar" oleh instance yang tersembunyi (mobile/desktop).
+  useEffect(() => {
+    if (dropdownRef.current) mountedDropdownRefs.add(dropdownRef.current);
+    return () => {
+      if (dropdownRef.current) mountedDropdownRefs.delete(dropdownRef.current);
+    };
+  }, []);
+
+  // Close on outside click — hanya bila klik di luar SEMUA instance dropdown.
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target as Node)
-      ) {
+      const target = e.target as Node;
+      const isInsideAnyDropdown = Array.from(mountedDropdownRefs).some((ref) =>
+        ref.contains(target),
+      );
+      if (!isInsideAnyDropdown) {
         setOpen(false);
       }
     };

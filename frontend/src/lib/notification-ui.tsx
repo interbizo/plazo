@@ -238,7 +238,19 @@ export function getNotificationRoute(
         ? appendQuery("/admin/affiliates", "claimId", referenceId)
         : "/seller/dashboard/affiliate";
     case "withdrawal":
-      return role === "SELLER" ? "/seller/dashboard" : getFallbackRoute(role);
+      if (role === "SELLER") return "/seller/dashboard";
+      if (isAdminRole(role)) return "/admin";
+      return getFallbackRoute(role);
+    case "flash_sale":
+      if (isAdminRole(role)) return "/admin/cms";
+      if (role === "SELLER") return "/seller/dashboard/promotions";
+      return getFallbackRoute(role);
+    case "dispute":
+      if (isAdminRole(role)) return "/admin/chat";
+      return getFallbackRoute(role);
+    case "security":
+      if (isAdminRole(role)) return "/admin/audit-logs";
+      return getFallbackRoute(role);
   }
 
   if (type === "CHAT") {
@@ -304,6 +316,21 @@ export function getNotificationRoute(
         : "/seller/dashboard/services";
     case "AFFILIATE":
       return isAdminRole(role) ? "/admin/affiliates" : "/seller/dashboard/affiliate";
+    case "FLASH_SALE":
+      if (isAdminRole(role)) return "/admin/cms";
+      if (role === "SELLER") return "/seller/dashboard/promotions";
+      return getFallbackRoute(role);
+    case "DISPUTE":
+      if (isAdminRole(role)) return "/admin/chat";
+      return getFallbackRoute(role);
+    case "SECURITY":
+    case "ALERT":
+      if (isAdminRole(role)) return "/admin/audit-logs";
+      return getFallbackRoute(role);
+    case "WITHDRAWAL":
+      if (role === "SELLER") return "/seller/dashboard";
+      if (isAdminRole(role)) return "/admin";
+      return getFallbackRoute(role);
     default:
       return getFallbackRoute(role);
   }
