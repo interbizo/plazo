@@ -49,3 +49,4 @@ frontend/next-env.d.ts
 **/.vercel/
 **/.prisma/
 backend/prisma/*.db
+.env
