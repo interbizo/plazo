@@ -442,7 +442,12 @@ export class AdminController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const fileData = await this.adminService.getKycFile(id, type);
-    
+
+    // Mode S3 — file disimpan di object storage, redirect ke URL publik bucket
+    if (fileData.externalUrl) {
+      return res.redirect(302, fileData.externalUrl);
+    }
+
     // Check if file exists
     if (!existsSync(fileData.filePath)) {
       throw new NotFoundException("File not found");

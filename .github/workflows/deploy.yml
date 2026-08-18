@@ -1,69 +1,137 @@
-name: Deploy to VPS
+name: Deploy Plazo ke VPS
 
 on:
   push:
-    branches: [main]
-  workflow_dispatch: # Allow manual trigger
+    branches: [main, develop]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/plazo
 
 jobs:
-  deploy:
-    name: Deploy to Production
+  # ============ PRODUCTION (branch main) ============
+  deploy-production:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    
+    permissions:
+      contents: read
+      packages: write
+
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Deploy to VPS via SSH
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Login ke GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push Frontend (prod)
+        uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          file: frontend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-frontend:prod
+            ${{ env.IMAGE_PREFIX }}-frontend:prod-${{ github.sha }}
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
+            NEXT_PUBLIC_WS_URL=${{ secrets.NEXT_PUBLIC_WS_URL }}
+            NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}
+            NEXT_PUBLIC_BASE_DOMAIN=${{ secrets.NEXT_PUBLIC_BASE_DOMAIN }}
+            NEXT_PUBLIC_MAIN_DOMAIN=${{ secrets.NEXT_PUBLIC_MAIN_DOMAIN }}
+            NEXT_PUBLIC_MAIN_DOMAIN_URL=${{ secrets.NEXT_PUBLIC_MAIN_DOMAIN_URL }}
+            NEXT_PUBLIC_TURNSTILE_SITE_KEY=${{ secrets.NEXT_PUBLIC_TURNSTILE_SITE_KEY }}
+            NEXT_PUBLIC_S3_PUBLIC_URL=${{ secrets.NEXT_PUBLIC_S3_PUBLIC_URL }}
+
+      - name: Build & push Backend (prod)
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          file: backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-backend:prod
+            ${{ env.IMAGE_PREFIX }}-backend:prod-${{ github.sha }}
+
+      - name: Deploy ke VPS-1 (web) — production
+        uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          port: ${{ secrets.VPS_PORT }}
-          script_stop: true
+          port: ${{ secrets.VPS_SSH_PORT || 22 }}
           script: |
-            echo "=========================================="
-            echo "  PLAZO MARKETPLACE — AUTO DEPLOY"
-            echo "  $(date '+%Y-%m-%d %H:%M:%S')"
-            echo "=========================================="
-            
-            APP_DIR="/home/deploy/apps/plazo"
-            cd "$APP_DIR"
-            
-            # Pull latest code
-            echo "[1/8] Pulling latest code..."
-            git pull origin main
-            
-            # Backend
-            echo "[2/8] Installing backend dependencies..."
-            cd "$APP_DIR/backend"
-            npm ci --production
-            
-            echo "[3/8] Generating Prisma client..."
-            npx prisma generate
-            
-            echo "[4/8] Running database migrations..."
-            npx prisma migrate deploy
-            
-            echo "[5/8] Building backend..."
-            npm run build
-            
-            echo "[6/8] Restarting backend..."
-            pm2 reload plazo-backend --update-env
-            
-            # Frontend
-            echo "[7/8] Building frontend..."
-            cd "$APP_DIR/frontend"
-            npm ci
-            npm run build
-            
-            echo "[8/8] Restarting frontend..."
-            pm2 reload plazo-frontend --update-env
-            
-            # Save PM2 state
-            pm2 save
-            
-            echo ""
-            echo "✅ Deploy complete!"
-            pm2 status
+            cd /opt/plazo
+            export GHCR_OWNER=${{ github.repository_owner }}
+            docker compose pull backend-prod frontend-prod nginx
+            docker compose run --rm backend-prod npx --yes prisma migrate deploy
+            docker compose up -d backend-prod frontend-prod nginx
+            echo "Production deploy selesai: $(date)"
+
+  # ============ DEV (branch develop) ============
+  deploy-dev:
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login ke GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push Frontend (dev)
+        uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          file: frontend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-frontend:dev
+            ${{ env.IMAGE_PREFIX }}-frontend:dev-${{ github.sha }}
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL_DEV }}
+            NEXT_PUBLIC_WS_URL=${{ secrets.NEXT_PUBLIC_WS_URL_DEV }}
+            NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL_DEV }}
+            NEXT_PUBLIC_BASE_DOMAIN=${{ secrets.NEXT_PUBLIC_BASE_DOMAIN_DEV }}
+            NEXT_PUBLIC_MAIN_DOMAIN=${{ secrets.NEXT_PUBLIC_MAIN_DOMAIN_DEV }}
+            NEXT_PUBLIC_MAIN_DOMAIN_URL=${{ secrets.NEXT_PUBLIC_MAIN_DOMAIN_URL_DEV }}
+            NEXT_PUBLIC_TURNSTILE_SITE_KEY=${{ secrets.NEXT_PUBLIC_TURNSTILE_SITE_KEY_DEV }}
+            NEXT_PUBLIC_S3_PUBLIC_URL=${{ secrets.NEXT_PUBLIC_S3_PUBLIC_URL_DEV }}
+
+      - name: Build & push Backend (dev)
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          file: backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-backend:dev
+            ${{ env.IMAGE_PREFIX }}-backend:dev-${{ github.sha }}
+
+      - name: Deploy ke VPS-1 (web) — dev
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT || 22 }}
+          script: |
+            cd /opt/plazo
+            export GHCR_OWNER=${{ github.repository_owner }}
+            docker compose pull backend-dev frontend-dev nginx
+            docker compose run --rm backend-dev npx --yes prisma migrate deploy
+            docker compose up -d backend-dev frontend-dev nginx
+            echo "Dev deploy selesai: $(date)"

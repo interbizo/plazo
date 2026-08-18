@@ -11,6 +11,7 @@
  */
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const S3_PUBLIC_URL = process.env.NEXT_PUBLIC_S3_PUBLIC_URL?.replace(/\/$/, "") || "";
 
 export function resolveImageUrl(url: string | null | undefined, fallback?: string): string {
   if (!url) return fallback || "";
@@ -18,6 +19,13 @@ export function resolveImageUrl(url: string | null | undefined, fallback?: strin
   // Already a valid production URL — return as-is
   if (url.startsWith("https://") && !url.includes("localhost")) {
     return url;
+  }
+
+  // S3 mode: relative path /uploads/... → strip prefix, arahkan ke bucket public URL
+  if (S3_PUBLIC_URL) {
+    if (url.startsWith("/uploads/")) {
+      return `${S3_PUBLIC_URL}/${url.replace(/^\/uploads\//, "")}`;
+    }
   }
 
   // Relative path (starts with /uploads/) — prepend API URL

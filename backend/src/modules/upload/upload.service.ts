@@ -1,9 +1,9 @@
 import { Injectable, BadRequestException, Logger } from "@nestjs/common";
 import { PrismaService } from "@modules/database/prisma.service";
-import * as fs from "fs";
 import * as path from "path";
 import * as crypto from "crypto";
 import sharp from "sharp";
+import { StorageService } from "./storage/storage.service";
 
 /**
  * File type detection via magic bytes (file signatures).
@@ -83,25 +83,11 @@ const MAX_DOCUMENT_SIZE = 5 * 1024 * 1024; // 5MB for non-image documents
 @Injectable()
 export class UploadService {
   private readonly logger = new Logger(UploadService.name);
-  private readonly uploadDir: string;
 
-  constructor(private prisma: PrismaService) {
-    this.uploadDir =
-      process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads");
-    this.ensureUploadDir();
-  }
-
-  private ensureUploadDir() {
-    const dirs = ["images", "documents", "avatars", "cv", "portfolio"];
-    for (const dir of dirs) {
-      const fullPath = path.join(this.uploadDir, dir);
-      if (!fs.existsSync(fullPath)) {
-        fs.mkdirSync(fullPath, { recursive: true });
-        this.logger.log(`Created upload directory: ${fullPath}`);
-      }
-    }
-    this.logger.log(`Upload directories ensured at: ${this.uploadDir}`);
-  }
+  constructor(
+    private prisma: PrismaService,
+    private storage: StorageService,
+  ) {}
 
   /**
    * Detect actual MIME type from file content (magic bytes).
@@ -282,22 +268,11 @@ export class UploadService {
     }
 
     const fileName = `${crypto.randomUUID()}${finalExt}`;
-    const filePath = path.join(this.uploadDir, subDir, fileName);
+    const fullUrl = await this.storage.save(subDir, fileName, buffer, finalMimeType);
 
-    // Prevent path traversal
-    const resolvedPath = path.resolve(filePath);
-    if (!resolvedPath.startsWith(path.resolve(this.uploadDir))) {
-      this.logger.error(`[Upload] Invalid file path detected: ${resolvedPath}`);
-      throw new BadRequestException("Invalid file path");
-    }
-
-    fs.writeFileSync(filePath, buffer);
-
-    // Store relative URL path — frontend will prepend the API base URL
-    // This makes the system portable across environments (dev/staging/production)
-    const relativePath = `/uploads/${subDir}/${fileName}`;
-    const baseUrl = process.env.APP_URL || "http://localhost:3001";
-    const fullUrl = `${baseUrl}${relativePath}`;
+    // DB menyimpan path relatif (portable lintas domain/storage).
+    // Full URL dibangun saat dibutuhkan (response upload, frontend resolveImageUrl).
+    const relativeUrl = `/uploads/${subDir}/${fileName}`;
 
     const record = await this.prisma.fileUpload.create({
       data: {
@@ -306,7 +281,7 @@ export class UploadService {
         fileName,
         mimeType: finalMimeType,
         size: finalSize,
-        url: fullUrl,
+        url: relativeUrl,
         category: category as any,
       },
     });
@@ -317,7 +292,7 @@ export class UploadService {
       message: "File uploaded successfully",
       file: {
         id: record.id,
-        url: record.url,
+        url: fullUrl,
         originalName: record.originalName,
         mimeType: record.mimeType,
         size: record.size,
@@ -355,10 +330,16 @@ export class UploadService {
     const where: any = { userId };
     if (category) where.category = category;
 
-    return this.prisma.fileUpload.findMany({
+    const files = await this.prisma.fileUpload.findMany({
       where,
       orderBy: { createdAt: "desc" },
     });
+
+    // DB menyimpan path relatif — kembalikan full URL agar konsumen API tidak berubah
+    return files.map((file) => ({
+      ...file,
+      url: this.storage.buildFullUrl(file.url),
+    }));
   }
 
   async deleteFile(userId: string, fileId: string) {
@@ -371,10 +352,7 @@ export class UploadService {
     }
 
     const subDir = this.getSubDir(file.category);
-    const filePath = path.join(this.uploadDir, subDir, file.fileName);
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-    }
+    await this.storage.delete(subDir, file.fileName);
 
     await this.prisma.fileUpload.delete({ where: { id: fileId } });
 

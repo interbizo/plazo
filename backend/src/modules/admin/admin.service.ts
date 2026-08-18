@@ -2940,6 +2940,22 @@ export class AdminService {
       // Convert URL to filesystem path if needed
       // Stored paths may be URLs like "http://localhost:3001/uploads/documents/uuid.webp"
       // or relative paths like "/uploads/documents/uuid.webp"
+      // Dalam mode S3, path adalah URL publik bucket — kembalikan sebagai externalUrl.
+      const uploadStorage = (process.env.UPLOAD_STORAGE || "local").toLowerCase();
+      const isS3Url =
+        uploadStorage === "s3" &&
+        (filePath.startsWith('http://') || filePath.startsWith('https://'));
+
+      if (isS3Url) {
+        console.log(`[KYC File] S3 mode — returning public URL for ${type}: ${filePath}`);
+        return {
+          filePath,
+          externalUrl: filePath,
+          type,
+          kycId: id,
+        };
+      }
+
       if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
         try {
           const url = new URL(filePath);

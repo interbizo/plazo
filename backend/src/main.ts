@@ -102,15 +102,19 @@ async function bootstrap() {
   });
 
   // Serve uploaded files with aggressive caching (images are immutable after upload)
-  const uploadDir =
-    process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads");
-  app.useStaticAssets(uploadDir, {
-    prefix: "/uploads/",
-    maxAge: 31536000000, // 1 year in ms (files are content-addressed UUIDs)
-    immutable: true,
-    etag: true,
-    lastModified: true,
-  });
+  // Hanya untuk mode local — jika UPLOAD_STORAGE=s3, file di-serve oleh object storage
+  const uploadStorage = (process.env.UPLOAD_STORAGE || "local").toLowerCase();
+  if (uploadStorage !== "s3") {
+    const uploadDir =
+      process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads");
+    app.useStaticAssets(uploadDir, {
+      prefix: "/uploads/",
+      maxAge: 31536000000, // 1 year in ms (files are content-addressed UUIDs)
+      immutable: true,
+      etag: true,
+      lastModified: true,
+    });
+  }
 
   // Security - Helmet
   // Disable CSP for API server (CSP should be handled by frontend/nginx)

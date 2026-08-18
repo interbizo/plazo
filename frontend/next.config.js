@@ -199,7 +199,27 @@ const nextConfig = {
         protocol: "https",
         hostname: "*.plazo.com",
       },
-    ],
+    ].concat(
+      process.env.NEXT_PUBLIC_S3_PUBLIC_URL
+        ? (() => {
+            try {
+              const s3Host = new URL(process.env.NEXT_PUBLIC_S3_PUBLIC_URL).hostname;
+              return [
+                {
+                  protocol: "https",
+                  hostname: s3Host,
+                },
+                {
+                  protocol: "http",
+                  hostname: s3Host,
+                },
+              ];
+            } catch {
+              return [];
+            }
+          })()
+        : [],
+    ),
     unoptimized: process.env.NODE_ENV === 'development',
     // Optimize images served by Next.js
     formats: ['image/avif', 'image/webp'],
