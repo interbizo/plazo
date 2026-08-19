@@ -23,6 +23,9 @@ RUN npm run build
 # ============================================
 FROM node:18-alpine AS production
 
+# Install OpenSSL + libstdc++ untuk Prisma schema engine
+RUN apk add --no-cache openssl libstdc++
+
 # Security: run as non-root user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nestjs -u 1001
