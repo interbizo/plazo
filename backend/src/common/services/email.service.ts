@@ -13,7 +13,7 @@ export interface SendEmailParams {
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
-  private transporter: Transporter;
+  private transporter: Transporter | null = null;
 
   constructor(private configService: ConfigService) {
     this.initializeTransporter();
@@ -27,8 +27,8 @@ export class EmailService {
     const pass = this.configService.get<string>('SMTP_PASSWORD');
 
     if (!host || !port || !user || !pass) {
-      this.logger.error('SMTP configuration is incomplete');
-      throw new Error('SMTP service is not configured');
+      this.logger.warn('SMTP configuration is incomplete — email service disabled');
+      return;
     }
 
     this.transporter = nodemailer.createTransport({
@@ -41,13 +41,18 @@ export class EmailService {
       },
     });
 
-    this.logger.log('Email service initialized with Resend SMTP');
+    this.logger.log('Email service initialized with SMTP');
   }
 
   /**
    * Send email using SMTP
    */
   async sendEmail(params: SendEmailParams): Promise<boolean> {
+    if (!this.transporter) {
+      this.logger.warn(`Email not sent (SMTP not configured): ${params.subject} to ${params.to}`);
+      return false;
+    }
+
     const fromEmail = this.configService.get<string>('SMTP_FROM_EMAIL');
     const fromName = this.configService.get<string>('SMTP_FROM_NAME');
 
@@ -317,6 +322,11 @@ export class EmailService {
    * Verify SMTP connection
    */
   async verifyConnection(): Promise<boolean> {
+    if (!this.transporter) {
+      this.logger.warn('SMTP not configured');
+      return false;
+    }
+
     try {
       await this.transporter.verify();
       this.logger.log('SMTP connection verified successfully');
