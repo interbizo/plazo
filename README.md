@@ -959,6 +959,30 @@ docker compose build
 docker compose up -d
 ```
 
+### Mode DEV-Only vs FULL (production + dev)
+
+Tersedia 2 config nginx dan 2 mode compose:
+
+| Mode | Nginx config | Perintah |
+|---|---|---|
+| **DEV-only** (produksi belum aktif) | `nginx/plazo-dev.conf` | `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d backend-dev frontend-dev nginx` |
+| **FULL** (prod + dev) | `nginx/plazo.id.conf` | `docker compose up -d` |
+
+Detail:
+- **DEV-only** hanya melayani `dev.plazo.id`, `*.dev.plazo.id`, dan `api-dev.plazo.id` → backend-dev & frontend-dev. Nginx tidak mereferensikan service prod, sehingga tetap jalan walau container prod belum siap.
+- **FULL** melayani prod + dev sekaligus.
+- Variabel env `NGINX_CONF` juga bisa mengatur config nginx secara manual (default `./nginx/plazo.id.conf`).
+- File yang terlibat: `deploy/web/nginx/plazo.id.conf` (full), `deploy/web/nginx/plazo-dev.conf` (dev-only), `deploy/web/docker-compose.yml` (base), `deploy/web/docker-compose.dev.yml` (override dev).
+
+Cara beralih mode:
+```bash
+# Pindah ke DEV-only
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d backend-dev frontend-dev nginx
+
+# Kembali ke FULL (saat produksi siap)
+docker compose up -d
+```
+
 ### Troubleshooting
 
 | Masalah | Solusi |
@@ -970,6 +994,7 @@ docker compose up -d
 | Upload file gagal | Cek konfigurasi S3 di `.env.backend-prod` |
 | SSL error | Pastikan cert di `/etc/ssl/cloudflare/` dan mode Cloudflare **Full (Strict)** |
 | Website HTTP 502 | Restart nginx: `docker compose restart nginx` |
+| Nginx `[emerg] host not found in upstream` | Container upstream belum jalan — pakai mode DEV-only dulu, atau pastikan `backend-prod`/`backend-dev` sudah `Up` sebelum nginx |
 | Database penuh | Periksa disk: `df -h`; lihat ukuran: `docker exec plazo_postgres psql -U plazo_user -d plazo_prod -c "\dt+"` |
 
 ---

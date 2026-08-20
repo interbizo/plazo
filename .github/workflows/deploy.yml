@@ -131,7 +131,8 @@ jobs:
           script: |
             cd /opt/plazo
             export GHCR_OWNER=${{ github.repository_owner }}
-            docker compose pull backend-dev frontend-dev nginx
-            docker compose run --rm backend-dev npx --yes prisma migrate deploy
-            docker compose up -d backend-dev frontend-dev nginx
+            export COMPOSE_FILES="-f docker-compose.yml -f docker-compose.dev.yml"
+            docker compose $COMPOSE_FILES pull backend-dev frontend-dev nginx
+            docker compose $COMPOSE_FILES run --rm backend-dev npx --yes prisma migrate deploy
+            docker compose $COMPOSE_FILES up -d backend-dev frontend-dev nginx
             echo "Dev deploy selesai: $(date)"
