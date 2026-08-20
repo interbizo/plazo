@@ -22,6 +22,7 @@
     "prisma:generate": "prisma generate",
     "prisma:studio": "prisma studio",
     "db:seed": "ts-node prisma/seed.ts",
+    "db:seed:production": "ts-node prisma/seed-production.ts",
     "db:seed:comprehensive": "ts-node prisma/seed-comprehensive.ts",
     "db:seed:full": "ts-node prisma/seed-full.ts"
   },

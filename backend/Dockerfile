@@ -40,6 +40,9 @@ RUN npm ci --production && npm cache clean --force
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/prisma ./prisma
 
+# Copy seed scripts (untuk db:seed di production)
+COPY --from=builder /app/seed.ts ./seed.ts
+
 # Copy built application
 COPY --from=builder /app/dist ./dist
 
