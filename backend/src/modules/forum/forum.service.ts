@@ -8,6 +8,7 @@ import {
 import { ForumPostStatus, Prisma, UserRole } from "@prisma/client";
 import { PrismaService } from "@modules/database/prisma.service";
 import { PaginationHelper } from "@common/utils/pagination.helper";
+import { MeilisearchService } from "@modules/search/meilisearch.service";
 import {
   BulkRemoveForumPostsDto,
   CreateForumCommentDto,
@@ -39,7 +40,10 @@ const forumAuthorSelect = {
 
 @Injectable()
 export class ForumService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private meilisearch: MeilisearchService,
+  ) {}
 
   // Mengambil daftar post publik dengan pencarian, urutan, dan pagination.
   async listPosts(query: ForumPostListQueryDto) {
@@ -124,6 +128,9 @@ export class ForumService {
       },
     });
 
+    // Sync ke Meilisearch (fire-and-forget)
+    void this.meilisearch.syncForumPost(post.id).catch(() => {});
+
     return { post };
   }
 
@@ -152,6 +159,9 @@ export class ForumService {
         _count: { select: { comments: true, likes: true } },
       },
     });
+
+    // Sync ke Meilisearch (fire-and-forget)
+    void this.meilisearch.syncForumPost(updatedPost.id).catch(() => {});
 
     return { post: updatedPost };
   }
@@ -432,6 +442,8 @@ export class ForumService {
       where: { id: postId },
       data: { status: ForumPostStatus.REMOVED },
     });
+    // Hapus dari index Meilisearch
+    void this.meilisearch.removeForumPost(postId).catch(() => {});
   }
 
   // Menghitung total like terkini untuk dikembalikan ke antarmuka pengguna.

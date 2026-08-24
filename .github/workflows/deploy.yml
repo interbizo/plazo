@@ -68,9 +68,9 @@ jobs:
           script: |
             cd /opt/plazo
             export GHCR_OWNER=${{ github.repository_owner }}
-            docker compose pull backend-prod frontend-prod nginx
+            docker compose pull backend-prod frontend-prod meilisearch nginx
             docker compose run --rm backend-prod npx --yes prisma migrate deploy
-            docker compose up -d backend-prod frontend-prod nginx
+            docker compose up -d backend-prod frontend-prod meilisearch nginx
             echo "Production deploy selesai: $(date)"
 
   # ============ DEV (branch develop) ============
@@ -132,7 +132,7 @@ jobs:
             cd /opt/plazo
             export GHCR_OWNER=${{ github.repository_owner }}
             export COMPOSE_FILES="-f docker-compose.yml -f docker-compose.dev.yml"
-            docker compose $COMPOSE_FILES pull backend-dev frontend-dev nginx
+            docker compose $COMPOSE_FILES pull backend-dev frontend-dev meilisearch nginx
             docker compose $COMPOSE_FILES run --rm backend-dev npx --yes prisma migrate deploy
-            docker compose $COMPOSE_FILES up -d backend-dev frontend-dev nginx
+            docker compose $COMPOSE_FILES up -d backend-dev frontend-dev meilisearch nginx
             echo "Dev deploy selesai: $(date)"

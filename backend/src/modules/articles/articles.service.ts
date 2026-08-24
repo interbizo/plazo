@@ -8,6 +8,7 @@ import { PrismaService } from "@modules/database/prisma.service";
 import { ViewTrackerService } from "@common/services/view-tracker.service";
 import { PaginationHelper } from "@common/utils/pagination.helper";
 import { StringHelper } from "@common/utils/string.helper";
+import { MeilisearchService } from "@modules/search/meilisearch.service";
 import {
   ArticleListQueryDto,
   ArticleStatusDto,
@@ -33,6 +34,7 @@ export class ArticlesService {
   constructor(
     private prisma: PrismaService,
     private viewTracker: ViewTrackerService,
+    private meilisearch: MeilisearchService,
   ) {}
 
   async listAdmin(query: ArticleListQueryDto) {
@@ -212,6 +214,9 @@ export class ArticlesService {
       include: { category: true },
     });
 
+    // Sync ke Meilisearch (fire-and-forget)
+    void this.meilisearch.syncArticle(article.id).catch(() => {});
+
     return { article };
   }
 
@@ -299,6 +304,9 @@ export class ArticlesService {
       include: { category: true },
     });
 
+    // Sync ke Meilisearch (fire-and-forget)
+    void this.meilisearch.syncArticle(article.id).catch(() => {});
+
     return { article };
   }
 
@@ -325,6 +333,9 @@ export class ArticlesService {
       include: { category: true },
     });
 
+    // Sync ke Meilisearch (fire-and-forget)
+    void this.meilisearch.syncArticle(article.id).catch(() => {});
+
     return { article };
   }
 
@@ -344,6 +355,9 @@ export class ArticlesService {
       include: { category: true },
     });
 
+    // Sync ke Meilisearch (hapus dari index karena tidak PUBLISHED)
+    void this.meilisearch.syncArticle(article.id).catch(() => {});
+
     return { article };
   }
 
@@ -355,6 +369,8 @@ export class ArticlesService {
     }
 
     await this.prisma.article.delete({ where: { id } });
+    // Hapus dari index Meilisearch
+    void this.meilisearch.removeArticle(id).catch(() => {});
     return { message: "Artikel dihapus" };
   }
 

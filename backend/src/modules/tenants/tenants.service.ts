@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../database/prisma.service";
 import { CreateTenantDto, UpdateTenantDto, UpdateTenantSeoDto, UpdateTenantThemeDto } from "./tenants.dto";
+import { MeilisearchService } from "@modules/search/meilisearch.service";
 
 @Injectable()
 export class TenantsService {
@@ -34,7 +35,10 @@ export class TenantsService {
     "public",
   ];
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private meilisearch: MeilisearchService,
+  ) {}
 
   private validateSubdomain(subdomain: string) {
     const cleaned = subdomain.toLowerCase().trim();
@@ -94,6 +98,9 @@ export class TenantsService {
           ownerId: userId,
         },
       });
+
+      // Sync ke Meilisearch (fire-and-forget)
+      void this.meilisearch.syncSeller(tenant.id).catch(() => {});
 
       console.log(`[Tenant] Successfully created tenant: ${tenant.id}`);
       return tenant;
@@ -185,10 +192,15 @@ export class TenantsService {
       throw new ForbiddenException("You do not own this tenant/store");
     }
 
-    return this.prisma.tenant.update({
+    const updatedTenant = await this.prisma.tenant.update({
       where: { id },
       data: updateTenantDto,
     });
+
+    // Sync ke Meilisearch (fire-and-forget)
+    void this.meilisearch.syncSeller(updatedTenant.id).catch(() => {});
+
+    return updatedTenant;
   }
 
   async getTenantStats(tenantId: string, userId?: string) {

@@ -5,6 +5,7 @@ import { PaginationHelper } from "@common/utils/pagination.helper";
 import { StringHelper } from "@common/utils/string.helper";
 import { JobStatus } from "@prisma/client";
 import { NotificationEventsService } from "@modules/notifications/notification-events.service";
+import { MeilisearchService } from "@modules/search/meilisearch.service";
 
 @Injectable()
 export class JobsService {
@@ -13,6 +14,7 @@ export class JobsService {
   constructor(
     private prisma: PrismaService,
     private notificationEvents: NotificationEventsService,
+    private meilisearch: MeilisearchService,
   ) {}
 
   /**
@@ -121,6 +123,9 @@ export class JobsService {
       tags: createJobDto.tags,
       categoryId: createJobDto.categoryId,
     });
+
+    // Sync ke Meilisearch (fire-and-forget)
+    void this.meilisearch.syncJob(job.id).catch(() => {});
 
     return {
       message: "Job posted successfully",
@@ -248,6 +253,9 @@ export class JobsService {
       },
     });
 
+    // Sync ke Meilisearch (fire-and-forget)
+    void this.meilisearch.syncJob(updated.id).catch(() => {});
+
     return {
       message: "Job updated successfully",
       job: updated,
@@ -279,6 +287,9 @@ export class JobsService {
       where: { id: jobId },
       data: { deletedAt: new Date() },
     });
+
+    // Hapus dari index Meilisearch
+    void this.meilisearch.removeJob(jobId).catch(() => {});
 
     return { message: "Job deleted successfully" };
   }

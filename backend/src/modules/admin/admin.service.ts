@@ -40,6 +40,7 @@ import { SellerTier, SubscriptionPlan, UserRole } from "@prisma/client";
 import { SubscriptionService } from "../subscription/subscription.service";
 import { NotificationEventsService } from "../notifications/notification-events.service";
 import { DatabaseBackupService } from "./database-backup.service";
+import { MeilisearchService } from "@modules/search/meilisearch.service";
 import { Parser } from '@json2csv/plainjs';
 import * as ExcelJS from 'exceljs';
 import * as path from 'path';
@@ -51,6 +52,7 @@ export class AdminService {
     private subscriptionService: SubscriptionService,
     private notificationEvents: NotificationEventsService,
     private backupService: DatabaseBackupService,
+    private meilisearch: MeilisearchService,
   ) {}
 
   // ============ USER MANAGEMENT ============
@@ -917,6 +919,9 @@ export class AdminService {
       data,
     });
 
+    // Sync ke Meilisearch (fire-and-forget)
+    void this.meilisearch.syncSeller(tenantId).catch(() => {});
+
     await this.logAction(
       adminId,
       "admin_update_tenant",
@@ -934,6 +939,9 @@ export class AdminService {
       data: { isActive: false },
     });
 
+    // Hapus dari index (seller tidak aktif)
+    void this.meilisearch.removeSeller(tenantId).catch(() => {});
+
     await this.logAction(adminId, "suspend_tenant", "tenant", tenantId, {});
 
     return { message: "Tenant suspended successfully" };
@@ -944,6 +952,9 @@ export class AdminService {
       where: { id: tenantId },
       data: { isActive: true },
     });
+
+    // Sync ke Meilisearch (seller aktif kembali)
+    void this.meilisearch.syncSeller(tenantId).catch(() => {});
 
     await this.logAction(adminId, "activate_tenant", "tenant", tenantId, {});
 
@@ -1740,6 +1751,9 @@ export class AdminService {
       data: { isPublished: dto.isPublished },
     });
 
+    // Sync ke Meilisearch (fire-and-forget)
+    void this.meilisearch.syncProduct(productId).catch(() => {});
+
     await this.logAction(
       adminId,
       dto.isPublished ? "publish_product" : "unpublish_product",
@@ -1786,6 +1800,9 @@ export class AdminService {
       data: { isPublished: dto.isPublished },
     });
 
+    // Sync ke Meilisearch (fire-and-forget)
+    void this.meilisearch.syncService(serviceId).catch(() => {});
+
     await this.logAction(
       adminId,
       dto.isPublished ? "publish_service" : "unpublish_service",
@@ -1806,6 +1823,9 @@ export class AdminService {
       data: { deletedAt: new Date(), isPublished: false },
     });
 
+    // Hapus dari index Meilisearch
+    void this.meilisearch.removeProduct(productId).catch(() => {});
+
     await this.logAction(
       adminId,
       "admin_delete_product",
@@ -1822,6 +1842,9 @@ export class AdminService {
       where: { id: serviceId },
       data: { deletedAt: new Date(), isPublished: false },
     });
+
+    // Hapus dari index Meilisearch
+    void this.meilisearch.removeService(serviceId).catch(() => {});
 
     await this.logAction(
       adminId,
@@ -3787,6 +3810,9 @@ export class AdminService {
       data: { status: dto.status as any },
     });
 
+    // Sync ke Meilisearch (fire-and-forget — status bukan OPEN akan dihapus dari index)
+    void this.meilisearch.syncJob(id).catch(() => {});
+
     await this.logAction(adminId, `moderate_job_${dto.status}`, "job", id, dto);
 
     return { message: `Job status updated to ${dto.status}` };
@@ -3797,6 +3823,10 @@ export class AdminService {
       where: { id },
       data: { deletedAt: new Date() },
     });
+
+    // Hapus dari index Meilisearch
+    void this.meilisearch.removeJob(id).catch(() => {});
+
     await this.logAction(adminId, "admin_delete_job", "job", id, {});
     return { message: "Job deleted by admin" };
   }

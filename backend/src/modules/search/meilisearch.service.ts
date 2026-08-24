@@ -373,6 +373,201 @@ export class MeilisearchService {
     return docs.length;
   }
 
+  // Sync satu artikel (dipanggil setelah create/update).
+  async syncArticle(id: string): Promise<void> {
+    if (!this.isEnabled()) return;
+
+    const a = await this.prisma.article.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        title: true,
+        excerpt: true,
+        content: true,
+        tags: true,
+        categoryId: true,
+        viewCount: true,
+        createdAt: true,
+        status: true,
+        category: { select: { name: true } },
+      },
+    });
+
+    if (!a) {
+      await this.articlesIndex.deleteDocument(id);
+      return;
+    }
+    if (a.status !== "PUBLISHED") {
+      await this.articlesIndex.deleteDocument(id);
+      return;
+    }
+
+    await this.articlesIndex.addDocuments(
+      [
+        {
+          id: a.id,
+          title: a.title,
+          excerpt: a.excerpt || "",
+          content: a.content,
+          tags: a.tags,
+          categoryId: a.categoryId || "",
+          categoryName: a.category?.name || "",
+          status: a.status,
+          viewCount: a.viewCount,
+          createdAt: a.createdAt.getTime(),
+        },
+      ],
+      { primaryKey: "id" },
+    );
+  }
+
+  // Sync satu post forum (dipanggil setelah create/update).
+  async syncForumPost(id: string): Promise<void> {
+    if (!this.isEnabled()) return;
+
+    const p = await this.prisma.forumPost.findUnique({
+      where: { id },
+      select: { id: true, title: true, content: true, status: true, createdAt: true },
+    });
+
+    if (!p) {
+      await this.forumIndex.deleteDocument(id);
+      return;
+    }
+    if (p.status !== "PUBLISHED") {
+      await this.forumIndex.deleteDocument(id);
+      return;
+    }
+
+    await this.forumIndex.addDocuments(
+      [
+        {
+          id: p.id,
+          title: p.title,
+          content: p.content,
+          status: p.status,
+          createdAt: p.createdAt.getTime(),
+        },
+      ],
+      { primaryKey: "id" },
+    );
+  }
+
+  // Sync satu job (dipanggil setelah create/update).
+  async syncJob(id: string): Promise<void> {
+    if (!this.isEnabled()) return;
+
+    const j = await this.prisma.job.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        tags: true,
+        city: true,
+        budget: true,
+        tenantId: true,
+        status: true,
+        deletedAt: true,
+        createdAt: true,
+        tenant: { select: { isActive: true } },
+      },
+    });
+
+    if (!j || j.deletedAt) {
+      await this.jobsIndex.deleteDocument(id);
+      return;
+    }
+    if (j.status !== "OPEN") {
+      await this.jobsIndex.deleteDocument(id);
+      return;
+    }
+
+    await this.jobsIndex.addDocuments(
+      [
+        {
+          id: j.id,
+          title: j.title,
+          description: j.description,
+          tags: j.tags,
+          city: j.city || "",
+          budget: j.budget,
+          status: j.status,
+          tenantId: j.tenantId,
+          tenantActive: j.tenant?.isActive ?? false,
+          createdAt: j.createdAt.getTime(),
+        },
+      ],
+      { primaryKey: "id" },
+    );
+  }
+
+  // Sync satu seller/tenant (dipanggil setelah create/update).
+  async syncSeller(id: string): Promise<void> {
+    if (!this.isEnabled()) return;
+
+    const t = await this.prisma.tenant.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        tagline: true,
+        description: true,
+        city: true,
+        subdomain: true,
+        isVerified: true,
+        logo: true,
+        isActive: true,
+        deletedAt: true,
+        createdAt: true,
+      },
+    });
+
+    if (!t || !t.isActive || t.deletedAt) {
+      await this.sellersIndex.deleteDocument(id);
+      return;
+    }
+
+    await this.sellersIndex.addDocuments(
+      [
+        {
+          id: t.id,
+          name: t.name,
+          tagline: t.tagline || "",
+          description: t.description || "",
+          city: t.city || "",
+          subdomain: t.subdomain,
+          isActive: true,
+          isVerified: t.isVerified,
+          logo: t.logo,
+          createdAt: t.createdAt.getTime(),
+        },
+      ],
+      { primaryKey: "id" },
+    );
+  }
+
+  // Hapus dokumen dari index (dipanggil setelah delete).
+  async removeArticle(id: string): Promise<void> {
+    if (!this.isEnabled()) return;
+    await this.articlesIndex.deleteDocument(id);
+  }
+
+  async removeForumPost(id: string): Promise<void> {
+    if (!this.isEnabled()) return;
+    await this.forumIndex.deleteDocument(id);
+  }
+
+  async removeJob(id: string): Promise<void> {
+    if (!this.isEnabled()) return;
+    await this.jobsIndex.deleteDocument(id);
+  }
+
+  async removeSeller(id: string): Promise<void> {
+    if (!this.isEnabled()) return;
+    await this.sellersIndex.deleteDocument(id);
+  }
+
   // Sync satu produk (dipanggil setelah create/update).
   async syncProduct(id: string): Promise<void> {
     if (!this.isEnabled()) return;
