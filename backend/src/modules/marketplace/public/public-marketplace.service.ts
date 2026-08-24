@@ -617,56 +617,60 @@ export class PublicMarketplaceService {
 
     // Saran teks ala Google: cari di semua sumber (produk, jasa, artikel, forum, jobs, seller)
     if (this.meilisearch.isEnabled()) {
-      const [correction, productIds, serviceIds, articles, forumPosts, jobs, sellers] =
-        await Promise.all([
-          this.meilisearch.getCorrection(trimmed),
-          this.meilisearch.searchProducts(trimmed, { limit, offset: 0 }),
-          this.meilisearch.searchServices(trimmed, { limit, offset: 0 }),
-          this.meilisearch.searchTitles("articles", trimmed, limit),
-          this.meilisearch.searchTitles("forum-posts", trimmed, limit),
-          this.meilisearch.searchTitles("jobs", trimmed, limit),
-          this.meilisearch.searchTitles("sellers", trimmed, limit),
+      try {
+        const [correction, productIds, serviceIds, articles, forumPosts, jobs, sellers] =
+          await Promise.all([
+            this.meilisearch.getCorrection(trimmed),
+            this.meilisearch.searchProducts(trimmed, { limit, offset: 0 }),
+            this.meilisearch.searchServices(trimmed, { limit, offset: 0 }),
+            this.meilisearch.searchTitles("articles", trimmed, limit),
+            this.meilisearch.searchTitles("forum-posts", trimmed, limit),
+            this.meilisearch.searchTitles("jobs", trimmed, limit),
+            this.meilisearch.searchTitles("sellers", trimmed, limit),
+          ]);
+
+        const [products, services] = await Promise.all([
+          this.prisma.product.findMany({
+            where: {
+              id: { in: productIds.ids },
+              isPublished: true,
+              publishToMarketplace: true,
+              deletedAt: null,
+              tenant: { isActive: true },
+            },
+            select: { name: true },
+          }),
+          this.prisma.service.findMany({
+            where: {
+              id: { in: serviceIds.ids },
+              isPublished: true,
+              publishToMarketplace: true,
+              deletedAt: null,
+              tenant: { isActive: true },
+            },
+            select: { name: true },
+          }),
         ]);
 
-      const [products, services] = await Promise.all([
-        this.prisma.product.findMany({
-          where: {
-            id: { in: productIds.ids },
-            isPublished: true,
-            publishToMarketplace: true,
-            deletedAt: null,
-            tenant: { isActive: true },
-          },
-          select: { name: true },
-        }),
-        this.prisma.service.findMany({
-          where: {
-            id: { in: serviceIds.ids },
-            isPublished: true,
-            publishToMarketplace: true,
-            deletedAt: null,
-            tenant: { isActive: true },
-          },
-          select: { name: true },
-        }),
-      ]);
+        // Gabung semua nama (produk, jasa, artikel, forum, jobs, seller) tanpa duplikat
+        const names: string[] = [];
+        for (const item of [
+          ...products.map((p) => p.name),
+          ...services.map((s) => s.name),
+          ...articles.map((a) => a.name),
+          ...forumPosts.map((f) => f.name),
+          ...jobs.map((j) => j.name),
+          ...sellers.map((s) => s.name),
+        ]) {
+          const n = item.trim();
+          if (n && !names.includes(n)) names.push(n);
+          if (names.length >= limit) break;
+        }
 
-      // Gabung semua nama (produk, jasa, artikel, forum, jobs, seller) tanpa duplikat
-      const names: string[] = [];
-      for (const item of [
-        ...products.map((p) => p.name),
-        ...services.map((s) => s.name),
-        ...articles.map((a) => a.name),
-        ...forumPosts.map((f) => f.name),
-        ...jobs.map((j) => j.name),
-        ...sellers.map((s) => s.name),
-      ]) {
-        const n = item.trim();
-        if (n && !names.includes(n)) names.push(n);
-        if (names.length >= limit) break;
+        return { correction, suggestions: names };
+      } catch {
+        // Meilisearch gagal — fallback ke Prisma di bawah
       }
-
-      return { correction, suggestions: names };
     }
 
     // Fallback: Prisma LIKE
