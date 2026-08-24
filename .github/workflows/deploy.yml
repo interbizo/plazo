@@ -35,6 +35,7 @@ jobs:
           context: frontend
           file: frontend/Dockerfile
           push: true
+          no-cache: true
           tags: |
             ${{ env.IMAGE_PREFIX }}-frontend:prod
             ${{ env.IMAGE_PREFIX }}-frontend:prod-${{ github.sha }}
@@ -54,6 +55,7 @@ jobs:
           context: backend
           file: backend/Dockerfile
           push: true
+          no-cache: true
           tags: |
             ${{ env.IMAGE_PREFIX }}-backend:prod
             ${{ env.IMAGE_PREFIX }}-backend:prod-${{ github.sha }}
@@ -102,6 +104,7 @@ jobs:
           context: frontend
           file: frontend/Dockerfile
           push: true
+          no-cache: true
           tags: |
             ${{ env.IMAGE_PREFIX }}-frontend:dev
             ${{ env.IMAGE_PREFIX }}-frontend:dev-${{ github.sha }}
@@ -121,6 +124,7 @@ jobs:
           context: backend
           file: backend/Dockerfile
           push: true
+          no-cache: true
           tags: |
             ${{ env.IMAGE_PREFIX }}-backend:dev
             ${{ env.IMAGE_PREFIX }}-backend:dev-${{ github.sha }}
