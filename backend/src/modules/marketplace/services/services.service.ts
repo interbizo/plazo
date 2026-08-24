@@ -14,12 +14,15 @@ import {
 } from "./service-packages.dto";
 import { PaginationHelper } from "@common/utils/pagination.helper";
 import { StringHelper } from "@common/utils/string.helper";
+import { MeilisearchService } from "@modules/search/meilisearch.service";
 
 @Injectable()
 export class ServicesService {
   private readonly logger = new Logger(ServicesService.name);
-  
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private meilisearch: MeilisearchService,
+  ) {}
 
   // Reusable category select with parent
   private readonly categorySelect = {
@@ -121,6 +124,9 @@ export class ServicesService {
       data: { usedPosts: { increment: 1 } },
     });
 
+    // Sync ke Meilisearch (fire-and-forget)
+    void this.meilisearch.syncService(service.id).catch(() => {});
+
     return service;
   }
 
@@ -195,14 +201,16 @@ export class ServicesService {
 
     await this.verifyTenantOwnership(service.tenantId, userId);
 
-    // Seller FREE dan Member sama-sama bisa publish ke marketplace
-    // No restriction on publishToMarketplace
-
-    return this.prisma.service.update({
+    const updated = await this.prisma.service.update({
       where: { id },
       data: updateServiceDto,
       include: { category: { select: this.categorySelect } },
     });
+
+    // Sync ke Meilisearch (fire-and-forget)
+    void this.meilisearch.syncService(updated.id).catch(() => {});
+
+    return updated;
   }
 
   async deleteService(id: string, userId: string) {
@@ -227,6 +235,9 @@ export class ServicesService {
       where: { id: service.tenantId },
       data: { usedPosts: { decrement: 1 } },
     });
+
+    // Hapus dari index Meilisearch
+    void this.meilisearch.removeService(id).catch(() => {});
 
     return { message: "Service deleted successfully" };
   }

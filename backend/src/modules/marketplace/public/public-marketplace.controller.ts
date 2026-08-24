@@ -54,6 +54,11 @@ export class PublicMarketplaceController {
     return this.publicService.browseServices(query);
   }
 
+  @Get("search/suggestions")
+  async getSearchSuggestions(@Query("q") q?: string, @Query("limit") limit?: string) {
+    return this.publicService.getSearchSuggestions(q || "", Number(limit) || 5);
+  }
+
   @Get("jobs")
   browseJobs(@Query() query: PublicSearchDto) {
     return this.publicService.browseJobs(query);

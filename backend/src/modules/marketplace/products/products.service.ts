@@ -9,12 +9,16 @@ import { PrismaService } from "@modules/database/prisma.service";
 import { CreateProductDto, UpdateProductDto } from "./products.dto";
 import { PaginationHelper } from "@common/utils/pagination.helper";
 import { StringHelper } from "@common/utils/string.helper";
+import { MeilisearchService } from "@modules/search/meilisearch.service";
 
 @Injectable()
 export class ProductsService {
   private readonly logger = new Logger(ProductsService.name);
   
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private meilisearch: MeilisearchService,
+  ) {}
 
   /**
    * Create Product
@@ -261,6 +265,9 @@ export class ProductsService {
       throw new BadRequestException("Product not found");
     }
 
+    // Sync ke Meilisearch (fire-and-forget)
+    void this.meilisearch.syncProduct(product.id).catch(() => {});
+
     return { product };
   }
 
@@ -384,6 +391,11 @@ export class ProductsService {
       });
     });
 
+    // Sync ke Meilisearch (fire-and-forget)
+    if (updated) {
+      void this.meilisearch.syncProduct(updated.id).catch(() => {});
+    }
+
     return {
       message: "Product updated successfully",
       product: updated,
@@ -419,6 +431,9 @@ export class ProductsService {
       where: { id: tenantId },
       data: { usedPosts: { decrement: 1 } },
     });
+
+    // Hapus dari index Meilisearch
+    void this.meilisearch.removeProduct(productId).catch(() => {});
 
     return { message: "Product deleted successfully" };
   }

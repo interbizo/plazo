@@ -54,12 +54,16 @@ import { RolesGuard } from "../../common/guards/roles.guard";
 import { Roles } from "../../common/decorators/roles.decorator";
 import { GetUser } from "../../common/decorators/get-user.decorator";
 import { UserRole } from "@prisma/client";
+import { MeilisearchService } from "@modules/search/meilisearch.service";
 
 @Controller("api/admin")
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
 export class AdminController {
-  constructor(private adminService: AdminService) {}
+  constructor(
+    private adminService: AdminService,
+    private meilisearch: MeilisearchService,
+  ) {}
 
   // ============ USER MANAGEMENT ============
 
@@ -992,6 +996,34 @@ export class AdminController {
   @Roles(UserRole.SUPER_ADMIN)
   testGoogleDriveConnection() {
     return this.adminService.testGoogleDriveConnection();
+  }
+
+  // ============ SEARCH INDEX (Meilisearch) ============
+
+  @Post("search/reindex")
+  @Roles(UserRole.SUPER_ADMIN)
+  async reindexSearch() {
+    if (!this.meilisearch.isEnabled()) {
+      return { success: false, message: "Meilisearch tidak dikonfigurasi" };
+    }
+    const [products, services, articles, forumPosts, jobs, sellers] = await Promise.all([
+      this.meilisearch.syncAllProducts(),
+      this.meilisearch.syncAllServices(),
+      this.meilisearch.syncAllArticles(),
+      this.meilisearch.syncAllForumPosts(),
+      this.meilisearch.syncAllJobs(),
+      this.meilisearch.syncAllSellers(),
+    ]);
+    return {
+      success: true,
+      message: `Reindex selesai: ${products} produk, ${services} jasa, ${articles} artikel, ${forumPosts} forum, ${jobs} jobs, ${sellers} seller`,
+      products,
+      services,
+      articles,
+      forumPosts,
+      jobs,
+      sellers,
+    };
   }
 
   // ============ DATA EXPORT FOR CRM ============

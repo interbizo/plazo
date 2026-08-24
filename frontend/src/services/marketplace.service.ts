@@ -15,6 +15,11 @@ export type SortBy =
   | "rating"
   | "best_seller";
 
+export interface SearchSuggestionsResponse {
+  correction: string | null;
+  suggestions: string[];
+}
+
 export interface BrowseParams {
   page?: number;
   limit?: number;
@@ -31,6 +36,12 @@ export interface BrowseParams {
 export const marketplaceApi = {
   // Homepage
   getHomepage: () => api.get("/api/public/homepage"),
+
+  // Search suggestions (autocomplete)
+  getSearchSuggestions: (q: string, limit = 5) =>
+    api.get<SearchSuggestionsResponse>("/api/public/search/suggestions", {
+      params: { q, limit },
+    }),
 
   // Products
   getProducts: (params?: BrowseParams) =>

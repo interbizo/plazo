@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useAuthStore } from "@/stores/auth.store";
 import { useNotificationStore } from "@/stores/notification.store";
 import { Avatar } from "@/components/ui/avatar";
@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 
 import { useFeatureFlagsStore } from "@/stores/feature-flags.store";
+import { marketplaceApi } from "@/services/marketplace.service";
 
 interface NavbarProps {
   settings?: Record<string, string>;
@@ -43,11 +44,16 @@ export function Navbar({ settings = {} }: NavbarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [correction, setCorrection] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
   const flags = useFeatureFlagsStore((s) => s.flags);
   const fetchFlags = useFeatureFlagsStore((s) => s.fetchFlags);
   const profileRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchWrapRef = useRef<HTMLDivElement>(null);
 
   const siteName = settings.site_name || "Plazo";
   const siteLogo = settings.site_logo;
@@ -76,10 +82,77 @@ export function Navbar({ settings = {} }: NavbarProps) {
       ) {
         setProfileOpen(false);
       }
+      if (
+        searchWrapRef.current &&
+        !searchWrapRef.current.contains(e.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
     };
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
+
+  // Debounce fetch saran saat mengetik
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (q.length < 2) {
+      setCorrection(null);
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    setSuggestionsLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await marketplaceApi.getSearchSuggestions(q, 5);
+        setCorrection(res.data?.correction || null);
+        setSuggestions(res.data?.suggestions || []);
+        setShowSuggestions(true);
+      } catch {
+        setCorrection(null);
+        setSuggestions([]);
+        setShowSuggestions(false);
+      } finally {
+        setSuggestionsLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Keyboard navigation: ArrowUp/ArrowDown untuk pilih saran, Enter untuk pilih, Escape tutup
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const suggestionItems = useMemo(() => {
+    const items: string[] = [];
+    if (correction && correction !== searchQuery.trim()) items.push(correction);
+    items.push(...suggestions);
+    return items;
+  }, [correction, suggestions, searchQuery]);
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSuggestions || suggestionItems.length === 0) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((i) => (i + 1) % suggestionItems.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((i) => (i <= 0 ? suggestionItems.length - 1 : i - 1));
+    } else if (e.key === "Enter") {
+      if (activeIndex >= 0 && activeIndex < suggestionItems.length) {
+        e.preventDefault();
+        const chosen = suggestionItems[activeIndex];
+        setSearchQuery(chosen);
+        setShowSuggestions(false);
+        setActiveIndex(-1);
+        router.push(`/search?q=${encodeURIComponent(chosen)}`);
+      }
+    } else if (e.key === "Escape") {
+      setShowSuggestions(false);
+      setActiveIndex(-1);
+    }
+  };
 
   const isDashboard =
     pathname.startsWith("/dashboard") ||
@@ -190,39 +263,122 @@ export function Navbar({ settings = {} }: NavbarProps) {
             </Link>
 
             {/* Global search bar */}
-            <form onSubmit={handleSearch} className="flex-1 min-w-0 max-w-2xl">
-              <div className="flex">
-                <div className="relative flex-1">
-                  <input
-                    ref={searchInputRef}
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Cari produk, jasa, artikel, forum, project..."
-                    className="w-full rounded-l-sm bg-white py-2 pl-4 pr-9 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
-                  />
-                  {searchQuery && (
+            <div ref={searchWrapRef} className="relative flex-1 min-w-0 max-w-2xl">
+              <form onSubmit={handleSearch} className="w-full">
+                <div className="flex">
+                  <div className="relative flex-1">
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onFocus={() => {
+                        if (suggestions.length > 0 || correction) setShowSuggestions(true);
+                      }}
+                      onKeyDown={handleSearchKeyDown}
+                      placeholder="Cari produk, jasa, artikel, forum, project..."
+                      className="w-full rounded-l-sm bg-white py-2 pl-4 pr-9 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchQuery("");
+                          setCorrection(null);
+                          setSuggestions([]);
+                          setShowSuggestions(false);
+                          searchInputRef.current?.focus();
+                        }}
+                        aria-label="Hapus pencarian"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    type="submit"
+                    className="rounded-r-sm bg-blue-800 px-4 hover:bg-blue-900 transition-colors"
+                  >
+                    <Search className="h-5 w-5 text-white" />
+                  </button>
+                </div>
+              </form>
+
+              {/* Suggestions dropdown — saran teks ala Google + koreksi typo */}
+              {showSuggestions && (
+                <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl">
+                  {suggestionsLoading && suggestions.length === 0 && (
+                    <div className="px-4 py-3 text-sm text-gray-500">
+                      Mencari...
+                    </div>
+                  )}
+                  {!suggestionsLoading &&
+                    suggestions.length === 0 &&
+                    !correction && (
+                      <div className="px-4 py-3 text-sm text-gray-500">
+                        Tidak ada hasil
+                      </div>
+                    )}
+                  {/* Koreksi typo */}
+                  {correction && correction !== searchQuery.trim() && (
                     <button
                       type="button"
                       onClick={() => {
-                        setSearchQuery("");
-                        searchInputRef.current?.focus();
+                        setSearchQuery(correction);
+                        setShowSuggestions(false);
+                        setActiveIndex(-1);
+                        router.push(`/search?q=${encodeURIComponent(correction)}`);
                       }}
-                      aria-label="Hapus pencarian"
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      onMouseEnter={() => setActiveIndex(0)}
+                      className={`flex w-full items-center gap-2 border-b border-blue-100 px-4 py-3 text-left transition-colors ${
+                        activeIndex === 0 ? "bg-blue-100" : "bg-blue-50 hover:bg-blue-100"
+                      }`}
                     >
-                      <X className="h-4 w-4" />
+                      <Search className="h-4 w-4 shrink-0 text-blue-600" />
+                      <span className="text-sm text-gray-600">
+                        Apakah maksud Anda:{" "}
+                        <span className="font-semibold text-blue-700">
+                          {correction}
+                        </span>
+                      </span>
                     </button>
                   )}
+                  {/* Saran teks (nama produk/jasa) */}
+                  {suggestions.map((name, idx) => {
+                    const itemIndex = correction && correction !== searchQuery.trim() ? idx + 1 : idx;
+                    return (
+                      <button
+                        key={name}
+                        type="button"
+                        onClick={() => {
+                          setSearchQuery(name);
+                          setShowSuggestions(false);
+                          setActiveIndex(-1);
+                          router.push(`/search?q=${encodeURIComponent(name)}`);
+                        }}
+                        onMouseEnter={() => setActiveIndex(itemIndex)}
+                        className={`flex w-full items-center gap-2 px-4 py-2.5 text-left transition-colors ${
+                          activeIndex === itemIndex ? "bg-blue-50" : "hover:bg-blue-50"
+                        }`}
+                      >
+                        <Search className="h-4 w-4 shrink-0 text-gray-400" />
+                        <span className="truncate text-sm text-gray-900">{name}</span>
+                      </button>
+                    );
+                  })}
+                  {(suggestions.length > 0 || correction) && (
+                    <Link
+                      href={`/search?q=${encodeURIComponent(searchQuery.trim())}`}
+                      onClick={() => setShowSuggestions(false)}
+                      className="block border-t border-gray-100 px-4 py-2.5 text-center text-xs font-semibold text-blue-600 hover:bg-blue-50 transition-colors"
+                    >
+                      Lihat semua hasil →
+                    </Link>
+                  )}
                 </div>
-                <button
-                  type="submit"
-                  className="rounded-r-sm bg-blue-800 px-4 hover:bg-blue-900 transition-colors"
-                >
-                  <Search className="h-5 w-5 text-white" />
-                </button>
-              </div>
-            </form>
+              )}
+            </div>
 
             {/* Right actions */}
             <div className="flex items-center gap-1 sm:gap-2 shrink-0">

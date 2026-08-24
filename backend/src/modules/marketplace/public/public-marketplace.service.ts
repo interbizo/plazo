@@ -4,11 +4,15 @@ import { PrismaService } from "@modules/database/prisma.service";
 import { PaginationHelper } from "@common/utils/pagination.helper";
 import { ImageHelper } from "@common/utils/image.helper";
 import { CategoryHelper } from "@common/helpers/category.helper";
+import { MeilisearchService } from "@modules/search/meilisearch.service";
 import { PublicSearchDto, SortBy } from "./public-marketplace.dto";
 
 @Injectable()
 export class PublicMarketplaceService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private meilisearch: MeilisearchService,
+  ) {}
 
   private async attachServiceStats<
     T extends { id: string }
@@ -151,25 +155,14 @@ export class PublicMarketplaceService {
       ];
     }
 
-    if (query.city) {
-      const cityFilter = { contains: query.city, mode: "insensitive" as const };
-      if (!where.AND) where.AND = [];
-      if (!Array.isArray(where.AND)) where.AND = [where.AND];
-      (where.AND as any[]).push({
-        OR: [
-          { city: cityFilter },
-          { tenant: { city: cityFilter } },
-        ],
-      });
-    }
-
-    // Enhanced category filtering: include subcategories
+    // Filter umum (kota, kategori, harga, tags) — dipakai oleh Prisma & Meilisearch
+    let meiliCategoryIds: string[] | undefined;
     if (query.categoryId) {
-      const categoryIds = await CategoryHelper.getAllCategoryIdsIncludingChildren(
+      meiliCategoryIds = await CategoryHelper.getAllCategoryIdsIncludingChildren(
         this.prisma,
         query.categoryId,
       );
-      where.categoryId = { in: categoryIds };
+      where.categoryId = { in: meiliCategoryIds };
     } else if (query.categorySlug) {
       const categoryIds = await CategoryHelper.getCategoryIdsFromSlug(
         this.prisma,
@@ -177,6 +170,7 @@ export class PublicMarketplaceService {
         'PRODUCT',
       );
       if (categoryIds) {
+        meiliCategoryIds = categoryIds;
         where.categoryId = { in: categoryIds };
       } else {
         // Category not found, return empty result
@@ -188,7 +182,7 @@ export class PublicMarketplaceService {
         );
       }
     }
-    
+
     if (query.minPrice !== undefined || query.maxPrice !== undefined) {
       where.price = {};
       if (query.minPrice !== undefined) where.price.gte = query.minPrice;
@@ -196,6 +190,97 @@ export class PublicMarketplaceService {
     }
     if (query.tags) {
       where.tags = { hasSome: query.tags.split(",").map((t) => t.trim()) };
+    }
+
+    // Jika search + Meilisearch aktif: cari id via Meilisearch, lalu ambil detail dari DB
+    if (query.search && this.meilisearch.isEnabled()) {
+      const meiliResult = await this.meilisearch.searchProducts(query.search, {
+        categoryIds: meiliCategoryIds,
+        city: query.city,
+        minPrice: query.minPrice,
+        maxPrice: query.maxPrice,
+        limit: take,
+        offset: skip,
+        sort: query.sortBy,
+      });
+
+      if (meiliResult.ids.length === 0) {
+        return PaginationHelper.formatPaginatedResponse(
+          [],
+          meiliResult.total,
+          query.page || 1,
+          query.limit || 20,
+        );
+      }
+
+      const products = await this.prisma.product.findMany({
+        where: {
+          id: { in: meiliResult.ids },
+          isPublished: true,
+          publishToMarketplace: true,
+          deletedAt: null,
+          tenant: { isActive: true },
+        },
+        include: {
+          category: { select: { id: true, name: true, slug: true, parentId: true } },
+          ...this.getVariantListInclude(),
+          tenant: {
+            select: {
+              id: true,
+              name: true,
+              subdomain: true,
+              logo: true,
+              owner: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  avatar: true,
+                  lastActiveAt: true,
+                  sellerProfile: {
+                    select: { averageRating: true, totalReviews: true },
+                  },
+                },
+              },
+            },
+          },
+          reviews: {
+            select: { rating: true },
+          },
+          orderItems: {
+            where: {
+              order: { status: 'COMPLETED' },
+            },
+            select: { id: true },
+          },
+        },
+      });
+
+      // Pertahankan urutan hasil Meilisearch
+      const orderMap = new Map(meiliResult.ids.map((id, index) => [id, index]));
+      products.sort((a, b) => (orderMap.get(a.id) ?? 999) - (orderMap.get(b.id) ?? 999));
+
+      const productsWithStats = products.map((product) => {
+        const reviews = product.reviews || [];
+        const averageRating = reviews.length > 0
+          ? reviews.reduce((sum: number, r) => sum + (r.rating || 0), 0) / reviews.length
+          : 0;
+        const totalSales = product.orderItems?.length || 0;
+        const { reviews: _, orderItems: __, ...productData } = product as any;
+        return {
+          ...this.withEffectiveProductStock(productData),
+          averageRating: Math.round(averageRating * 10) / 10,
+          totalReviews: reviews.length,
+          totalSales,
+        };
+      });
+
+      return PaginationHelper.formatPaginatedResponse(
+        productsWithStats,
+        meiliResult.total,
+        query.page || 1,
+        query.limit || 20,
+      );
     }
 
     const orderBy = this.getOrderBy(query.sortBy, "price");
@@ -518,6 +603,112 @@ export class PublicMarketplaceService {
       query.page || 1,
       query.limit || 20,
     );
+  }
+
+  /**
+   * Search suggestions (autocomplete) — koreksi typo via Meilisearch
+   * plus daftar produk & jasa. Fallback ke Prisma bila Meilisearch tidak aktif.
+   */
+  async getSearchSuggestions(q: string, limit: number = 5) {
+    const trimmed = q.trim();
+    if (!trimmed || trimmed.length < 2) {
+      return { correction: null, suggestions: [] };
+    }
+
+    // Saran teks ala Google: cari di semua sumber (produk, jasa, artikel, forum, jobs, seller)
+    if (this.meilisearch.isEnabled()) {
+      const [correction, productIds, serviceIds, articles, forumPosts, jobs, sellers] =
+        await Promise.all([
+          this.meilisearch.getCorrection(trimmed),
+          this.meilisearch.searchProducts(trimmed, { limit, offset: 0 }),
+          this.meilisearch.searchServices(trimmed, { limit, offset: 0 }),
+          this.meilisearch.searchTitles("articles", trimmed, limit),
+          this.meilisearch.searchTitles("forum-posts", trimmed, limit),
+          this.meilisearch.searchTitles("jobs", trimmed, limit),
+          this.meilisearch.searchTitles("sellers", trimmed, limit),
+        ]);
+
+      const [products, services] = await Promise.all([
+        this.prisma.product.findMany({
+          where: {
+            id: { in: productIds.ids },
+            isPublished: true,
+            publishToMarketplace: true,
+            deletedAt: null,
+            tenant: { isActive: true },
+          },
+          select: { name: true },
+        }),
+        this.prisma.service.findMany({
+          where: {
+            id: { in: serviceIds.ids },
+            isPublished: true,
+            publishToMarketplace: true,
+            deletedAt: null,
+            tenant: { isActive: true },
+          },
+          select: { name: true },
+        }),
+      ]);
+
+      // Gabung semua nama (produk, jasa, artikel, forum, jobs, seller) tanpa duplikat
+      const names: string[] = [];
+      for (const item of [
+        ...products.map((p) => p.name),
+        ...services.map((s) => s.name),
+        ...articles.map((a) => a.name),
+        ...forumPosts.map((f) => f.name),
+        ...jobs.map((j) => j.name),
+        ...sellers.map((s) => s.name),
+      ]) {
+        const n = item.trim();
+        if (n && !names.includes(n)) names.push(n);
+        if (names.length >= limit) break;
+      }
+
+      return { correction, suggestions: names };
+    }
+
+    // Fallback: Prisma LIKE
+    const [products, services] = await Promise.all([
+      this.prisma.product.findMany({
+        where: {
+          isPublished: true,
+          publishToMarketplace: true,
+          deletedAt: null,
+          tenant: { isActive: true },
+          OR: [
+            { name: { contains: trimmed, mode: "insensitive" } },
+            { description: { contains: trimmed, mode: "insensitive" } },
+          ],
+        },
+        take: limit,
+        select: { name: true },
+      }),
+      this.prisma.service.findMany({
+        where: {
+          isPublished: true,
+          publishToMarketplace: true,
+          deletedAt: null,
+          tenant: { isActive: true },
+          OR: [
+            { name: { contains: trimmed, mode: "insensitive" } },
+            { description: { contains: trimmed, mode: "insensitive" } },
+          ],
+        },
+        take: limit,
+        select: { name: true },
+      }),
+    ]);
+
+    const names: string[] = [];
+    for (const item of [...products, ...services]) {
+      const n = item.name.trim();
+      if (n && !names.includes(n)) names.push(n);
+      if (names.length >= limit) break;
+    }
+
+    return { correction: null, suggestions: names };
   }
 
   /**
