@@ -83,3 +83,10 @@ kebenaran.
 - Uji manual alur pengguna utama untuk setiap role dan tenant yang terdampak.
 - Untuk perubahan skema, jalankan Prisma generate dan alur migration yang sesuai
   di environment tujuan.
+
+## Aturan Deploy
+
+- **Jangan menjalankan `git push` secara otomatis.** Biarkan user yang push
+  ke GitHub secara manual setelah review perubahan.
+- Tugas agent hanya sampai membuat perubahan kode dan commit lokal.
+- User akan push sendiri dan memicu GitHub Actions untuk deploy ke VPS.

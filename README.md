@@ -810,10 +810,10 @@ echo <GITHUB_TOKEN> | docker login ghcr.io -u <USERNAME_GITHUB> --password-stdin
 ```bash
 docker compose pull
 docker compose run --rm backend-prod npx --yes prisma migrate deploy
-docker compose up -d
+docker compose up -d --force-recreate
 ```
 
-> **Catatan:** Langkah ini butuh image yang sudah di-build & di-push ke GHCR oleh GitHub Actions. Kalau belum pernah deploy dari Actions, jalankan `docker compose build` manual terlebih dahulu.
+> **Catatan:** Langkah ini butuh image yang sudah di-build & di-push ke GHCR oleh GitHub Actions. Kalau belum pernah deploy dari Actions, jalankan `docker compose build` manual terlebih dahulu. Gunakan `--force-recreate` saat update agar container baru dibuat dengan image terbaru.
 
 **2.7. Verifikasi container:**
 
@@ -933,9 +933,11 @@ Repo → **Settings → Secrets and variables → Actions → New repository sec
 
 **5.2. Alur deploy:**
 
-- Push ke `main` → GitHub Actions build image → push GHCR → SSH ke VPS-1 → `docker compose pull` + migrate + `up -d` (production)
+- Push ke `main` → GitHub Actions build image → push GHCR → SSH ke VPS-1 → `docker compose pull` + migrate + `up -d --force-recreate` (production)
 - Push ke `develop` → alur yang sama untuk dev
 - Manual: tab **Actions** → **Run workflow** → pilih branch
+
+> **Penting:** Gunakan `--force-recreate` saat deploy supaya container baru dibuat dengan image terbaru. Tanpa flag ini, `docker compose up -d` tidak akan me-replace container lama meskipun image di GHCR sudah diupdate (karena compose file tidak berubah).
 
 ### Checklist Verifikasi Akhir
 
@@ -955,9 +957,12 @@ Repo → **Settings → Secrets and variables → Actions → New repository sec
 ```bash
 cd /opt/plazo
 git pull origin main
-docker compose build
-docker compose up -d
+docker compose pull
+docker compose run --rm backend-prod npx --yes prisma migrate deploy
+docker compose up -d --force-recreate
 ```
+
+> **Catatan:** `--force-recreate` diperlukan agar container di-recreate dengan image baru. Tanpa flag ini, container lama tetap berjalan meskipun image sudah di-update di GHCR.
 
 ### Mode DEV-Only vs FULL (production + dev)
 
@@ -965,8 +970,8 @@ Tersedia 2 config nginx dan 2 mode compose:
 
 | Mode | Nginx config | Perintah |
 |---|---|---|
-| **DEV-only** (produksi belum aktif) | `nginx/plazo-dev.conf` | `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d backend-dev frontend-dev nginx` |
-| **FULL** (prod + dev) | `nginx/plazo.id.conf` | `docker compose up -d` |
+| **DEV-only** (produksi belum aktif) | `nginx/plazo-dev.conf` | `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --force-recreate backend-dev frontend-dev nginx` |
+| **FULL** (prod + dev) | `nginx/plazo.id.conf` | `docker compose up -d --force-recreate` |
 
 Detail:
 - **DEV-only** hanya melayani `dev.plazo.id`, `*.dev.plazo.id`, dan `api-dev.plazo.id` → backend-dev & frontend-dev. Nginx tidak mereferensikan service prod, sehingga tetap jalan walau container prod belum siap.
@@ -977,10 +982,10 @@ Detail:
 Cara beralih mode:
 ```bash
 # Pindah ke DEV-only
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d backend-dev frontend-dev nginx
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --force-recreate backend-dev frontend-dev nginx
 
 # Kembali ke FULL (saat produksi siap)
-docker compose up -d
+docker compose up -d --force-recreate
 ```
 
 ### Troubleshooting
