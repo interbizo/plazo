@@ -67,6 +67,10 @@ jobs:
           port: ${{ secrets.VPS_SSH_PORT || 22 }}
           script: |
             cd /opt/plazo
+            # Sinkronkan file deploy terbaru dari repo ke root (tanpa copy manual)
+            git pull origin main
+            cp deploy/web/docker-compose.yml docker-compose.yml
+            mkdir -p nginx && cp deploy/web/nginx/*.conf nginx/
             export GHCR_OWNER=${{ github.repository_owner }}
             docker compose pull backend-prod frontend-prod meilisearch nginx
             docker compose run --rm backend-prod npx --yes prisma migrate deploy
@@ -130,6 +134,10 @@ jobs:
           port: ${{ secrets.VPS_SSH_PORT || 22 }}
           script: |
             cd /opt/plazo
+            # Sinkronkan file deploy terbaru dari repo ke root (tanpa copy manual)
+            git pull origin develop
+            cp deploy/web/docker-compose.yml docker-compose.yml
+            mkdir -p nginx && cp deploy/web/nginx/*.conf nginx/
             export GHCR_OWNER=${{ github.repository_owner }}
             export COMPOSE_FILES="-f docker-compose.yml -f docker-compose.dev.yml"
             docker compose $COMPOSE_FILES pull backend-dev frontend-dev meilisearch nginx
