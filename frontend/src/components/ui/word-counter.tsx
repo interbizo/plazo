@@ -73,7 +73,7 @@ export function WordCounter({
   text, 
   limit = MAX_WORDS, 
   className = "",
-  showCounter = false // Hidden by default
+  showCounter = true
 }: WordCounterProps) {
   const wordCount = countWords(text);
   const isOverMax = wordCount > limit;

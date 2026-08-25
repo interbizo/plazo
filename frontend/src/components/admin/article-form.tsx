@@ -398,7 +398,6 @@ export function ArticleForm({ mode, articleId }: ArticleFormProps) {
                 }
                 placeholder="Tulis artikel 800 sampai 1600 kata..."
                 minHeight="400px"
-                preset="article"
               />
               <p className="text-xs text-gray-500">
                 Gunakan input YouTube di panel kanan untuk embed video yang konsisten.

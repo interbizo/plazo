@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { WordCounter, isOverWordLimit, MAX_WORDS } from "@/components/ui/word-counter";
+import { CKEditor4 } from "@/components/ui/ckeditor4";
 import type { Category } from "@/types";
 import { CategorySubcategorySelect } from "@/components/ui/category-subcategory-select";
 
@@ -456,13 +457,13 @@ export function InternalServiceForm({
             <label className="mb-1 block text-sm font-medium text-gray-700">
               Deskripsi *
             </label>
-            <textarea
+            <CKEditor4
               value={form.description}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, description: e.target.value }))
+              onChange={(value) =>
+                setForm((prev) => ({ ...prev, description: value }))
               }
-              rows={6}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              placeholder="Jelaskan layanan internal dengan format yang menarik..."
+              minHeight="400px"
             />
             <WordCounter text={form.description} />
           </div>

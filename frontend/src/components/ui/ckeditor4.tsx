@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 
 const CKEDITOR_URL = "https://cdn.ckeditor.com/4.22.1/full/ckeditor.js";
 
-type CKEditor4Preset = "default" | "article";
+type CKEditor4Preset = "default" | "full";
 
 const ARTICLE_TOOLBAR_GROUPS = [
   { name: "document", groups: ["mode"] },
@@ -116,7 +116,7 @@ export function CKEditor4({
   const [isClient, setIsClient] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const editorReady = useRef(false);
-  const isArticlePreset = preset === "article";
+  const isCleanPreset = preset !== "full";
 
   useEffect(() => {
     let isMounted = true;
@@ -253,7 +253,7 @@ export function CKEditor4({
           // Hilangkan warning keamanan
           versionCheck: false,
           
-          toolbarGroups: isArticlePreset
+          toolbarGroups: isCleanPreset
             ? ARTICLE_TOOLBAR_GROUPS
             : [
                 { name: 'document', groups: [ 'mode', 'document', 'doctools' ] },
@@ -273,12 +273,12 @@ export function CKEditor4({
               ],
 
           // Hapus button yang deprecated atau tidak tersedia
-          removeButtons: isArticlePreset
+          removeButtons: isCleanPreset
             ? ARTICLE_REMOVE_BUTTONS
             : DEFAULT_REMOVE_BUTTONS,
-          removePlugins: isArticlePreset ? ARTICLE_REMOVE_PLUGINS : "",
+          removePlugins: isCleanPreset ? ARTICLE_REMOVE_PLUGINS : "",
 
-          extraPlugins: isArticlePreset
+          extraPlugins: isCleanPreset
             ? ARTICLE_EXTRA_PLUGINS
             : [
                 'a11yhelp',
@@ -363,7 +363,7 @@ export function CKEditor4({
           // Readonly mode
           readOnly: disabled,
           
-          font_names: isArticlePreset
+          font_names: isCleanPreset
             ? 'Arial/Arial, Helvetica, sans-serif;' +
               'Georgia/Georgia, serif;' +
               'Times New Roman/Times New Roman, Times, serif;' +
@@ -389,12 +389,12 @@ export function CKEditor4({
               'PT Sans/PT Sans, sans-serif;' +
               'Noto Sans/Noto Sans, sans-serif',
 
-          fontSize_sizes: isArticlePreset
+          fontSize_sizes: isCleanPreset
             ? '14/14px;16/16px;18/18px;20/20px;24/24px'
             : '8/8px;9/9px;10/10px;11/11px;12/12px;14/14px;16/16px;18/18px;20/20px;22/22px;24/24px;26/26px;28/28px;36/36px;48/48px;72/72px',
 
           // Format tags
-          format_tags: isArticlePreset
+          format_tags: isCleanPreset
             ? 'p;h2;h3;h4;pre'
             : 'p;h1;h2;h3;h4;h5;h6;pre;address;div',
 
