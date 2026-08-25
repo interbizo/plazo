@@ -90,7 +90,7 @@ export function WishlistButton({
     <button
       onClick={toggle}
       disabled={loading}
-      className={`rounded-full p-1.5 transition-colors ${
+      className={`inline-flex items-center justify-center rounded-full p-1.5 transition-colors ${
         isWished
           ? "bg-red-50 text-red-500 hover:bg-red-100"
           : "bg-white/80 text-gray-400 hover:text-red-500 hover:bg-white"

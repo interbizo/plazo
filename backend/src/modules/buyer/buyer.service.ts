@@ -593,7 +593,7 @@ export class BuyerService {
   // ============ WISHLIST ============
 
   async getWishlist(userId: string, page: number = 1, limit: number = 10) {
-    const skip = (page - 1) * limit;
+    const { skip, take } = PaginationHelper.calculatePagination(page, limit);
     const where = { userId };
 
     try {
@@ -601,14 +601,27 @@ export class BuyerService {
         this.prisma.wishlist.findMany({
           where,
           skip,
-          take: limit,
+          take,
           include: {
             product: {
               select: {
                 id: true,
                 name: true,
+                slug: true,
                 price: true,
                 images: true,
+                thumbnail: true,
+                isPublished: true,
+                tenant: { select: { name: true, subdomain: true } },
+              },
+            },
+            service: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                basePrice: true,
+                thumbnail: true,
                 isPublished: true,
                 tenant: { select: { name: true, subdomain: true } },
               },
@@ -619,16 +632,15 @@ export class BuyerService {
         this.prisma.wishlist.count({ where }),
       ]);
 
-      // Filter out wishlist items with null/deleted products
-      const validItems = items.filter(item => item.product !== null);
+      // Filter out wishlist items where both product and service are null (deleted)
+      const validItems = items.filter(item => item.product !== null || item.service !== null);
 
-      // Clean up orphaned wishlist items (optional, run in background)
+      // Clean up orphaned wishlist items (both product and service deleted)
       const orphanedIds = items
-        .filter(item => item.product === null)
+        .filter(item => item.product === null && item.service === null)
         .map(item => item.id);
       
       if (orphanedIds.length > 0) {
-        // Delete orphaned items asynchronously
         this.prisma.wishlist.deleteMany({
           where: { id: { in: orphanedIds } }
         }).catch(err => {

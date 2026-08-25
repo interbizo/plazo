@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { SafeHtml } from "@/components/ui/safe-html";
 import { ShareButton } from "@/components/shared/share-button";
+import { WishlistButton } from "@/components/shared/wishlist-button";
 import type { ServicePackage, Service } from "@/types";
 import {
   Star,
@@ -254,6 +255,9 @@ export default function ServiceDetailPage() {
                 <Briefcase className="h-20 w-20 text-gray-300" />
               </div>
             )}
+            <div className="absolute top-3 right-3">
+              <WishlistButton serviceId={service.id} className="h-9 w-9 shadow-sm" />
+            </div>
           </div>
           {gallery.length > 1 && (
             <div className="mt-3 flex gap-2 overflow-x-auto pb-2">
@@ -363,15 +367,15 @@ export default function ServiceDetailPage() {
               )}
             </div>
 
-            {/* Share Button */}
-            <div className="mb-4">
+            {/* Share & Wishlist */}
+            <div className="mb-4 flex items-center gap-2">
               <ShareButton
               url={currentPageUrl}
                 title={service.name}
                 description={service.description?.substring(0, 160) || ""}
                 image={service.thumbnail || service.gallery?.[0] || ""}
                 variant="default"
-                className="w-full justify-center"
+                className="flex-1 justify-center"
               />
             </div>
 

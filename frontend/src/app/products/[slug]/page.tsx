@@ -16,6 +16,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { SafeHtml } from "@/components/ui/safe-html";
 import { HomeButton } from "@/components/shared/home-button";
 import { ShareButton } from "@/components/shared/share-button";
+import { WishlistButton } from "@/components/shared/wishlist-button";
 import {
   Star,
   Store,
@@ -297,6 +298,9 @@ export default function ProductDetailPage() {
                 Stok Habis
               </div>
             )}
+            <div className="absolute top-3 right-3">
+              <WishlistButton productId={product.id} className="h-9 w-9 shadow-sm" />
+            </div>
           </div>
           {images.length > 1 && (
             <div className="mt-3 flex gap-2 overflow-x-auto pb-2">
