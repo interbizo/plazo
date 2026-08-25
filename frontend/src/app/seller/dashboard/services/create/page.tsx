@@ -322,20 +322,22 @@ export default function CreateServicePage() {
           />
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Deskripsi *
-            </label>
+            <div className="mb-1 flex items-center justify-between">
+              <label className="block text-sm font-medium text-gray-700">
+                Deskripsi *
+              </label>
+              <WordCounter text={form.description} />
+            </div>
             <CKEditor4
               value={form.description}
               onChange={(value) =>
                 setForm({ ...form, description: value })
               }
-              placeholder="Jelaskan layanan Anda secara detail dengan format yang menarik..."
+              placeholder="Tulis deskripsi layanan 800 sampai 1600 kata..."
               minHeight="400px"
             />
-            <WordCounter text={form.description} />
             <p className="mt-1 text-xs text-gray-500">
-              Gunakan editor untuk memformat teks dengan bold, list, heading, dll.
+              Deskripsi harus berisi 800 sampai 1.600 kata.
             </p>
           </div>
 

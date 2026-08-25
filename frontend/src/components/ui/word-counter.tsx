@@ -1,6 +1,7 @@
 "use client";
 
-const MAX_WORDS = 1500;
+const MIN_WORDS = 800;
+const MAX_WORDS = 1600;
 
 /**
  * Count words from text (strips HTML tags if present).
@@ -59,57 +60,42 @@ export function isOverWordLimit(text: string, limit: number = MAX_WORDS): boolea
 
 interface WordCounterProps {
   text: string;
+  min?: number;
   limit?: number;
   className?: string;
-  showCounter?: boolean; // Option to show/hide counter
+  showCounter?: boolean;
 }
 
-/**
- * A word counter indicator component.
- * Shows validation for maximum word limit.
- * Counter display is hidden by default.
- */
 export function WordCounter({ 
   text, 
+  min = MIN_WORDS,
   limit = MAX_WORDS, 
   className = "",
   showCounter = true
 }: WordCounterProps) {
   const wordCount = countWords(text);
   const isOverMax = wordCount > limit;
+  const isUnderMin = wordCount < min;
 
-  // Don't show anything if counter is hidden and validation passes
   if (!showCounter && !isOverMax) {
     return null;
   }
 
+  const textColor = isOverMax
+    ? "text-red-600 font-semibold"
+    : isUnderMin
+      ? "text-amber-600"
+      : "text-green-700 font-medium";
+
   return (
-    <div className={`flex items-center gap-1.5 mt-1 ${className}`}>
+    <div className={`flex items-center gap-1.5 ${className}`}>
       {showCounter && (
-        <span
-          className={`text-xs font-medium ${
-            isOverMax
-              ? "text-red-600"
-              : wordCount > limit * 0.9
-                ? "text-amber-600"
-                : "text-gray-500"
-          }`}
-        >
-          {wordCount.toLocaleString("id-ID")} / {limit.toLocaleString("id-ID")} kata
-        </span>
-      )}
-      {isOverMax && (
-        <span className="text-xs text-red-600 font-medium">
-          — Melebihi batas! Kurangi {(wordCount - limit).toLocaleString("id-ID")} kata.
-        </span>
-      )}
-      {!isOverMax && wordCount > limit * 0.9 && showCounter && (
-        <span className="text-xs text-amber-600">
-          — Mendekati batas
+        <span className={`text-xs font-medium ${textColor}`}>
+          {wordCount.toLocaleString("id-ID")} kata
         </span>
       )}
     </div>
   );
 }
 
-export { MAX_WORDS };
+export { MIN_WORDS, MAX_WORDS };

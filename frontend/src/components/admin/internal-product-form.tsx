@@ -533,18 +533,23 @@ export function InternalProductForm({
           />
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Deskripsi *
-            </label>
+            <div className="mb-1 flex items-center justify-between">
+              <label className="block text-sm font-medium text-gray-700">
+                Deskripsi *
+              </label>
+              <WordCounter text={form.description} />
+            </div>
             <CKEditor4
               value={form.description}
               onChange={(value) =>
                 setForm((prev) => ({ ...prev, description: value }))
               }
-              placeholder="Jelaskan detail produk internal dengan format yang menarik..."
+              placeholder="Tulis deskripsi produk 800 sampai 1600 kata..."
               minHeight="400px"
             />
-            <WordCounter text={form.description} />
+            <p className="mt-1 text-xs text-gray-500">
+              Deskripsi harus berisi 800 sampai 1.600 kata.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
