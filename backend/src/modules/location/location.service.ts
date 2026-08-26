@@ -220,12 +220,23 @@ export class LocationService implements OnModuleInit {
   }
 
   /**
-   * Get cities by province
+   * Get cities by province (supports province ID or province name)
    */
-  async getCitiesByProvince(provinceId: string) {
+  async getCitiesByProvince(provinceIdOrName: string) {
+    const province = await this.prisma.province.findFirst({
+      where: {
+        OR: [
+          { id: provinceIdOrName },
+          { name: { equals: provinceIdOrName, mode: "insensitive" } },
+        ],
+      },
+    });
+
+    const targetProvinceId = province ? province.id : provinceIdOrName;
+
     const cities = await this.prisma.city.findMany({
       where: {
-        provinceId,
+        provinceId: targetProvinceId,
         isActive: true,
       },
       orderBy: { sortOrder: "asc" },

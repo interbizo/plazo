@@ -14,7 +14,7 @@ import { SearchBar } from "@/components/shared/search-bar";
 import { Pagination } from "@/components/shared/pagination";
 import { HomeButton } from "@/components/shared/home-button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Spinner } from "@/components/ui/spinner";
+import { LocationSelect } from "@/components/ui/location-select";
 import { JobListSkeleton } from "@/components/ui/skeleton";
 import { FileText } from "lucide-react";
 import { PageTitle } from "@/components/shared/page-title";
@@ -45,12 +45,18 @@ function BrowseJobsContent() {
 
   const page = Number(searchParams.get("page") || "1");
   const search = searchParams.get("search") || "";
+  const province = searchParams.get("province") || "";
+  const provinceId = searchParams.get("provinceId") || province;
   const city = searchParams.get("city") || "";
+  const cityId = searchParams.get("cityId") || city;
   const status = searchParams.get("status") || "";
   const sortBy = searchParams.get("sort") || "newest";
 
   const [searchInput, setSearchInput] = useState(search);
+  const [provinceInput, setProvinceInput] = useState(province);
+  const [provinceIdInput, setProvinceIdInput] = useState(provinceId);
   const [cityInput, setCityInput] = useState(city);
+  const [cityIdInput, setCityIdInput] = useState(cityId);
 
   const updateURL = useCallback(
     (params: Record<string, string>) => {
@@ -75,6 +81,7 @@ function BrowseJobsContent() {
           sortBy: sortBy as SortBy,
         };
         if (search) params.search = search;
+        if (province) params.province = province;
         if (city) params.city = city;
         if (status) params.status = status;
 
@@ -89,7 +96,7 @@ function BrowseJobsContent() {
       }
     };
     fetchJobs();
-  }, [page, search, city, status, sortBy]);
+  }, [page, search, province, city, status, sortBy]);
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6">
@@ -117,20 +124,57 @@ function BrowseJobsContent() {
           placeholder="Cari pekerjaan atau proyek..."
           onSubmit={() => updateURL({ search: searchInput, page: "1" })}
         />
-        <div className="flex flex-wrap gap-3">
-          <input
-            value={cityInput}
-            onChange={(e) => setCityInput(e.target.value)}
-            placeholder="Filter kota"
-            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-          <button
-            onClick={() => updateURL({ city: cityInput, page: "1" })}
-            className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
-          >
-            Terapkan Kota
-          </button>
-          <select
+        <div className="space-y-3">
+          <div className="rounded-lg border border-gray-200 bg-white p-3">
+            <LocationSelect
+              provinceValue={provinceIdInput}
+              cityValue={cityIdInput}
+              onProvinceChange={(selectedProvinceId, selectedProvinceName) => {
+                setProvinceIdInput(selectedProvinceId);
+                setProvinceInput(selectedProvinceName);
+              }}
+              onCityChange={(selectedCityId, selectedCityName) => {
+                setCityIdInput(selectedCityId);
+                setCityInput(selectedCityName);
+              }}
+            />
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                onClick={() =>
+                  updateURL({
+                    province: provinceInput,
+                    provinceId: provinceIdInput,
+                    city: cityInput,
+                    cityId: cityIdInput,
+                    page: "1",
+                  })
+                }
+                className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
+              >
+                Terapkan Lokasi
+              </button>
+              <button
+                onClick={() => {
+                  setProvinceInput("");
+                  setProvinceIdInput("");
+                  setCityInput("");
+                  setCityIdInput("");
+                  updateURL({
+                    province: "",
+                    provinceId: "",
+                    city: "",
+                    cityId: "",
+                    page: "1",
+                  });
+                }}
+                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Reset Lokasi
+              </button>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <select
             value={status}
             onChange={(e) => updateURL({ status: e.target.value, page: "1" })}
             className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -152,6 +196,7 @@ function BrowseJobsContent() {
               </option>
             ))}
           </select>
+          </div>
         </div>
       </div>
 

@@ -56,6 +56,16 @@ export function LocationSelect({
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
+  const selectedProvinceObj = provinces.find(
+    (p) => p.id === provinceValue || p.name.toLowerCase() === provinceValue.toLowerCase(),
+  );
+  const matchedProvinceId = selectedProvinceObj ? selectedProvinceObj.id : provinceValue;
+
+  const selectedCityObj = cities.find(
+    (c) => c.id === cityValue || c.name.toLowerCase() === cityValue.toLowerCase(),
+  );
+  const matchedCityId = selectedCityObj ? selectedCityObj.id : cityValue;
+
   // Fetch provinces on mount
   useEffect(() => {
     const fetchProvinces = async () => {
@@ -78,7 +88,7 @@ export function LocationSelect({
 
   // Fetch cities when province changes
   useEffect(() => {
-    if (!provinceValue) {
+    if (!matchedProvinceId) {
       setCities([]);
       setDistricts([]);
       return;
@@ -88,7 +98,7 @@ export function LocationSelect({
       setLoadingCities(true);
       try {
         const response = await fetch(
-          `${apiUrl}/api/location/cities?provinceId=${provinceValue}`
+          `${apiUrl}/api/location/cities?provinceId=${encodeURIComponent(matchedProvinceId)}`
         );
         if (response.ok) {
           const data = await response.json();
@@ -102,11 +112,11 @@ export function LocationSelect({
     };
 
     fetchCities();
-  }, [provinceValue, apiUrl]);
+  }, [matchedProvinceId, apiUrl]);
 
   // Fetch districts when city changes
   useEffect(() => {
-    if (!cityValue || !showDistrict) {
+    if (!matchedCityId || !showDistrict) {
       setDistricts([]);
       return;
     }
@@ -115,7 +125,7 @@ export function LocationSelect({
       setLoadingDistricts(true);
       try {
         const response = await fetch(
-          `${apiUrl}/api/location/districts?cityId=${cityValue}`
+          `${apiUrl}/api/location/districts?cityId=${encodeURIComponent(matchedCityId)}`
         );
         if (response.ok) {
           const data = await response.json();
@@ -129,7 +139,7 @@ export function LocationSelect({
     };
 
     fetchDistricts();
-  }, [cityValue, showDistrict, apiUrl]);
+  }, [matchedCityId, showDistrict, apiUrl]);
 
   const handleProvinceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedId = e.target.value;
@@ -173,7 +183,7 @@ export function LocationSelect({
         <div className="relative">
           <select
             id="province"
-            value={provinceValue}
+            value={matchedProvinceId}
             onChange={handleProvinceChange}
             disabled={loadingProvinces}
             className={`w-full rounded-lg border px-3 py-2 pr-10 text-sm text-gray-900 appearance-none focus:outline-none focus:ring-1 ${
@@ -210,22 +220,22 @@ export function LocationSelect({
         <div className="relative">
           <select
             id="city"
-            value={cityValue}
+            value={matchedCityId}
             onChange={handleCityChange}
-            disabled={!provinceValue || loadingCities}
+            disabled={!matchedProvinceId || loadingCities}
             className={`w-full rounded-lg border px-3 py-2 pr-10 text-sm text-gray-900 appearance-none focus:outline-none focus:ring-1 ${
               cityError
                 ? "border-red-500 focus:border-red-500 focus:ring-red-500"
                 : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
             } ${
-              !provinceValue || loadingCities
+              !matchedProvinceId || loadingCities
                 ? "bg-gray-50 cursor-not-allowed"
                 : "bg-white"
             }`}
             required={required}
           >
             <option value="">
-              {!provinceValue
+              {!matchedProvinceId
                 ? "Pilih provinsi terlebih dahulu"
                 : loadingCities
                   ? "Memuat kota..."

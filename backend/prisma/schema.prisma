@@ -456,6 +456,7 @@ model Tenant {
   contactWhatsapp String?
   address         String? @db.Text // Alamat fisik toko (opsional)
   city            String? // Kota toko, e.g. "Jakarta", "Bandung"
+  province        String? // Provinsi toko
   latitude        Float? // Koordinat opsional
   longitude       Float? // Koordinat opsional
 
@@ -551,6 +552,7 @@ model Tenant {
   @@index([isFeatured])
   @@index([isSeoActive])
   @@index([city])
+  @@index([province])
   @@index([referredBy])
   @@index([name])
   @@index([referredBy, deletedAt])

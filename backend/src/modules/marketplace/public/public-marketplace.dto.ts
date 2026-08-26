@@ -50,6 +50,10 @@ export class PublicSearchDto {
   city?: string;
 
   @IsOptional()
+  @IsString()
+  province?: string;
+
+  @IsOptional()
   @IsEnum(SortBy)
   sortBy?: SortBy;
 

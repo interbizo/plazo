@@ -5,6 +5,7 @@ import type { Category } from "@/types";
 import type { SortBy } from "@/services/marketplace.service";
 import { ChevronDown, ChevronRight, Filter, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LocationSelect } from "@/components/ui/location-select";
 
 
 interface FilterSidebarProps {
@@ -18,6 +19,10 @@ interface FilterSidebarProps {
   onMinPriceChange: (v: string) => void;
   onMaxPriceChange: (v: string) => void;
   onApplyPrice: () => void;
+  provinceValue?: string;
+  cityValue?: string;
+  onProvinceChange?: (provinceId: string, provinceName: string) => void;
+  onCityChange?: (cityId: string, cityName: string) => void;
   onReset: () => void;
   priceLabel?: string;
 }
@@ -42,6 +47,10 @@ export function FilterSidebar({
   onMinPriceChange,
   onMaxPriceChange,
   onApplyPrice,
+  provinceValue = "",
+  cityValue = "",
+  onProvinceChange,
+  onCityChange,
   onReset,
   priceLabel = "Harga",
 }: FilterSidebarProps) {
@@ -57,7 +66,7 @@ export function FilterSidebar({
   });
   
   const hasFilters =
-    selectedCategory || minPrice || maxPrice || sortBy !== "newest";
+    selectedCategory || minPrice || maxPrice || provinceValue || cityValue || sortBy !== "newest";
 
   const toggleExpand = (categoryId: string) => {
     setExpandedCategories((prev) => {
@@ -204,6 +213,17 @@ export function FilterSidebar({
             className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
         </div>
+        {(onProvinceChange || onCityChange) && (
+          <div className="mt-4">
+            <h3 className="text-sm font-semibold text-gray-900 mb-2">Lokasi</h3>
+            <LocationSelect
+              provinceValue={provinceValue}
+              cityValue={cityValue}
+              onProvinceChange={onProvinceChange}
+              onCityChange={onCityChange}
+            />
+          </div>
+        )}
         <Button
           size="sm"
           variant="outline"

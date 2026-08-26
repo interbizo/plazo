@@ -192,8 +192,27 @@ export class PublicMarketplaceService {
       where.tags = { hasSome: query.tags.split(",").map((t) => t.trim()) };
     }
 
+    const locationFilters: any[] = [];
+    if (query.city) {
+      const cityFilter = { contains: query.city, mode: "insensitive" as const };
+      locationFilters.push({
+        tenant: { city: cityFilter },
+      });
+    }
+    if (query.province) {
+      const provinceFilter = { contains: query.province, mode: "insensitive" as const };
+      locationFilters.push({
+        tenant: { province: provinceFilter },
+      });
+    }
+    if (locationFilters.length > 0) {
+      where.AND = Array.isArray(where.AND)
+        ? [...where.AND, ...locationFilters]
+        : locationFilters;
+    }
+
     // Jika search + Meilisearch aktif: cari id via Meilisearch, lalu ambil detail dari DB
-    if (query.search && this.meilisearch.isEnabled()) {
+    if (query.search && !query.city && !query.province && this.meilisearch.isEnabled()) {
       const meiliResult = await this.meilisearch.searchProducts(query.search, {
         categoryIds: meiliCategoryIds,
         city: query.city,
@@ -220,6 +239,7 @@ export class PublicMarketplaceService {
           publishToMarketplace: true,
           deletedAt: null,
           tenant: { isActive: true },
+          ...(locationFilters.length > 0 && { AND: locationFilters }),
         },
         include: {
           category: { select: { id: true, name: true, slug: true, parentId: true } },
@@ -413,10 +433,16 @@ export class PublicMarketplaceService {
       if (!where.AND) where.AND = [];
       if (!Array.isArray(where.AND)) where.AND = [where.AND];
       (where.AND as any[]).push({
-        OR: [
-          { city: cityFilter },
-          { tenant: { city: cityFilter } },
-        ],
+        tenant: { city: cityFilter },
+      });
+    }
+
+    if (query.province) {
+      const provinceFilter = { contains: query.province, mode: "insensitive" as const };
+      if (!where.AND) where.AND = [];
+      if (!Array.isArray(where.AND)) where.AND = [where.AND];
+      (where.AND as any[]).push({
+        tenant: { province: provinceFilter },
       });
     }
 
@@ -560,10 +586,16 @@ export class PublicMarketplaceService {
       if (!where.AND) where.AND = [];
       if (!Array.isArray(where.AND)) where.AND = [where.AND];
       (where.AND as any[]).push({
-        OR: [
-          { city: cityFilter },
-          { tenant: { city: cityFilter } },
-        ],
+        tenant: { city: cityFilter },
+      });
+    }
+
+    if (query.province) {
+      const provinceFilter = { contains: query.province, mode: "insensitive" as const };
+      if (!where.AND) where.AND = [];
+      if (!Array.isArray(where.AND)) where.AND = [where.AND];
+      (where.AND as any[]).push({
+        tenant: { province: provinceFilter },
       });
     }
 

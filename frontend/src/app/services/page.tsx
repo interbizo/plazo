@@ -18,6 +18,7 @@ interface PageProps {
     page?: string;
     search?: string;
     city?: string;
+    province?: string;
     category?: string;
     categorySlug?: string;
     sort?: string;
@@ -31,6 +32,7 @@ export default async function BrowseServicesPage({ searchParams }: PageProps) {
   const page = Number(params.page || "1");
   const search = params.search || "";
   const city = params.city || "";
+  const province = params.province || "";
   const categorySlug = params.categorySlug || "";
   const categoryId = categorySlug ? "" : params.category || "";
   const sortBy = params.sort || "newest";
@@ -48,6 +50,7 @@ export default async function BrowseServicesPage({ searchParams }: PageProps) {
         sortBy,
         ...(search && { search }),
         ...(city && { city }),
+        ...(province && { province }),
         ...(categoryId && { categoryId }),
         ...(categorySlug && { categorySlug }),
         ...(minPrice && { minPrice: Number(minPrice) }),
@@ -72,12 +75,8 @@ export default async function BrowseServicesPage({ searchParams }: PageProps) {
       initialCategories={initialCategories}
       initialPage={page}
       initialSearch={search}
-      initialCategoryId={categoryId}
-      initialCategorySlug={categorySlug}
-      initialSortBy={sortBy}
       initialMinPrice={minPrice}
       initialMaxPrice={maxPrice}
-      initialCity={city}
     />
   );
 }

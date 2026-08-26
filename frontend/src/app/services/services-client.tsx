@@ -30,12 +30,8 @@ interface ServicesBrowseClientProps {
   initialCategories: Category[];
   initialPage: number;
   initialSearch: string;
-  initialCategoryId: string;
-  initialCategorySlug: string;
-  initialSortBy: string;
   initialMinPrice: string;
   initialMaxPrice: string;
-  initialCity: string;
 }
 
 export function ServicesBrowseClient({
@@ -45,12 +41,8 @@ export function ServicesBrowseClient({
   initialCategories,
   initialPage,
   initialSearch,
-  initialCategoryId,
-  initialCategorySlug,
-  initialSortBy,
   initialMinPrice,
   initialMaxPrice,
-  initialCity,
 }: ServicesBrowseClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -70,6 +62,9 @@ export function ServicesBrowseClient({
   const minPrice = searchParams.get("minPrice") || "";
   const maxPrice = searchParams.get("maxPrice") || "";
   const city = searchParams.get("city") || "";
+  const province = searchParams.get("province") || "";
+  const provinceId = searchParams.get("provinceId") || "";
+  const cityId = searchParams.get("cityId") || "";
 
   // Convert categorySlug to categoryId for filter sidebar
   const selectedCategoryId =
@@ -88,8 +83,10 @@ export function ServicesBrowseClient({
   const [localMaxPrice, setLocalMaxPrice] = useState(
     maxPrice || initialMaxPrice,
   );
-  const [cityInput, setCityInput] = useState(city || initialCity);
-
+  const [localProvinceId, setLocalProvinceId] = useState(provinceId);
+  const [localProvince, setLocalProvince] = useState(province);
+  const [localCityId, setLocalCityId] = useState(cityId);
+  const [localCity, setLocalCity] = useState(city);
   const updateURL = useCallback(
     (params: Record<string, string>) => {
       const sp = new URLSearchParams(searchParams.toString());
@@ -111,6 +108,7 @@ export function ServicesBrowseClient({
         const params: BrowseParams = { page, limit: 20, sortBy };
         if (search) params.search = search;
         if (city) params.city = city;
+        if (province) params.province = province;
         if (resolvedCategorySlug) params.categorySlug = resolvedCategorySlug;
         else if (categoryId) params.categoryId = categoryId;
         if (minPrice) params.minPrice = Number(minPrice);
@@ -139,13 +137,14 @@ export function ServicesBrowseClient({
     minPrice,
     maxPrice,
     city,
+    province,
     resolvedCategorySlug,
   ]);
 
   const activeFilterCount =
     (selectedCategoryId ? 1 : 0) +
     (minPrice || maxPrice ? 1 : 0) +
-    (city ? 1 : 0) +
+    (city || province ? 1 : 0) +
     (sortBy !== "newest" ? 1 : 0);
 
   return (
@@ -174,20 +173,6 @@ export function ServicesBrowseClient({
             placeholder="Cari jasa atau layanan..."
             onSubmit={() => updateURL({ search: searchInput, page: "1" })}
           />
-        </div>
-        <div className="flex gap-2 sm:w-72">
-          <input
-            value={cityInput}
-            onChange={(e) => setCityInput(e.target.value)}
-            placeholder="Filter kota"
-            className="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 outline-none focus:border-purple-500"
-          />
-          <button
-            onClick={() => updateURL({ city: cityInput, page: "1" })}
-            className="rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-sm font-medium text-purple-700 hover:bg-purple-100"
-          >
-            Terapkan
-          </button>
         </div>
         <MobileFilterButton
           count={activeFilterCount}
@@ -220,14 +205,33 @@ export function ServicesBrowseClient({
               updateURL({
                 minPrice: localMinPrice,
                 maxPrice: localMaxPrice,
+                provinceId: localProvinceId,
+                province: localProvince,
+                cityId: localCityId,
+                city: localCity,
                 page: "1",
               })
             }
+            provinceValue={localProvinceId || localProvince}
+            cityValue={localCityId || localCity}
+            onProvinceChange={(pId, pName) => {
+              setLocalProvinceId(pId);
+              setLocalProvince(pName);
+              setLocalCityId("");
+              setLocalCity("");
+            }}
+            onCityChange={(cId, cName) => {
+              setLocalCityId(cId);
+              setLocalCity(cName);
+            }}
             onReset={() => {
               setSearchInput("");
               setLocalMinPrice("");
               setLocalMaxPrice("");
-              setCityInput("");
+              setLocalProvinceId("");
+              setLocalProvince("");
+              setLocalCityId("");
+              setLocalCity("");
               router.push("/services");
             }}
             priceLabel="Range Harga"
@@ -274,15 +278,34 @@ export function ServicesBrowseClient({
                   updateURL({
                     minPrice: localMinPrice,
                     maxPrice: localMaxPrice,
+                    provinceId: localProvinceId,
+                    province: localProvince,
+                    cityId: localCityId,
+                    city: localCity,
                     page: "1",
                   });
                   setShowMobileFilter(false);
+                }}
+                provinceValue={localProvinceId || localProvince}
+                cityValue={localCityId || localCity}
+                onProvinceChange={(pId, pName) => {
+                  setLocalProvinceId(pId);
+                  setLocalProvince(pName);
+                  setLocalCityId("");
+                  setLocalCity("");
+                }}
+                onCityChange={(cId, cName) => {
+                  setLocalCityId(cId);
+                  setLocalCity(cName);
                 }}
                 onReset={() => {
                   setSearchInput("");
                   setLocalMinPrice("");
                   setLocalMaxPrice("");
-                  setCityInput("");
+                  setLocalProvinceId("");
+                  setLocalProvince("");
+                  setLocalCityId("");
+                  setLocalCity("");
                   router.push("/services");
                   setShowMobileFilter(false);
                 }}

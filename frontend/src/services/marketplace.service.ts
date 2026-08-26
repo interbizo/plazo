@@ -25,6 +25,7 @@ export interface BrowseParams {
   limit?: number;
   search?: string;
   city?: string;
+  province?: string;
   categoryId?: string;
   categorySlug?: string;
   minPrice?: number;
