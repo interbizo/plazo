@@ -2,26 +2,44 @@ name: Deploy Plazo ke VPS
 
 on:
   push:
-    branches: [main, develop]
+    branches:
+      - main
+      - develop
   workflow_dispatch:
+
+# Production dan development menggunakan VPS + working directory yang sama.
+# Jangan jalankan dua deployment bersamaan karena keduanya mengubah /opt/plazo.
+concurrency:
+  group: plazo-vps-deployment
+  cancel-in-progress: false
 
 env:
   REGISTRY: ghcr.io
   IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/plazo
 
 jobs:
-  # ============ PRODUCTION (branch main) ============
+  # ============================================================
+  # PRODUCTION
+  # Branch: main
+  # ============================================================
   deploy-production:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+
     permissions:
       contents: read
       packages: write
 
     steps:
+      # ----------------------------------------------------------
+      # Checkout source code
+      # ----------------------------------------------------------
       - name: Checkout
         uses: actions/checkout@v4
 
+      # ----------------------------------------------------------
+      # Login ke GitHub Container Registry
+      # ----------------------------------------------------------
       - name: Login ke GHCR
         uses: docker/login-action@v3
         with:
@@ -29,6 +47,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # ----------------------------------------------------------
+      # Build & Push Frontend Production
+      # ----------------------------------------------------------
       - name: Build & push Frontend (prod)
         uses: docker/build-push-action@v6
         with:
@@ -49,6 +70,9 @@ jobs:
             NEXT_PUBLIC_TURNSTILE_SITE_KEY=${{ secrets.NEXT_PUBLIC_TURNSTILE_SITE_KEY }}
             NEXT_PUBLIC_S3_PUBLIC_URL=${{ secrets.NEXT_PUBLIC_S3_PUBLIC_URL }}
 
+      # ----------------------------------------------------------
+      # Build & Push Backend Production
+      # ----------------------------------------------------------
       - name: Build & push Backend (prod)
         uses: docker/build-push-action@v6
         with:
@@ -60,6 +84,9 @@ jobs:
             ${{ env.IMAGE_PREFIX }}-backend:prod
             ${{ env.IMAGE_PREFIX }}-backend:prod-${{ github.sha }}
 
+      # ----------------------------------------------------------
+      # Deploy Production ke VPS
+      # ----------------------------------------------------------
       - name: Deploy ke VPS-1 (web) — production
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -67,30 +94,88 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_SSH_PORT || 22 }}
-          script: |
-            cd /opt/plazo
-            # Sinkronkan file deploy terbaru dari repo ke root (tanpa copy manual)
-            git pull origin main
-            cp deploy/web/docker-compose.yml docker-compose.yml
-            mkdir -p nginx && cp deploy/web/nginx/*.conf nginx/
-            export GHCR_OWNER=${{ github.repository_owner }}
-            docker compose pull backend-prod frontend-prod meilisearch nginx
-            docker compose run --rm backend-prod npx --yes prisma migrate deploy
-            docker compose up -d --force-recreate backend-prod frontend-prod meilisearch nginx
-            echo "Production deploy selesai: $(date)"
 
-  # ============ DEV (branch develop) ============
+          script: |
+            set -euo pipefail
+
+            echo "========================================"
+            echo "Deploy PRODUCTION Plazo"
+            echo "Commit: ${{ github.sha }}"
+            echo "========================================"
+
+            cd /opt/plazo
+
+            echo "1. Sinkronisasi branch main..."
+            git fetch origin main
+            git checkout main
+            git reset --hard origin/main
+
+            echo "Current branch:"
+            git branch --show-current
+
+            echo "Current commit:"
+            git rev-parse HEAD
+
+            echo "2. Update Docker Compose dan Nginx..."
+            cp deploy/web/docker-compose.yml docker-compose.yml
+
+            mkdir -p nginx
+            cp deploy/web/nginx/*.conf nginx/
+
+            export GHCR_OWNER=${{ github.repository_owner }}
+
+            echo "3. Validasi Docker Compose..."
+            docker compose config > /dev/null
+
+            echo "4. Pull image production terbaru..."
+            docker compose pull backend-prod frontend-prod
+
+            echo "5. Jalankan Prisma migration production..."
+            docker compose run --rm backend-prod \
+              npx --yes prisma migrate deploy
+
+            echo "6. Recreate container production..."
+            docker compose up -d \
+              --force-recreate \
+              backend-prod \
+              frontend-prod
+
+            echo "7. Recreate Nginx..."
+            docker compose up -d \
+              --force-recreate \
+              nginx
+
+            echo "8. Status container..."
+            docker compose ps
+
+            echo "========================================"
+            echo "Production deploy berhasil"
+            echo "Commit: $(git rev-parse HEAD)"
+            echo "Waktu: $(date)"
+            echo "========================================"
+
+  # ============================================================
+  # DEVELOPMENT / STAGING
+  # Branch: develop
+  # ============================================================
   deploy-dev:
     if: github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
+
     permissions:
       contents: read
       packages: write
 
     steps:
+      # ----------------------------------------------------------
+      # Checkout source code
+      # ----------------------------------------------------------
       - name: Checkout
         uses: actions/checkout@v4
 
+      # ----------------------------------------------------------
+      # Login ke GitHub Container Registry
+      # ----------------------------------------------------------
       - name: Login ke GHCR
         uses: docker/login-action@v3
         with:
@@ -98,6 +183,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # ----------------------------------------------------------
+      # Build & Push Frontend Development
+      # ----------------------------------------------------------
       - name: Build & push Frontend (dev)
         uses: docker/build-push-action@v6
         with:
@@ -118,6 +206,9 @@ jobs:
             NEXT_PUBLIC_TURNSTILE_SITE_KEY=${{ secrets.NEXT_PUBLIC_TURNSTILE_SITE_KEY_DEV }}
             NEXT_PUBLIC_S3_PUBLIC_URL=${{ secrets.NEXT_PUBLIC_S3_PUBLIC_URL_DEV }}
 
+      # ----------------------------------------------------------
+      # Build & Push Backend Development
+      # ----------------------------------------------------------
       - name: Build & push Backend (dev)
         uses: docker/build-push-action@v6
         with:
@@ -129,6 +220,9 @@ jobs:
             ${{ env.IMAGE_PREFIX }}-backend:dev
             ${{ env.IMAGE_PREFIX }}-backend:dev-${{ github.sha }}
 
+      # ----------------------------------------------------------
+      # Deploy Development ke VPS
+      # ----------------------------------------------------------
       - name: Deploy ke VPS-1 (web) — dev
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -136,15 +230,62 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_SSH_PORT || 22 }}
+
           script: |
+            set -euo pipefail
+
+            echo "========================================"
+            echo "Deploy DEVELOPMENT Plazo"
+            echo "Commit: ${{ github.sha }}"
+            echo "========================================"
+
             cd /opt/plazo
-            # Sinkronkan file deploy terbaru dari repo ke root (tanpa copy manual)
-            git pull origin develop
+
+            echo "1. Sinkronisasi branch develop..."
+            git fetch origin develop
+            git checkout develop
+            git reset --hard origin/develop
+
+            echo "Current branch:"
+            git branch --show-current
+
+            echo "Current commit:"
+            git rev-parse HEAD
+
+            echo "2. Update Docker Compose dan Nginx..."
             cp deploy/web/docker-compose.yml docker-compose.yml
-            mkdir -p nginx && cp deploy/web/nginx/*.conf nginx/
+
+            mkdir -p nginx
+            cp deploy/web/nginx/*.conf nginx/
+
             export GHCR_OWNER=${{ github.repository_owner }}
-            export COMPOSE_FILES="-f docker-compose.yml -f docker-compose.dev.yml"
-            docker compose $COMPOSE_FILES pull backend-dev frontend-dev meilisearch nginx
-            docker compose $COMPOSE_FILES run --rm backend-dev npx --yes prisma migrate deploy
-            docker compose $COMPOSE_FILES up -d --force-recreate backend-dev frontend-dev meilisearch nginx
-            echo "Dev deploy selesai: $(date)"
+
+            echo "3. Validasi Docker Compose..."
+            docker compose config > /dev/null
+
+            echo "4. Pull image development terbaru..."
+            docker compose pull backend-dev frontend-dev
+
+            echo "5. Jalankan Prisma migration development..."
+            docker compose run --rm backend-dev \
+              npx --yes prisma migrate deploy
+
+            echo "6. Recreate container development..."
+            docker compose up -d \
+              --force-recreate \
+              backend-dev \
+              frontend-dev
+
+            echo "7. Recreate Nginx..."
+            docker compose up -d \
+              --force-recreate \
+              nginx
+
+            echo "8. Status container..."
+            docker compose ps
+
+            echo "========================================"
+            echo "Development deploy berhasil"
+            echo "Commit: $(git rev-parse HEAD)"
+            echo "Waktu: $(date)"
+            echo "========================================"
