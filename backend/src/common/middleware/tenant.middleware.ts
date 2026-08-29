@@ -42,6 +42,9 @@ export class TenantMiddleware implements NestMiddleware {
     /^\/api\/regions\//,
     // Location data is global (provinces, cities from Indonesia API)
     /^\/api\/location\//,
+    // Shipping destinations and estimates resolve their own product tenant
+    /^\/api\/shipping\/destinations$/,
+    /^\/api\/shipping\/estimate$/,
     // Address book is user-scoped
     /^\/api\/addresses/,
     // User profiles are global

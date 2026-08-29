@@ -100,6 +100,11 @@ export class CreateProductDto {
   @Min(0)
   stock: number;
 
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  weightGram?: number;
+
   @IsString()
   categoryId: string;
 
@@ -236,6 +241,11 @@ export class UpdateProductDto {
   @IsNumber()
   @Min(0)
   stock?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  weightGram?: number;
 
   @IsOptional()
   @IsString()

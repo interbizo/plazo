@@ -6,11 +6,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { marketplaceApi } from "@/services/marketplace.service";
 import { chatApi } from "@/services/chat.service";
+import { shippingApi } from "@/services/shipping.service";
 import { useAuthStore } from "@/stores/auth.store";
 import { formatPrice, formatDate } from "@/lib/utils";
-import { createWhatsAppCheckoutUrl } from "@/lib/whatsapp-checkout";
+import { createWhatsAppCheckoutUrl, type WhatsAppCheckoutShippingEstimate } from "@/lib/whatsapp-checkout";
 import { useCurrentPageUrl } from "@/hooks/use-current-page-url";
 import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
 import { Spinner } from "@/components/ui/spinner";
 import { SafeHtml } from "@/components/ui/safe-html";
 import { ShareButton } from "@/components/shared/share-button";
@@ -74,6 +76,8 @@ interface ProductDetail {
   category?: { id: string; name: string };
   tenant?: ProductTenant;
   createdAt: string;
+  productType?: "PHYSICAL" | "DIGITAL";
+  isDigital?: boolean;
   hasVariants?: boolean;
   variants?: ProductVariant[];
   averageRating?: number;
@@ -106,6 +110,10 @@ export default function StoreProductDetailPage() {
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+  const [shippingEstimate, setShippingEstimate] =
+    useState<WhatsAppCheckoutShippingEstimate | null>(null);
+  const [isShippingLoading, setIsShippingLoading] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -137,7 +145,6 @@ export default function StoreProductDetailPage() {
 
     if (slug && subdomain) fetchProduct();
   }, [slug, subdomain, router]);
-
   const handleContactSeller = async () => {
     if (!product?.tenant?.owner?.id || !product?.tenant?.id) {
       toast.error("Data toko belum lengkap");
@@ -216,10 +223,72 @@ export default function StoreProductDetailPage() {
     tenant.subscriptionPlan !== "FREE";
   const selectedPrice = selectedVariant?.price ?? product.price;
   const buyerName = [user?.firstName, user?.lastName].filter(Boolean).join(" ");
-  const whatsappHref = canShowWhatsapp
-    ? createWhatsAppCheckoutUrl({
-        phoneNumber: tenant.contactWhatsapp || "",
+  const buyerAddress = user?.address?.trim() || "";
+  const buyerShippingDestinationLabel =
+    user?.shippingDestinationLabel || [user?.city, user?.province, user?.postalCode].filter(Boolean).join(", ");
+  const needsShippingEstimate = !product.isDigital && product.productType !== "DIGITAL";
+  const hasBuyerShippingDestination = Boolean(user?.shippingDestinationId);
+  const whatsappDisabledLabel = !isAuthenticated
+    ? "Login untuk checkout"
+    : isShippingLoading
+      ? "Menghitung ongkir"
+      : "Checkout via WhatsApp";
+
+  const openWhatsAppCheckout = async () => {
+    if (!product || !tenant?.contactWhatsapp) return;
+
+    if (!isAuthenticated) {
+      router.push(
+        `/login?returnUrl=${encodeURIComponent(
+          getStorefrontPath(subdomain, `/products/${slug}`),
+        )}`,
+      );
+      return;
+    }
+
+    if (needsShippingEstimate && !hasBuyerShippingDestination) {
+      setIsProfileModalOpen(true);
+      return;
+    }
+
+    let estimate = shippingEstimate;
+    if (needsShippingEstimate) {
+      const destinationId = Number(user?.shippingDestinationId);
+      if (!Number.isFinite(destinationId) || destinationId <= 0) {
+        setIsProfileModalOpen(true);
+        return;
+      }
+
+      setIsShippingLoading(true);
+      try {
+        const { data } = await shippingApi.estimateProduct({
+          productId: product.id,
+          destinationId,
+          quantity,
+        });
+        estimate = {
+          courierName: data.data.cheapest.courierName,
+          courierCode: data.data.cheapest.courierCode,
+          service: data.data.cheapest.service,
+          cost: data.data.cheapest.cost,
+          etd: data.data.cheapest.etd,
+          destinationLabel: buyerShippingDestinationLabel,
+          weightGram: data.data.weightGram,
+        };
+        setShippingEstimate(estimate);
+      } catch {
+        toast.error("Gagal menghitung ongkir");
+        return;
+      } finally {
+        setIsShippingLoading(false);
+      }
+    }
+
+    window.open(
+      createWhatsAppCheckoutUrl({
+        phoneNumber: tenant.contactWhatsapp,
         buyerName,
+        buyerAddress,
         itemLabel: "Produk",
         itemName: product.name,
         price: selectedPrice,
@@ -227,9 +296,12 @@ export default function StoreProductDetailPage() {
         optionLabel: selectedVariantLabel ? "Varian" : undefined,
         optionValue: selectedVariantLabel || undefined,
         itemUrl: currentPageUrl,
-      })
-    : "";
-
+        shippingEstimate: estimate,
+      }),
+      "_blank",
+      "noreferrer",
+    );
+  };
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
       <nav className="mb-6 flex items-center gap-2 text-sm text-gray-500">
@@ -359,14 +431,35 @@ export default function StoreProductDetailPage() {
               Hubungi Penjual
             </Button>
             {canShowWhatsapp && (
-              <a href={whatsappHref} target="_blank" rel="noreferrer">
-                <Button size="lg" className="w-full bg-green-600 hover:bg-green-700">
-                  <Phone className="mr-2 h-4 w-4" />
-                  Checkout via WhatsApp
-                </Button>
-              </a>
-            )}
-          </div>
+              <Button
+                size="lg"
+                onClick={openWhatsAppCheckout}
+                disabled={isShippingLoading}
+                className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:text-gray-600"
+              >
+                <Phone className="mr-2 h-4 w-4" />
+                {whatsappDisabledLabel}
+              </Button>
+            )}          </div>
+
+          <Modal
+            isOpen={isProfileModalOpen}
+            onClose={() => setIsProfileModalOpen(false)}
+            title="Alamat pengiriman belum lengkap"
+            size="sm"
+          >
+            <p className="mb-6 text-sm text-gray-600">
+              Lengkapi alamat di profil terlebih dahulu agar estimasi ongkir dapat dihitung.
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setIsProfileModalOpen(false)}>
+                Nanti
+              </Button>
+              <Link href="/dashboard/profile">
+                <Button onClick={() => setIsProfileModalOpen(false)}>Ke Profil</Button>
+              </Link>
+            </div>
+          </Modal>
 
           {/* Share Button */}
           <div className="mt-3">

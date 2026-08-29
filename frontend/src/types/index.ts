@@ -12,6 +12,13 @@ export interface User {
   phone?: string;
   avatar?: string;
   bio?: string;
+  address?: string;
+  city?: string;
+  province?: string;
+  postalCode?: string;
+  whatsappNumber?: string;
+  shippingDestinationId?: string;
+  shippingDestinationLabel?: string;
   role: UserRole;
   isActive: boolean;
   isEmailVerified: boolean;
@@ -120,6 +127,10 @@ export interface Tenant {
   contactWhatsapp?: string;
   address?: string;
   city?: string;
+  province?: string;
+  shippingOriginId?: string;
+  shippingOriginLabel?: string;
+  shippingCourierCode?: string;
   storeHours?: Record<string, any> | string;
   termsOfService?: string;
   privacyPolicy?: string;
@@ -168,6 +179,7 @@ export interface Product {
   price: number;
   comparePrice?: number;
   stock: number;
+  weightGram?: number;
   productType?: "PHYSICAL" | "DIGITAL";
   isDigital?: boolean;
   hasVariants?: boolean;

@@ -5,6 +5,7 @@ import {
   IsNumber,
   IsBoolean,
   IsEnum,
+  IsIn,
   Min,
   Max,
   MinLength,
@@ -165,6 +166,25 @@ export class UpdateStoreSettingsDto {
   @IsOptional()
   @IsString()
   city?: string;
+
+  @IsOptional()
+  @IsString()
+  province?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  shippingOriginId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  shippingOriginLabel?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(["", "jne", "sicepat", "jnt", "anteraja", "pos"])
+  shippingCourierCode?: string;
 
   @IsOptional()
   @IsNumber()

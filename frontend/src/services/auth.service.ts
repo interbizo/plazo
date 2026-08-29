@@ -50,6 +50,13 @@ export const authApi = {
     lastName?: string; 
     phone?: string; 
     bio?: string;
+    address?: string;
+    city?: string;
+    province?: string;
+    postalCode?: string;
+    whatsappNumber?: string;
+    shippingDestinationId?: string;
+    shippingDestinationLabel?: string;
   }) => api.patch<ApiResponse<User>>("/api/auth/profile", data),
 
   logout: () => 

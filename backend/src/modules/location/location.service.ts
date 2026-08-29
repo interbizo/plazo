@@ -306,7 +306,7 @@ export class LocationService implements OnModuleInit {
    * Get districts by city
    */
   async getDistrictsByCity(cityId: string) {
-    const districts = await this.prisma.district.findMany({
+    let districts = await this.prisma.district.findMany({
       where: {
         cityId,
         isActive: true,
@@ -319,6 +319,23 @@ export class LocationService implements OnModuleInit {
         sortOrder: true,
       },
     });
+
+    if (districts.length === 0) {
+      await this.syncDistrictsByCity(cityId);
+      districts = await this.prisma.district.findMany({
+        where: {
+          cityId,
+          isActive: true,
+        },
+        orderBy: { sortOrder: "asc" },
+        select: {
+          id: true,
+          name: true,
+          cityId: true,
+          sortOrder: true,
+        },
+      });
+    }
 
     return { data: districts };
   }

@@ -18,6 +18,13 @@ export const buyerApi = {
     phone?: string;
     bio?: string;
     avatar?: string;
+    address?: string;
+    city?: string;
+    province?: string;
+    postalCode?: string;
+    whatsappNumber?: string;
+    shippingDestinationId?: string;
+    shippingDestinationLabel?: string;
   }) => api.put("/api/buyer/profile", data),
 
   /* DISABLED - fitur dihapus

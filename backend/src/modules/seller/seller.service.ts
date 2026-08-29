@@ -492,6 +492,15 @@ export class SellerService {
       contactWhatsapp: tenant.contactWhatsapp,
       address: tenant.address,
       city: tenant.city,
+      province: tenant.province,
+      shippingOriginId: tenant.shippingOriginId,
+      shippingOriginLabel: tenant.shippingOriginLabel,
+      shippingCourierCode: tenant.shippingCourierCode,
+      defaultShippingCourierCode: (
+        process.env.RAJAONGKIR_DEFAULT_COURIER ||
+        process.env.RAJAONGKIR_DEFAULT_COURIERS?.split(":")[0] ||
+        "jne"
+      ).trim().toLowerCase(),
       latitude: tenant.latitude,
       longitude: tenant.longitude,
       // Theme
@@ -556,6 +565,13 @@ export class SellerService {
       data.contactWhatsapp = dto.contactWhatsapp;
     if (dto.address !== undefined) data.address = dto.address;
     if (dto.city !== undefined) data.city = dto.city;
+    if (dto.province !== undefined) data.province = dto.province;
+    if (dto.shippingOriginId !== undefined)
+      data.shippingOriginId = dto.shippingOriginId || null;
+    if (dto.shippingOriginLabel !== undefined)
+      data.shippingOriginLabel = dto.shippingOriginLabel || null;
+    if (dto.shippingCourierCode !== undefined)
+      data.shippingCourierCode = dto.shippingCourierCode || null;
     if (dto.latitude !== undefined) data.latitude = dto.latitude;
     if (dto.longitude !== undefined) data.longitude = dto.longitude;
 

@@ -108,6 +108,7 @@ export const createProductSchema = z.object({
   price: z.number().min(1000, "Harga minimal Rp 1.000"),
   comparePrice: z.number().min(0).optional(),
   stock: z.number().int().min(0, "Stok tidak boleh negatif"),
+  weightGram: z.number().int().min(1, "Berat minimal 1 gram").optional(),
   categoryId: z.string().min(1, "Kategori wajib dipilih"),
   tags: z.array(z.string()).optional(),
   images: z.array(z.string()).min(1, "Minimal 1 gambar produk"),

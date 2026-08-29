@@ -1138,6 +1138,7 @@ export class AdminService {
       ...(dto.price !== undefined ? { price: dto.price } : {}),
       ...(dto.comparePrice !== undefined ? { comparePrice: dto.comparePrice } : {}),
       ...(dto.stock !== undefined ? { stock: dto.stock } : {}),
+      ...(dto.weightGram !== undefined ? { weightGram: dto.weightGram } : {}),
       ...(dto.categoryId !== undefined ? { categoryId: dto.categoryId } : {}),
       ...(dto.images !== undefined ? { images: dto.images } : {}),
       ...(dto.tags !== undefined ? { tags: dto.tags } : {}),

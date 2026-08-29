@@ -20,6 +20,14 @@ interface District {
   cityId: string;
 }
 
+function normalizeLocationName(value?: string) {
+  return (value || "")
+    .toUpperCase()
+    .replace(/^(KOTA|KABUPATEN)\s+/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 interface LocationSelectProps {
   provinceValue?: string;
   cityValue?: string;
@@ -57,14 +65,25 @@ export function LocationSelect({
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
   const selectedProvinceObj = provinces.find(
-    (p) => p.id === provinceValue || p.name.toLowerCase() === provinceValue.toLowerCase(),
+    (p) =>
+      p.id === provinceValue ||
+      normalizeLocationName(p.name) === normalizeLocationName(provinceValue),
   );
   const matchedProvinceId = selectedProvinceObj ? selectedProvinceObj.id : provinceValue;
 
   const selectedCityObj = cities.find(
-    (c) => c.id === cityValue || c.name.toLowerCase() === cityValue.toLowerCase(),
+    (c) =>
+      c.id === cityValue ||
+      normalizeLocationName(c.name) === normalizeLocationName(cityValue),
   );
   const matchedCityId = selectedCityObj ? selectedCityObj.id : cityValue;
+
+  const selectedDistrictObj = districts.find(
+    (d) =>
+      d.id === districtValue ||
+      normalizeLocationName(d.name) === normalizeLocationName(districtValue),
+  );
+  const matchedDistrictId = selectedDistrictObj ? selectedDistrictObj.id : districtValue;
 
   // Fetch provinces on mount
   useEffect(() => {
@@ -144,8 +163,8 @@ export function LocationSelect({
   const handleProvinceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedId = e.target.value;
     const selectedProvince = provinces.find((p) => p.id === selectedId);
-    if (onProvinceChange && selectedProvince) {
-      onProvinceChange(selectedId, selectedProvince.name);
+    if (onProvinceChange) {
+      onProvinceChange(selectedId, selectedProvince?.name || "");
     }
     // Reset city and district when province changes
     if (onCityChange) onCityChange("", "");
@@ -155,8 +174,8 @@ export function LocationSelect({
   const handleCityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedId = e.target.value;
     const selectedCity = cities.find((c) => c.id === selectedId);
-    if (onCityChange && selectedCity) {
-      onCityChange(selectedId, selectedCity.name);
+    if (onCityChange) {
+      onCityChange(selectedId, selectedCity?.name || "");
     }
     // Reset district when city changes
     if (onDistrictChange) onDistrictChange("", "");
@@ -165,8 +184,8 @@ export function LocationSelect({
   const handleDistrictChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedId = e.target.value;
     const selectedDistrict = districts.find((d) => d.id === selectedId);
-    if (onDistrictChange && selectedDistrict) {
-      onDistrictChange(selectedId, selectedDistrict.name);
+    if (onDistrictChange) {
+      onDistrictChange(selectedId, selectedDistrict?.name || "");
     }
   };
 
@@ -264,22 +283,22 @@ export function LocationSelect({
           <div className="relative">
             <select
               id="district"
-              value={districtValue}
+              value={matchedDistrictId}
               onChange={handleDistrictChange}
-              disabled={!cityValue || loadingDistricts}
+              disabled={!matchedCityId || loadingDistricts}
               className={`w-full rounded-lg border px-3 py-2 pr-10 text-sm text-gray-900 appearance-none focus:outline-none focus:ring-1 ${
                 districtError
                   ? "border-red-500 focus:border-red-500 focus:ring-red-500"
                   : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
               } ${
-                !cityValue || loadingDistricts
+                !matchedCityId || loadingDistricts
                   ? "bg-gray-50 cursor-not-allowed"
                   : "bg-white"
               }`}
               required={required}
             >
               <option value="">
-                {!cityValue
+                {!matchedCityId
                   ? "Pilih kota terlebih dahulu"
                   : loadingDistricts
                     ? "Memuat kecamatan..."

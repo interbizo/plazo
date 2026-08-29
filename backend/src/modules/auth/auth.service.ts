@@ -661,6 +661,8 @@ export class AuthService {
         role: user.role,
         lastActiveAt,
         tenantSubdomain,
+        shippingDestinationId: user.shippingDestinationId,
+        shippingDestinationLabel: user.shippingDestinationLabel,
       },
     };
   }
@@ -922,6 +924,8 @@ export class AuthService {
         province: true,
         postalCode: true,
         whatsappNumber: true,
+        shippingDestinationId: true,
+        shippingDestinationLabel: true,
         role: true,
         isEmailVerified: true,
         isActive: true,
@@ -1209,6 +1213,8 @@ export class AuthService {
       province?: string;
       postalCode?: string;
       whatsappNumber?: string;
+      shippingDestinationId?: string;
+      shippingDestinationLabel?: string;
     },
   ) {
     const user = await this.prisma.user.findUnique({
@@ -1232,6 +1238,8 @@ export class AuthService {
         ...(dto.province !== undefined && { province: dto.province }),
         ...(dto.postalCode !== undefined && { postalCode: dto.postalCode }),
         ...(dto.whatsappNumber !== undefined && { whatsappNumber: dto.whatsappNumber }),
+        ...(dto.shippingDestinationId !== undefined && { shippingDestinationId: dto.shippingDestinationId || null }),
+        ...(dto.shippingDestinationLabel !== undefined && { shippingDestinationLabel: dto.shippingDestinationLabel || null }),
       },
       select: {
         id: true,
@@ -1248,6 +1256,8 @@ export class AuthService {
         province: true,
         postalCode: true,
         whatsappNumber: true,
+        shippingDestinationId: true,
+        shippingDestinationLabel: true,
       },
     });
 

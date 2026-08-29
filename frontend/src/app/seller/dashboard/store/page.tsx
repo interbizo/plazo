@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
+import { LocationSelect } from "@/components/ui/location-select";
+import { ShippingDestinationSelect } from "@/components/ui/shipping-destination-select";
 import {
   Store,
   ExternalLink,
@@ -60,7 +62,13 @@ interface StoreFormState {
   contactPhone: string;
   contactWhatsapp: string;
   address: string;
+  province: string;
   city: string;
+  districtId: string;
+  district: string;
+  shippingOriginId: string;
+  shippingOriginLabel: string;
+  shippingCourierCode: string;
   storeAnnouncement: string;
   // Tab 2 - Tampilan & Tema
   themeColor: string;
@@ -85,6 +93,19 @@ interface StoreFormState {
   storeHours: StoreHours;
 }
 
+const SHIPPING_COURIER_LABELS: Record<string, string> = {
+  jne: "JNE",
+  sicepat: "SiCepat",
+  jnt: "J&T",
+  anteraja: "AnterAja",
+  pos: "POS Indonesia",
+};
+
+function getShippingCourierLabel(code?: string) {
+  const normalized = (code || "jne").toLowerCase();
+  return SHIPPING_COURIER_LABELS[normalized] || normalized.toUpperCase();
+}
+
 interface StoreInfo {
   subdomain?: string;
   subscriptionPlan?: string;
@@ -92,6 +113,7 @@ interface StoreInfo {
   isFeatured?: boolean;
   usedPosts?: number;
   postsLimit?: number;
+  defaultShippingCourierCode?: string;
   [key: string]: unknown;
 }
 
@@ -186,7 +208,13 @@ const INITIAL_FORM: StoreFormState = {
   contactPhone: "",
   contactWhatsapp: "",
   address: "",
+  province: "",
   city: "",
+  districtId: "",
+  district: "",
+  shippingOriginId: "",
+  shippingOriginLabel: "",
+  shippingCourierCode: "",
   storeAnnouncement: "",
   themeColor: "#10b981",
   themeSecondary: "#064e3b",
@@ -220,6 +248,11 @@ function parseSafe<T>(val: unknown, fallback: T): T {
     }
   }
   return fallback;
+}
+
+function getDistrictFromShippingLabel(label?: string) {
+  const parts = (label || "").split(",").map((part) => part.trim()).filter(Boolean);
+  return parts[1] || "";
 }
 
 // ─── Image Upload Component ─────────────────────────────────────────────────
@@ -374,6 +407,7 @@ export default function SellerStoreSettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("info");
+  const [platformDefaultCourier, setPlatformDefaultCourier] = useState("jne");
   const [form, setForm] = useState<StoreFormState>({ ...INITIAL_FORM });
 
   // ── Load store data ──────────────────────────────────────────────────────
@@ -384,6 +418,9 @@ export default function SellerStoreSettingsPage() {
         const { data } = await sellerApi.getStoreSettings();
         const storeData = data.data || data;
         setStore(storeData);
+        setPlatformDefaultCourier(
+          (storeData.defaultShippingCourierCode as string) || "jne",
+        );
         setForm({
           name: (storeData.name as string) || "",
           tagline: (storeData.tagline as string) || "",
@@ -394,7 +431,13 @@ export default function SellerStoreSettingsPage() {
           contactPhone: (storeData.contactPhone as string) || "",
           contactWhatsapp: (storeData.contactWhatsapp as string) || "",
           address: (storeData.address as string) || "",
+          province: (storeData.province as string) || "",
           city: (storeData.city as string) || "",
+          districtId: "",
+          district: getDistrictFromShippingLabel(storeData.shippingOriginLabel as string),
+          shippingOriginId: (storeData.shippingOriginId as string) || "",
+          shippingOriginLabel: (storeData.shippingOriginLabel as string) || "",
+          shippingCourierCode: (storeData.shippingCourierCode as string) || "",
           storeAnnouncement: (storeData.storeAnnouncement as string) || "",
           themeColor: (storeData.themeColor as string) || "#10b981",
           themeSecondary: (storeData.themeSecondary as string) || "#064e3b",
@@ -439,6 +482,46 @@ export default function SellerStoreSettingsPage() {
     [],
   );
 
+  const handleProvinceChange = useCallback(
+    (_provinceId: string, provinceName: string) => {
+      setForm((prev) => ({
+        ...prev,
+        province: provinceName,
+        city: "",
+        districtId: "",
+        district: "",
+        shippingOriginId: "",
+        shippingOriginLabel: "",
+      }));
+    },
+    [],
+  );
+
+  const handleCityChange = useCallback(
+    (_cityId: string, cityName: string) => {
+      setForm((prev) => ({
+        ...prev,
+        city: cityName,
+        districtId: "",
+        district: "",
+        shippingOriginId: "",
+        shippingOriginLabel: "",
+      }));
+    },
+    [],
+  );
+  const handleDistrictChange = useCallback(
+    (_districtId: string, districtName: string) => {
+      setForm((prev) => ({
+        ...prev,
+        districtId: _districtId,
+        district: districtName,
+        shippingOriginId: "",
+        shippingOriginLabel: "",
+      }));
+    },
+    [],
+  );
   const updateSocial = useCallback((key: keyof SocialLinks, value: string) => {
     setForm((prev) => ({
       ...prev,
@@ -472,11 +555,19 @@ export default function SellerStoreSettingsPage() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Prepare data with proper JSON stringification for complex objects
+      if (form.city && form.province && !form.shippingOriginId) {
+        toast.error("Pilih kecamatan dan kode pos asal terlebih dahulu");
+        return;
+      }
+
+      const { districtId, district, ...formToSave } = form;
+      void districtId;
+      void district;
+
       const dataToSave = {
-        ...form,
-        socialLinks: JSON.stringify(form.socialLinks),
-        storeHours: JSON.stringify(form.storeHours),
+        ...formToSave,
+        socialLinks: JSON.stringify(formToSave.socialLinks),
+        storeHours: JSON.stringify(formToSave.storeHours),
       };
       
       await sellerApi.updateStoreSettings(dataToSave as unknown as Record<string, unknown>);
@@ -593,20 +684,56 @@ export default function SellerStoreSettingsPage() {
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Kota
-          </label>
-          <input
-            type="text"
-            value={form.city}
-            onChange={(e) => setForm({ ...form, city: e.target.value })}
-            placeholder="Contoh: Jakarta, Bandung, Surabaya"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+        <div className="space-y-4">
+          <LocationSelect
+            provinceValue={form.province}
+            cityValue={form.city}
+            districtValue={form.districtId || form.district}
+            onProvinceChange={handleProvinceChange}
+            onCityChange={handleCityChange}
+            onDistrictChange={handleDistrictChange}
+            showDistrict
           />
-          <p className="mt-1 text-xs text-gray-400">
-            Kota ini akan digunakan untuk filter lokasi di marketplace
-          </p>
+          <ShippingDestinationSelect
+            city={form.city}
+            province={form.province}
+            district={form.district}
+            value={form.shippingOriginId}
+            required
+            onChange={(destination) => {
+              setForm((prev) => ({
+                ...prev,
+                shippingOriginId: destination ? String(destination.id) : "",
+                shippingOriginLabel: destination?.label || "",
+              }));
+            }}
+          />
+          <div>
+            <label
+              htmlFor="shipping-courier"
+              className="mb-1 block text-sm font-medium text-gray-700"
+            >
+              Ekspedisi utama
+            </label>
+            <select
+              id="shipping-courier"
+              value={form.shippingCourierCode}
+              onChange={(e) => updateField("shippingCourierCode", e.target.value)}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+            >
+              <option value="">
+                Default ({getShippingCourierLabel(platformDefaultCourier)})
+              </option>
+              <option value="jne">JNE</option>
+              <option value="sicepat">SiCepat</option>
+              <option value="jnt">J&T</option>
+              <option value="anteraja">AnterAja</option>
+              <option value="pos">POS Indonesia</option>
+            </select>
+            <p className="mt-1 text-xs text-gray-500">
+              Estimasi ongkir akan dihitung menggunakan ekspedisi ini.
+            </p>
+          </div>
         </div>
       </div>
 

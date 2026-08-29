@@ -7,9 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { CKEditor4 } from "@/components/ui/ckeditor4";
 import { WordCounter, isOverWordLimit, MAX_WORDS } from "@/components/ui/word-counter";
-import ProductTypeForm, { 
-  ProductType, 
-  DigitalProductData 
+import ProductTypeForm, {
+  ProductType,
+  DigitalProductData
 } from "@/components/seller/ProductTypeForm";
 import ProductVariantsForm, {
   ProductVariant
@@ -28,25 +28,26 @@ export default function CreateProductPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isUploadingDigitalFile, setIsUploadingDigitalFile] = useState(false);
-  
+
   // Image states
   const [images, setImages] = useState<string[]>([]);
   const [thumbnail, setThumbnail] = useState<string>("");
-  
+
   // Product type states
   const [productType, setProductType] = useState<ProductType>('PHYSICAL');
   const [digitalData, setDigitalData] = useState<DigitalProductData>({});
-  
+
   // Variant states
   const [hasVariants, setHasVariants] = useState(false);
   const [variants, setVariants] = useState<ProductVariant[]>([]);
-  
+
   const [form, setForm] = useState({
     name: "",
     description: "",
     price: "",
     comparePrice: "",
     stock: "",
+    weightGram: "1000",
     categoryId: "",
     subcategoryId: "",
     tags: "",
@@ -97,7 +98,7 @@ export default function CreateProductPage() {
     const load = async () => {
       try {
         const catRes = await sellerApi.getCategories("PRODUCT");
-        
+
         // Use allCategories (flat list) instead of categories (hierarchical)
         setCategories(
           Array.isArray(catRes.data)
@@ -118,7 +119,7 @@ export default function CreateProductPage() {
   // Handle file selection and auto-upload (for product images)
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    
+
     // Validate file types
     const validFiles = files.filter(file => {
       if (!file.type.startsWith('image/')) {
@@ -150,9 +151,9 @@ export default function CreateProductPage() {
 
       console.log("Valid files to upload:", validFiles.length);
       console.log("Uploading to server...");
-      
+
       const response = await sellerApi.uploadFiles(formData);
-      
+
       console.log("Upload response:", response);
       console.log("Response data:", response.data);
 
@@ -170,7 +171,7 @@ export default function CreateProductPage() {
         console.log("Updated images:", newImages);
         return newImages;
       });
-      
+
       // Set first uploaded image as thumbnail if no thumbnail set
       if (!thumbnail && uploadedUrls.length > 0) {
         setThumbnail(uploadedUrls[0]);
@@ -198,9 +199,9 @@ export default function CreateProductPage() {
       formData.append('file', file);
 
       console.log("Uploading digital file:", file.name, file.size);
-      
+
       const response = await sellerApi.uploadFiles(formData);
-      
+
       console.log("Digital file upload response:", response);
 
       // Backend returns: { message: "...", file: { id, url, ... } } for single file
@@ -231,7 +232,7 @@ export default function CreateProductPage() {
   const handleRemoveExistingImage = (index: number) => {
     const imageToRemove = images[index];
     setImages(prev => prev.filter((_, i) => i !== index));
-    
+
     // If removed image was thumbnail, set new thumbnail
     if (imageToRemove === thumbnail) {
       const remainingImages = images.filter((_, i) => i !== index);
@@ -284,7 +285,7 @@ export default function CreateProductPage() {
         metaKeywords: form.metaKeywords,
         isPublished: form.isPublished,
         publishToMarketplace: true, // Always publish to marketplace
-        
+
         // Product type
         productType: productType,
         isDigital: productType === 'DIGITAL',
@@ -298,6 +299,7 @@ export default function CreateProductPage() {
         } else {
           createData.stock = Number(form.stock) || 0;
         }
+        createData.weightGram = Number(form.weightGram) || 1000;
       } else {
         // Digital products don't need stock management
         createData.stock = 999999;
@@ -328,8 +330,8 @@ export default function CreateProductPage() {
           return;
         }
 
-        if ((digitalData.digitalDeliveryMethod === 'EXTERNAL_LINK' || 
-             digitalData.digitalDeliveryMethod === 'GOOGLE_DRIVE') && 
+        if ((digitalData.digitalDeliveryMethod === 'EXTERNAL_LINK' ||
+             digitalData.digitalDeliveryMethod === 'GOOGLE_DRIVE') &&
             !digitalData.externalLink) {
           toast.error("Masukkan link eksternal");
           setIsSubmitting(false);
@@ -342,7 +344,7 @@ export default function CreateProductPage() {
           return;
         }
       }
-      
+
       // Include variants if enabled
       if (hasVariants && variants.length > 0) {
         createData.hasVariants = true;
@@ -370,12 +372,12 @@ export default function CreateProductPage() {
       const errObj = err as { response?: { data?: { message?: string | string[] } } };
       console.error("Create error:", err);
       console.error("Error response:", errObj?.response?.data);
-      
+
       const errorMessage = errObj?.response?.data?.message;
-      const displayMessage = Array.isArray(errorMessage) 
-        ? errorMessage.join(", ") 
+      const displayMessage = Array.isArray(errorMessage)
+        ? errorMessage.join(", ")
         : errorMessage || "Gagal membuat produk";
-      
+
       toast.error(displayMessage);
     } finally {
       setIsSubmitting(false);
@@ -419,9 +421,9 @@ export default function CreateProductPage() {
           <h2 className="text-sm font-semibold text-gray-900">
             Foto Produk {productType === 'DIGITAL' && '(Opsional)'}
           </h2>
-          
+
           <p className="text-xs text-gray-500">
-            {productType === 'DIGITAL' 
+            {productType === 'DIGITAL'
               ? 'Upload gambar preview produk digital (opsional). Maksimal 10 gambar.'
               : 'Upload maksimal 10 gambar. Format: JPG, PNG. Ukuran max: 5MB per gambar. Gambar akan langsung diupload saat dipilih.'
             }
@@ -469,7 +471,7 @@ export default function CreateProductPage() {
                         </div>
                       )}
                     </div>
-                    
+
                     {/* Thumbnail badge */}
                     {img === thumbnail && (
                       <div className="absolute top-2 left-2 bg-emerald-600 text-white text-xs px-2 py-1 rounded">
@@ -614,6 +616,16 @@ export default function CreateProductPage() {
                   Stok dikelola di setiap varian
                 </p>
               </div>
+            )}
+            {productType === 'PHYSICAL' && (
+              <Input
+                label="Berat (gram)"
+                type="number"
+                value={form.weightGram}
+                onChange={(e) => setForm({ ...form, weightGram: e.target.value })}
+                helperText="Dipakai untuk estimasi ongkir"
+                placeholder="1000"
+              />
             )}
             {productType === 'DIGITAL' && (
               <div>

@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { CKEditor4 } from "@/components/ui/ckeditor4";
 import { WordCounter, isOverWordLimit, MAX_WORDS } from "@/components/ui/word-counter";
-import ProductTypeForm, { 
-  ProductType, 
+import ProductTypeForm, {
+  ProductType,
   DigitalProductData,
   DigitalDeliveryMethod
 } from "@/components/seller/ProductTypeForm";
@@ -32,25 +32,26 @@ export default function EditProductPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isUploadingDigitalFile, setIsUploadingDigitalFile] = useState(false);
-  
+
   // Image states
   const [images, setImages] = useState<string[]>([]);
   const [thumbnail, setThumbnail] = useState<string>("");
-  
+
   // Product type states
   const [productType, setProductType] = useState<ProductType>('PHYSICAL');
   const [digitalData, setDigitalData] = useState<DigitalProductData>({});
-  
+
   // Variant states
   const [hasVariants, setHasVariants] = useState(false);
   const [variants, setVariants] = useState<ProductVariant[]>([]);
-  
+
   const [form, setForm] = useState({
     name: "",
     description: "",
     price: "",
     comparePrice: "",
     stock: "",
+    weightGram: "1000",
     categoryId: "",
     subcategoryId: "",
     tags: "",
@@ -66,38 +67,39 @@ export default function EditProductPage() {
           sellerApi.getProduct(productId),
           sellerApi.getCategories("PRODUCT"),
         ]);
-        
+
         // Use allCategories (flat list) instead of categories (hierarchical)
         const allCats = Array.isArray(catRes.data)
           ? catRes.data
           : catRes.data?.allCategories || catRes.data?.categories || [];
-        
+
         setCategories(allCats);
-        
+
         // Backend returns { data: product }
         const product = prodRes.data?.data || prodRes.data;
-        
+
         console.log("Loaded product:", product);
-        
+
         if (product && product.id) {
           // Determine if categoryId is a parent or subcategory
           const productCategory = allCats.find((cat: Category) => cat.id === product.categoryId);
-          
+
           let mainCategoryId = product.categoryId;
           let subCategoryId = "";
-          
+
           // If product category has a parent, it's a subcategory
           if (productCategory && productCategory.parentId) {
             mainCategoryId = productCategory.parentId;
             subCategoryId = product.categoryId;
           }
-          
+
           setForm({
             name: product.name || "",
             description: product.description || "",
             price: product.price != null ? String(product.price) : "",
             comparePrice: product.comparePrice != null ? String(product.comparePrice) : "",
             stock: String(product.stock || ""),
+            weightGram: String(product.weightGram || 1000),
             categoryId: mainCategoryId,
             subcategoryId: subCategoryId,
             tags: Array.isArray(product.tags) ? product.tags.join(", ") : "",
@@ -105,10 +107,10 @@ export default function EditProductPage() {
             isPublished: product.isPublished ?? true,
             publishToMarketplace: product.publishToMarketplace ?? false,
           });
-          
+
           // Set product type
           setProductType(product.productType || 'PHYSICAL');
-          
+
           // Set digital data if digital product
           if (product.productType === 'DIGITAL' || product.isDigital) {
             setDigitalData({
@@ -123,22 +125,22 @@ export default function EditProductPage() {
               digitalDeliveryMethod: product.digitalDeliveryMethod as DigitalDeliveryMethod | undefined,
             });
           }
-          
+
           // Set existing images and thumbnail
           const productImages = product.images || [];
           const productThumbnail = product.thumbnail || "";
-          
+
           console.log("Product images:", productImages);
           console.log("Product thumbnail:", productThumbnail);
-          
+
           setImages(Array.isArray(productImages) ? productImages : []);
           setThumbnail(productThumbnail);
-          
+
           // If no thumbnail but has images, set first image as thumbnail
           if (!productThumbnail && productImages.length > 0) {
             setThumbnail(productImages[0]);
           }
-          
+
           // Set variants if product has variants
           if (product.hasVariants) {
             setHasVariants(true);
@@ -184,7 +186,7 @@ export default function EditProductPage() {
   // Handle file selection and auto-upload (for product images)
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    
+
     // Validate file types
     const validFiles = files.filter(file => {
       if (!file.type.startsWith('image/')) {
@@ -222,13 +224,13 @@ export default function EditProductPage() {
 
       console.log("Uploading to server...");
       const response = await sellerApi.uploadFiles(formData);
-      
+
       console.log("Upload response:", response);
       console.log("Response data:", response.data);
-      
+
       // Backend returns: { message: "...", files: [{ id, url, ... }] }
       const uploadedFiles = response.data?.files || [];
-      
+
       console.log("Uploaded files:", uploadedFiles);
 
       if (!uploadedFiles || uploadedFiles.length === 0) {
@@ -239,7 +241,7 @@ export default function EditProductPage() {
 
       // Extract URLs from files array
       const uploadedUrls = uploadedFiles.map((file: any) => file.url);
-      
+
       console.log("Extracted URLs:", uploadedUrls);
 
       // Add uploaded URLs to images
@@ -248,7 +250,7 @@ export default function EditProductPage() {
         console.log("Updated images:", newImages);
         return newImages;
       });
-      
+
       // Set first uploaded image as thumbnail if no thumbnail set
       if (!thumbnail && uploadedUrls.length > 0) {
         setThumbnail(uploadedUrls[0]);
@@ -276,9 +278,9 @@ export default function EditProductPage() {
       formData.append('file', file);
 
       console.log("Uploading digital file:", file.name, file.size);
-      
+
       const response = await sellerApi.uploadFiles(formData);
-      
+
       console.log("Digital file upload response:", response);
 
       // Backend returns: { message: "...", file: { id, url, ... } } for single file
@@ -309,7 +311,7 @@ export default function EditProductPage() {
   const handleRemoveExistingImage = (index: number) => {
     const imageToRemove = images[index];
     setImages(prev => prev.filter((_, i) => i !== index));
-    
+
     // If removed image was thumbnail, set new thumbnail
     if (imageToRemove === thumbnail) {
       const remainingImages = images.filter((_, i) => i !== index);
@@ -343,7 +345,7 @@ export default function EditProductPage() {
         metaKeywords: form.metaKeywords,
         isPublished: form.isPublished,
         publishToMarketplace: true, // Always publish to marketplace
-        
+
         // Product type
         productType: productType,
         isDigital: productType === 'DIGITAL',
@@ -352,6 +354,7 @@ export default function EditProductPage() {
       // Stock handling based on product type
       if (productType === 'PHYSICAL') {
         updateData.stock = Number(form.stock) || 0;
+        updateData.weightGram = Number(form.weightGram) || 1000;
       } else {
         // Digital products don't need stock management
         updateData.stock = 999999;
@@ -375,7 +378,7 @@ export default function EditProductPage() {
         updateData.licenseKey = digitalData.licenseKey;
         updateData.digitalDeliveryMethod = digitalData.digitalDeliveryMethod;
       }
-      
+
       // Include variants if enabled
       if (hasVariants && variants.length > 0) {
         updateData.hasVariants = true;
@@ -404,8 +407,8 @@ export default function EditProductPage() {
           return;
         }
 
-        if ((digitalData.digitalDeliveryMethod === 'EXTERNAL_LINK' || 
-             digitalData.digitalDeliveryMethod === 'GOOGLE_DRIVE') && 
+        if ((digitalData.digitalDeliveryMethod === 'EXTERNAL_LINK' ||
+             digitalData.digitalDeliveryMethod === 'GOOGLE_DRIVE') &&
             !digitalData.externalLink) {
           toast.error("Masukkan link eksternal");
           setIsSubmitting(false);
@@ -475,9 +478,9 @@ export default function EditProductPage() {
           <h2 className="text-sm font-semibold text-gray-900">
             Foto Produk {productType === 'DIGITAL' && '(Opsional)'}
           </h2>
-          
+
           <p className="text-xs text-gray-500">
-            {productType === 'DIGITAL' 
+            {productType === 'DIGITAL'
               ? 'Upload gambar preview produk digital (opsional). Maksimal 10 gambar.'
               : 'Upload maksimal 10 gambar. Format: JPG, PNG. Ukuran max: 5MB per gambar. Gambar akan langsung diupload saat dipilih.'
             }
@@ -534,14 +537,14 @@ export default function EditProductPage() {
                         </div>
                       )}
                     </div>
-                    
+
                     {/* Thumbnail badge */}
                     {thumbnail === img && (
                       <div className="absolute top-2 left-2 bg-emerald-500 text-white text-xs px-2 py-1 rounded font-medium shadow-sm">
                         Thumbnail
                       </div>
                     )}
-                    
+
                     {/* Actions */}
                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
                       {thumbnail !== img && (
@@ -572,8 +575,8 @@ export default function EditProductPage() {
             <div>
               <label className="cursor-pointer block">
                 <div className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-                  isUploading 
-                    ? 'border-gray-300 bg-gray-50 cursor-not-allowed' 
+                  isUploading
+                    ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
                     : 'border-gray-300 hover:border-emerald-500 hover:bg-emerald-50'
                 }`}>
                   {isUploading ? (
@@ -676,6 +679,16 @@ export default function EditProductPage() {
                 value={form.stock}
                 onChange={(e) => setForm({ ...form, stock: e.target.value })}
                 helperText="Jumlah stok tersedia"
+              />
+            )}
+            {productType === 'PHYSICAL' && (
+              <Input
+                label="Berat (gram)"
+                type="number"
+                value={form.weightGram}
+                onChange={(e) => setForm({ ...form, weightGram: e.target.value })}
+                helperText="Dipakai untuk estimasi ongkir"
+                placeholder="1000"
               />
             )}
             {productType === 'DIGITAL' && (

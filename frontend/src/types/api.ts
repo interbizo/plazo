@@ -59,6 +59,13 @@ export interface User {
   phone?: string;
   avatar?: string;
   bio?: string;
+  address?: string;
+  city?: string;
+  province?: string;
+  postalCode?: string;
+  whatsappNumber?: string;
+  shippingDestinationId?: string;
+  shippingDestinationLabel?: string;
   role: 'BUYER' | 'SELLER' | 'ADMIN' | 'SUPER_ADMIN';
   isEmailVerified: boolean;
   isActive: boolean;
@@ -142,6 +149,7 @@ export interface Product {
   price: number;
   comparePrice?: number;
   stock: number;
+  weightGram?: number;
   categoryId: string;
   category?: Category;
   images: string[];

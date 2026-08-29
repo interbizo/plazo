@@ -265,6 +265,8 @@ model User {
   province       String?
   postalCode     String?
   whatsappNumber String?
+  shippingDestinationId    String?
+  shippingDestinationLabel String?
 
   // Role & Status
   role               UserRole           @default(BUYER)
@@ -401,6 +403,7 @@ model User {
   @@index([isActive])
   @@index([isEmailVerified])
   @@index([role])
+  @@index([shippingDestinationId])
   @@index([firstName])
   @@index([verificationToken])
   @@index([accountStatus])
@@ -457,6 +460,9 @@ model Tenant {
   address         String? @db.Text // Alamat fisik toko (opsional)
   city            String? // Kota toko, e.g. "Jakarta", "Bandung"
   province        String? // Provinsi toko
+  shippingOriginId    String?
+  shippingOriginLabel String?
+  shippingCourierCode String? // Kurir utama toko, mis. jne atau sicepat
   latitude        Float? // Koordinat opsional
   longitude       Float? // Koordinat opsional
 
@@ -553,6 +559,7 @@ model Tenant {
   @@index([isSeoActive])
   @@index([city])
   @@index([province])
+  @@index([shippingOriginId])
   @@index([referredBy])
   @@index([name])
   @@index([referredBy, deletedAt])
@@ -701,6 +708,7 @@ model Product {
   price        Float
   comparePrice Float? // Original/compare price (harga coret)
   stock        Int     @default(0)
+  weightGram   Int     @default(1000)
 
   // Product Type
   productType ProductType @default(PHYSICAL)

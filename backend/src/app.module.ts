@@ -42,6 +42,7 @@ import { SeoModule } from "@modules/seo/seo.module";
 import { AccountAppealModule } from "@modules/account-appeal/account-appeal.module";
 import { ForumModule } from "@modules/forum/forum.module";
 import { SearchModule } from "@modules/search/search.module";
+import { ShippingModule } from "@modules/shipping/shipping.module";
 import { TenantMiddleware } from "@common/middleware/tenant.middleware";
 import { ActivityTrackerMiddleware } from "@common/middleware/activity-tracker.middleware";
 import { SecurityMiddleware } from "@common/middleware/security.middleware";
@@ -91,6 +92,7 @@ import { RequestLoggerMiddleware } from "@common/middleware/request-logger.middl
     ForumModule,
     PlatformSettingsModule,
     SearchModule,
+    ShippingModule,
   ],
 })
 export class AppModule implements NestModule {

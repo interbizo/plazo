@@ -55,6 +55,14 @@ export class BuyerUpdateProfileDto {
   @IsOptional()
   @IsString()
   whatsappNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  shippingDestinationId?: string;
+
+  @IsOptional()
+  @IsString()
+  shippingDestinationLabel?: string;
 }
 
 export class BuyerListQueryDto {

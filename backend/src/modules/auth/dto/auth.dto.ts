@@ -65,6 +65,7 @@ export class RegisterDto {
   whatsappNumber?: string;
 
   // Store data for SELLER registration
+
   @IsOptional()
   @IsString()
   @MinLength(2)
@@ -241,6 +242,16 @@ export class UpdateProfileDto {
   @MinLength(10)
   @MaxLength(20)
   whatsappNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  shippingDestinationId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  shippingDestinationLabel?: string;
 }
 
 // ============ GOOGLE AUTH ============

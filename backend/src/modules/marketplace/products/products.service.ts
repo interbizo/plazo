@@ -74,6 +74,7 @@ export class ProductsService {
       price: createProductDto.price,
       comparePrice: createProductDto.comparePrice || null,
       stock: createProductDto.stock,
+      weightGram: createProductDto.weightGram ?? 1000,
       categoryId: createProductDto.categoryId,
       images: createProductDto.images || [],
       tags: createProductDto.tags || [],

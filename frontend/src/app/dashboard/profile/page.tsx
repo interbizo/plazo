@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LocationSelect } from "@/components/ui/location-select";
+import { ShippingDestinationSelect } from "@/components/ui/shipping-destination-select";
 import { formatDate } from "@/lib/utils";
 import {
   Mail,
@@ -28,6 +29,10 @@ interface ApiErrorResponse {
   response?: { data?: { message?: string } };
 }
 
+function getDistrictFromShippingLabel(label?: string) {
+  const parts = (label || "").split(",").map((part) => part.trim()).filter(Boolean);
+  return parts[1] || "";
+}
 export default function BuyerProfilePage() {
   const { user, fetchUser } = useAuthStore();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -43,10 +48,14 @@ export default function BuyerProfilePage() {
     address: user?.address || "",
     city: user?.city || "",
     cityId: "",
+    districtId: "",
+    district: getDistrictFromShippingLabel(user?.shippingDestinationLabel),
     province: user?.province || "",
     provinceId: "",
     postalCode: user?.postalCode || "",
     whatsappNumber: user?.whatsappNumber || "",
+    shippingDestinationId: user?.shippingDestinationId || "",
+    shippingDestinationLabel: user?.shippingDestinationLabel || "",
   });
   const [profileLoading, setProfileLoading] = useState(false);
 
@@ -58,6 +67,7 @@ export default function BuyerProfilePage() {
     confirmPassword: "",
   });
   const [pwdLoading, setPwdLoading] = useState(false);
+
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -86,7 +96,17 @@ export default function BuyerProfilePage() {
   const handleSaveProfile = async () => {
     setProfileLoading(true);
     try {
-      await buyerApi.updateProfile(profileForm);
+      if (profileForm.city && profileForm.province && !profileForm.shippingDestinationId) {
+        toast.error("Pilih kecamatan dan kode pos terlebih dahulu");
+        return;
+      }
+
+      const { cityId, provinceId, districtId, district, ...profileData } = profileForm;
+      void cityId;
+      void provinceId;
+      void districtId;
+      void district;
+      await buyerApi.updateProfile(profileData);
       await fetchUser();
       toast.success("Profil berhasil diperbarui!");
       setEditing(false);
@@ -183,10 +203,14 @@ export default function BuyerProfilePage() {
                   address: user.address || "",
                   city: user.city || "",
                   cityId: "",
+                  districtId: "",
+                  district: getDistrictFromShippingLabel(user.shippingDestinationLabel),
                   province: user.province || "",
                   provinceId: "",
                   postalCode: user.postalCode || "",
                   whatsappNumber: user.whatsappNumber || "",
+                  shippingDestinationId: user.shippingDestinationId || "",
+                  shippingDestinationLabel: user.shippingDestinationLabel || "",
                 });
                 setEditing(true);
               }}
@@ -253,40 +277,63 @@ export default function BuyerProfilePage() {
                 />
 
                 <LocationSelect
-                  provinceValue={profileForm.provinceId}
-                  cityValue={profileForm.cityId}
+                  provinceValue={profileForm.provinceId || profileForm.province}
+                  cityValue={profileForm.cityId || profileForm.city}
+                  districtValue={profileForm.districtId || profileForm.district}
                   onProvinceChange={(id, name) => {
-                    setProfileForm((prev) => ({ 
-                      ...prev, 
-                      provinceId: id, 
+                    setProfileForm((prev) => ({
+                      ...prev,
+                      provinceId: id,
                       province: name,
                       cityId: "",
-                      city: ""
+                      city: "",
+                      districtId: "",
+                      district: "",
+                      postalCode: "",
+                      shippingDestinationId: "",
+                      shippingDestinationLabel: "",
                     }));
                   }}
                   onCityChange={(id, name) => {
-                    setProfileForm((prev) => ({ 
-                      ...prev, 
-                      cityId: id, 
-                      city: name 
+                    setProfileForm((prev) => ({
+                      ...prev,
+                      cityId: id,
+                      city: name,
+                      districtId: "",
+                      district: "",
+                      postalCode: "",
+                      shippingDestinationId: "",
+                      shippingDestinationLabel: "",
                     }));
                   }}
-                  showDistrict={false}
+                  onDistrictChange={(id, name) => {
+                    setProfileForm((prev) => ({
+                      ...prev,
+                      districtId: id,
+                      district: name,
+                      postalCode: "",
+                      shippingDestinationId: "",
+                      shippingDestinationLabel: "",
+                    }));
+                  }}
+                  showDistrict
                 />
-
-                <div className="grid grid-cols-2 gap-3">
-                  <Input
-                    label="Kode Pos"
-                    value={profileForm.postalCode}
-                    onChange={(e) =>
-                      setProfileForm({ 
-                        ...profileForm, 
-                        postalCode: e.target.value.replace(/\D/g, '').slice(0, 5) 
-                      })
-                    }
-                    placeholder="12345"
-                    maxLength={5}
-                  />
+                <ShippingDestinationSelect
+                  city={profileForm.city}
+                  province={profileForm.province}
+                  district={profileForm.district}
+                  value={profileForm.shippingDestinationId}
+                  required
+                  onChange={(destination) => {
+                    setProfileForm((prev) => ({
+                      ...prev,
+                      postalCode: destination?.zipCode || "",
+                      shippingDestinationId: destination ? String(destination.id) : "",
+                      shippingDestinationLabel: destination?.label || "",
+                    }));
+                  }}
+                />
+                <div>
                   <Input
                     label="WhatsApp"
                     value={profileForm.whatsappNumber}
@@ -376,6 +423,7 @@ export default function BuyerProfilePage() {
                   </div>
                 )}
 
+
                 <div className="grid grid-cols-2 gap-3">
                   {user.city && (
                     <div className="rounded-lg bg-gray-50 p-3">
@@ -400,6 +448,15 @@ export default function BuyerProfilePage() {
                       <p className="text-xs text-gray-500 mb-1">Kode Pos</p>
                       <p className="text-sm font-medium text-gray-900">
                         {user.postalCode}
+                      </p>
+                    </div>
+                  )}
+
+                  {user.shippingDestinationLabel && (
+                    <div className="rounded-lg bg-gray-50 p-3">
+                      <p className="text-xs text-gray-500 mb-1">Tujuan Ongkir</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {user.shippingDestinationLabel}
                       </p>
                     </div>
                   )}
