@@ -1,5 +1,6 @@
-import { PrismaClient, UserRole, SubscriptionPlan, CategoryType, KycStatus } from "@prisma/client";
+import { PrismaClient, UserRole, SubscriptionPlan, CategoryType, KycStatus, PaymentMethod } from "@prisma/client";
 import * as bcrypt from "bcryptjs";
+import { seedLandingContent } from "./seed-landing";
 
 // Seeder PRODUCTION — hanya mengisi reference data + user admin/superadmin.
 // Aman dijalankan berulang (semua pakai upsert). Tidak membuat demo user/produk.
@@ -273,61 +274,22 @@ async function seedPlatformSettings() {
 
 async function seedPaymentAccounts() {
   const accounts = [
-    {
-      type: 'BANK_TRANSFER',
-      bankName: 'BCA',
-      accountNumber: '1234567890',
-      accountName: 'PT Plazo Indonesia',
-      isActive: true,
-      isPrimary: true,
-      isVerified: true,
-    },
-    {
-      type: 'BANK_TRANSFER',
-      bankName: 'Mandiri',
-      accountNumber: '0987654321',
-      accountName: 'PT Plazo Indonesia',
-      isActive: true,
-      isPrimary: false,
-      isVerified: true,
-    },
-    {
-      type: 'E_WALLET',
-      walletType: 'OVO',
-      phoneNumber: '081234567890',
-      accountNumber: '081234567890',
-      accountName: 'PT Plazo Indonesia',
-      isActive: true,
-      isPrimary: false,
-      isVerified: true,
-    },
-    {
-      type: 'E_WALLET',
-      walletType: 'GoPay',
-      phoneNumber: '081234567890',
-      accountNumber: '081234567890',
-      accountName: 'PT Plazo Indonesia',
-      isActive: true,
-      isPrimary: false,
-      isVerified: true,
-    },
-    {
-      type: 'E_WALLET',
-      walletType: 'DANA',
-      phoneNumber: '081234567890',
-      accountNumber: '081234567890',
-      accountName: 'PT Plazo Indonesia',
-      isActive: true,
-      isPrimary: false,
-      isVerified: true,
-    },
+    { type: PaymentMethod.BANK_TRANSFER, bankName: "BCA", accountNumber: "1234567890", accountName: "PT Plazo Indonesia", isActive: true, isPrimary: true, isVerified: true },
+    { type: PaymentMethod.BANK_TRANSFER, bankName: "Mandiri", accountNumber: "0987654321", accountName: "PT Plazo Indonesia", isActive: true, isPrimary: false, isVerified: true },
+    { type: PaymentMethod.E_WALLET, walletType: "OVO", phoneNumber: "081234567890", accountNumber: "081234567890", accountName: "PT Plazo Indonesia", isActive: true, isPrimary: false, isVerified: true },
+    { type: PaymentMethod.E_WALLET, walletType: "GoPay", phoneNumber: "081234567890", accountNumber: "081234567890", accountName: "PT Plazo Indonesia", isActive: true, isPrimary: false, isVerified: true },
+    { type: PaymentMethod.E_WALLET, walletType: "DANA", phoneNumber: "081234567890", accountNumber: "081234567890", accountName: "PT Plazo Indonesia", isActive: true, isPrimary: false, isVerified: true },
   ];
 
-  const created = await prisma.paymentAccount.createMany({
-    data: accounts,
-    skipDuplicates: true,
-  });
-  console.log(`✅ Payment accounts: ${created.count}`);
+  for (const account of accounts) {
+    const existing = await prisma.paymentAccount.findFirst({
+      where: { tenantId: null, type: account.type, accountNumber: account.accountNumber, walletType: account.walletType ?? null },
+      select: { id: true },
+    });
+    if (existing) await prisma.paymentAccount.update({ where: { id: existing.id }, data: account });
+    else await prisma.paymentAccount.create({ data: account });
+  }
+  console.log(`✅ Payment accounts: ${accounts.length}`);
 }
 
 async function seedAdminUsers(password: string) {
@@ -376,6 +338,7 @@ async function main() {
 
   await seedPlans();
   await seedCategories();
+  await seedLandingContent(prisma);
   await seedPlatformSettings();
   await seedPaymentAccounts();
   await seedAdminUsers(password);

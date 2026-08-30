@@ -13,6 +13,15 @@ import { CmsService } from "./cms.service";
 import {
   CreateCmsPageDto,
   UpdateCmsPageDto,
+  UpsertLandingHeroDto,
+  CreateLandingBenefitDto,
+  UpdateLandingBenefitDto,
+  CreateLandingStepDto,
+  UpdateLandingStepDto,
+  CreateLandingAdvantageDto,
+  UpdateLandingAdvantageDto,
+  CreateLandingTestimonialDto,
+  UpdateLandingTestimonialDto,
   CreateBannerDto,
   UpdateBannerDto,
   UpsertSiteSettingDto,
@@ -37,6 +46,98 @@ import { UserRole } from "@prisma/client";
 @Roles(UserRole.SUPER_ADMIN)
 export class CmsAdminController {
   constructor(private cmsService: CmsService) {}
+
+  // --- Landing sections ---
+
+  @Get("landing/hero")
+  getLandingHero() {
+    return this.cmsService.getLandingHero();
+  }
+
+  @Put("landing/hero")
+  upsertLandingHero(@Body() dto: UpsertLandingHeroDto) {
+    return this.cmsService.upsertLandingHero(dto);
+  }
+
+  @Get("landing/benefits")
+  listLandingBenefits() {
+    return this.cmsService.listLandingBenefits();
+  }
+
+  @Post("landing/benefits")
+  createLandingBenefit(@Body() dto: CreateLandingBenefitDto) {
+    return this.cmsService.createLandingBenefit(dto);
+  }
+
+  @Put("landing/benefits/:id")
+  updateLandingBenefit(@Param("id") id: string, @Body() dto: UpdateLandingBenefitDto) {
+    return this.cmsService.updateLandingBenefit(id, dto);
+  }
+
+  @Delete("landing/benefits/:id")
+  deleteLandingBenefit(@Param("id") id: string) {
+    return this.cmsService.deleteLandingBenefit(id);
+  }
+
+  @Get("landing/steps")
+  listLandingSteps() {
+    return this.cmsService.listLandingSteps();
+  }
+
+  @Post("landing/steps")
+  createLandingStep(@Body() dto: CreateLandingStepDto) {
+    return this.cmsService.createLandingStep(dto);
+  }
+
+  @Put("landing/steps/:id")
+  updateLandingStep(@Param("id") id: string, @Body() dto: UpdateLandingStepDto) {
+    return this.cmsService.updateLandingStep(id, dto);
+  }
+
+  @Delete("landing/steps/:id")
+  deleteLandingStep(@Param("id") id: string) {
+    return this.cmsService.deleteLandingStep(id);
+  }
+
+  @Get("landing/advantages")
+  listLandingAdvantages() {
+    return this.cmsService.listLandingAdvantages();
+  }
+
+  @Post("landing/advantages")
+  createLandingAdvantage(@Body() dto: CreateLandingAdvantageDto) {
+    return this.cmsService.createLandingAdvantage(dto);
+  }
+
+  @Put("landing/advantages/:id")
+  updateLandingAdvantage(@Param("id") id: string, @Body() dto: UpdateLandingAdvantageDto) {
+    return this.cmsService.updateLandingAdvantage(id, dto);
+  }
+
+  @Delete("landing/advantages/:id")
+  deleteLandingAdvantage(@Param("id") id: string) {
+    return this.cmsService.deleteLandingAdvantage(id);
+  }
+
+  @Get("landing/testimonials")
+  listLandingTestimonials() {
+    return this.cmsService.listLandingTestimonials();
+  }
+
+  @Post("landing/testimonials")
+  createLandingTestimonial(@Body() dto: CreateLandingTestimonialDto) {
+    return this.cmsService.createLandingTestimonial(dto);
+  }
+
+  @Put("landing/testimonials/:id")
+  updateLandingTestimonial(@Param("id") id: string, @Body() dto: UpdateLandingTestimonialDto) {
+    return this.cmsService.updateLandingTestimonial(id, dto);
+  }
+
+  @Delete("landing/testimonials/:id")
+  deleteLandingTestimonial(@Param("id") id: string) {
+    return this.cmsService.deleteLandingTestimonial(id);
+  }
 
   // --- Pages ---
 
@@ -232,6 +333,10 @@ export class CmsAdminController {
 export class CmsPublicController {
   constructor(private cmsService: CmsService) {}
 
+  @Get("landing")
+  getPublicLandingContent() {
+    return this.cmsService.getLandingContent();
+  }
   @Get("pages/:slug")
   getPageBySlug(@Param("slug") slug: string) {
     return this.cmsService.getPageBySlug(slug);

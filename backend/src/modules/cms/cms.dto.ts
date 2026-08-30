@@ -11,6 +11,303 @@ import {
 } from "class-validator";
 import { Type } from "class-transformer";
 
+// ============ LANDING SECTIONS ============
+
+export class UpsertLandingHeroDto {
+  @IsOptional()
+  @IsString()
+  eyebrow?: string;
+
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  @IsOptional()
+  @IsString()
+  titleAccent?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isPublished?: boolean;
+}
+
+export class CreateLandingBenefitDto {
+  @IsOptional()
+  @IsString()
+  sectionEyebrow?: string;
+
+  @IsOptional()
+  @IsString()
+  sectionHeading?: string;
+
+  @IsOptional()
+  @IsString()
+  sectionDescription?: string;
+
+  @IsString()
+  label: string;
+
+  @IsString()
+  title: string;
+
+  @IsString()
+  description: string;
+
+  @IsOptional()
+  @IsString()
+  icon?: string;
+
+  @IsOptional()
+  @IsString()
+  tone?: string;
+
+  @IsOptional()
+  @IsNumber()
+  sortOrder?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isPublished?: boolean;
+}
+
+export class UpdateLandingBenefitDto {
+  @IsOptional()
+  @IsString()
+  sectionEyebrow?: string;
+
+  @IsOptional()
+  @IsString()
+  sectionHeading?: string;
+
+  @IsOptional()
+  @IsString()
+  sectionDescription?: string;
+
+  @IsOptional()
+  @IsString()
+  label?: string;
+
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsString()
+  icon?: string;
+
+  @IsOptional()
+  @IsString()
+  tone?: string;
+
+  @IsOptional()
+  @IsNumber()
+  sortOrder?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isPublished?: boolean;
+}
+
+export class CreateLandingStepDto {
+  @IsOptional()
+  @IsString()
+  sectionEyebrow?: string;
+
+  @IsOptional()
+  @IsString()
+  sectionHeading?: string;
+
+  @IsOptional()
+  @IsString()
+  sectionDescription?: string;
+
+  @IsString()
+  title: string;
+
+  @IsString()
+  description: string;
+
+  @IsOptional()
+  @IsString()
+  icon?: string;
+
+  @IsOptional()
+  @IsNumber()
+  sortOrder?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isPublished?: boolean;
+}
+
+export class UpdateLandingStepDto {
+  @IsOptional()
+  @IsString()
+  sectionEyebrow?: string;
+
+  @IsOptional()
+  @IsString()
+  sectionHeading?: string;
+
+  @IsOptional()
+  @IsString()
+  sectionDescription?: string;
+
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsString()
+  icon?: string;
+
+  @IsOptional()
+  @IsNumber()
+  sortOrder?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isPublished?: boolean;
+}
+
+export class CreateLandingAdvantageDto {
+  @IsOptional()
+  @IsString()
+  sectionEyebrow?: string;
+
+  @IsOptional()
+  @IsString()
+  sectionHeading?: string;
+
+  @IsOptional()
+  @IsString()
+  sectionDescription?: string;
+
+  @IsString()
+  title: string;
+
+  @IsString()
+  description: string;
+
+  @IsOptional()
+  @IsNumber()
+  sortOrder?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isPublished?: boolean;
+}
+
+export class UpdateLandingAdvantageDto {
+  @IsOptional()
+  @IsString()
+  sectionEyebrow?: string;
+
+  @IsOptional()
+  @IsString()
+  sectionHeading?: string;
+
+  @IsOptional()
+  @IsString()
+  sectionDescription?: string;
+
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsNumber()
+  sortOrder?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isPublished?: boolean;
+}
+
+// ============ LANDING TESTIMONIALS ============
+
+export class CreateLandingTestimonialDto {
+  @IsOptional()
+  @IsString()
+  sectionEyebrow?: string;
+
+  @IsOptional()
+  @IsString()
+  sectionHeading?: string;
+
+  @IsOptional()
+  @IsString()
+  sectionDescription?: string;
+
+  @IsString()
+  title: string;
+
+  @IsString()
+  description: string;
+
+  @IsOptional()
+  @IsString()
+  label?: string;
+
+  @IsOptional()
+  @IsNumber()
+  sortOrder?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isPublished?: boolean;
+}
+
+export class UpdateLandingTestimonialDto {
+  @IsOptional()
+  @IsString()
+  sectionEyebrow?: string;
+
+  @IsOptional()
+  @IsString()
+  sectionHeading?: string;
+
+  @IsOptional()
+  @IsString()
+  sectionDescription?: string;
+
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsString()
+  label?: string;
+
+  @IsOptional()
+  @IsNumber()
+  sortOrder?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isPublished?: boolean;
+}
+
 // ============ CMS PAGES ============
 
 export class CreateCmsPageDto {

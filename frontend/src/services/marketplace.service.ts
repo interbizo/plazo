@@ -105,6 +105,8 @@ export const marketplaceApi = {
   getCategories: (type?: string) =>
     api.get<Category[]>("/api/categories", { params: type ? { type } : {} }),
 
+  // Landing page content (public)
+  getLandingContent: () => api.get("/api/public/cms/landing"),
   // CMS Banners (public)
   getCmsBanners: (position?: string) =>
     api.get("/api/public/cms/banners", { params: { position } }),

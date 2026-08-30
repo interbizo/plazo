@@ -135,7 +135,7 @@ export function ClientLayout({ children, isStorefrontHost = false }: ClientLayou
       // Convert hex to RGB for opacity variants
       const rgb = hexToRgb(settings.primary_color);
       if (rgb) {
-        root.style.setProperty('--color-primary-rgb', `${rgb.r}, ${rgb.g}, ${rgb.b}`);
+        root.style.setProperty('--color-primary-rgb', `${rgb.r} ${rgb.g} ${rgb.b}`);
       }
     }
 
@@ -145,7 +145,7 @@ export function ClientLayout({ children, isStorefrontHost = false }: ClientLayou
       
       const rgb = hexToRgb(settings.accent_color);
       if (rgb) {
-        root.style.setProperty('--color-accent-rgb', `${rgb.r}, ${rgb.g}, ${rgb.b}`);
+        root.style.setProperty('--color-accent-rgb', `${rgb.r} ${rgb.g} ${rgb.b}`);
       }
     }
 

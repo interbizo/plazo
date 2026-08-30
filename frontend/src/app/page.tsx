@@ -1,1255 +1,313 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
   ArrowRight,
-  ShoppingBag,
-  Briefcase,
-  Palette,
-  ChevronRight,
-  ChevronLeft,
-  Star,
-  Zap,
-  Globe,
-  Smartphone,
-  PenTool,
   BarChart3,
-  FileText,
-  Video,
-  Image as ImageIcon,
+  Boxes,
   Building2,
-  UtensilsCrossed,
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Coffee,
-  Shirt,
   Cpu,
-  Heart,
+  FileText,
+  Globe2,
   GraduationCap,
-  Camera,
+  Heart,
+  MessageCircle,
   Music,
-  Clock,
-  Truck,
-  Shield,
-  MapPin,
+  PenTool,
+  ShieldCheck,
+  ShoppingBag,
+  Sparkles,
+  Star,
   Store,
-  Headphones,
-  HelpCircle,
+  Truck,
+  Zap,
 } from "lucide-react";
 import { marketplaceApi } from "@/services/marketplace.service";
-import { getSubdomainLink } from "@/lib/domain";
-import type { Product, Service, Category } from "@/types";
-import { ProductCard } from "@/components/shared/product-card";
-import { ServiceCard } from "@/components/shared/service-card";
-import { Spinner } from "@/components/ui/spinner";
-import { SafeHtml } from "@/components/ui/safe-html";
-import { CategoryGrid } from "@/components/shared/category-grid";
 import { ReportFloat } from "@/components/shared/report-float";
-import toast from "react-hot-toast";
 
-// Category icon mapping (fallback icons)
-const categoryIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-  "food-culinary": UtensilsCrossed,
-  "beverage": Coffee,
-  "fashion-apparel": Shirt,
-  "electronics-gadget": Cpu,
-  "health-beauty": Heart,
-  "education-course": GraduationCap,
-  "photography": Camera,
-  "music-audio": Music,
-  "web-development": Globe,
-  "mobile-development": Smartphone,
-  "ui-ux-design": PenTool,
-  "digital-marketing": BarChart3,
-  "content-writing": FileText,
-  "video-production": Video,
-  "graphics-design": ImageIcon,
-  "business-consulting": Building2,
-  // Default icons
-  "default-product": ShoppingBag,
-  "default-service": Briefcase,
+type LandingBenefit = { id?: string; label: string; title: string; description: string; icon: string; tone: string; sectionEyebrow?: string; sectionHeading?: string; sectionDescription?: string };
+type LandingStep = { id?: string; title: string; description: string; icon: string; sectionEyebrow?: string; sectionHeading?: string; sectionDescription?: string };
+type LandingAdvantage = { id?: string; title: string; description: string; sectionEyebrow?: string; sectionHeading?: string; sectionDescription?: string };
+type LandingTestimonial = { id?: string; label?: string | null; title: string; description: string; sectionEyebrow?: string; sectionHeading?: string; sectionDescription?: string };
+type LandingPlan = { id?: string; plan?: string; name: string; description?: string | null; badge?: string | null; monthlyPrice: number; currency?: string; features?: unknown };
+type LandingFaq = { id?: string; question: string; answer: string };
+type LandingHero = { id?: string; eyebrow: string; title: string; titleAccent: string; description: string };
+type LandingSeller = { id?: string; name: string; logo?: string | null; subdomain?: string | null };
+type CmsBanner = { id: string; title?: string | null; subtitle?: string | null; imageUrl?: string | null; linkUrl?: string | null; buttonText?: string | null; buttonUrl?: string | null };
+type LandingContent = { hero: LandingHero; benefits: LandingBenefit[]; steps: LandingStep[]; advantages: LandingAdvantage[]; testimonials: LandingTestimonial[]; plans: LandingPlan[]; faqs: LandingFaq[] };
+type LandingSectionCopy = { eyebrow: string; title: string; description: string };
+
+const defaultSectionCopies = {
+  benefits: { eyebrow: "Satu fondasi kerja", title: "Bukan sekadar halaman. Ini tempat bisnis Anda mulai terlihat utuh.", description: "Setiap bagian membantu pelanggan memahami bisnis Anda sebelum percakapan dimulai." },
+  steps: { eyebrow: "Cara kerja", title: "Beri bisnis Anda jalur yang jelas untuk bergerak.", description: "Buat toko, susun penawaran, lalu ubah minat menjadi percakapan yang relevan." },
+  advantages: { eyebrow: "Keunggulan Plazo", title: "Toko yang siap membantu bisnis terlihat serius.", description: "Ruang yang sederhana untuk mulai, tanpa memaksa bisnis Anda terlihat sama dengan yang lain." },
+  testimonials: { eyebrow: "Testimoni", title: "Dibuat untuk bisnis yang ingin terlihat lebih siap.", description: "Cerita dari pemilik bisnis yang memakai toko sebagai titik awal percakapan dengan pelanggan." },
+} satisfies Record<string, LandingSectionCopy>;
+
+const defaultContent: LandingContent = {
+  hero: {
+    eyebrow: "Untuk bisnis produk dan jasa",
+    title: "Buat toko.",
+    titleAccent: "Beri bisnis Anda arah.",
+    description: "Plazo menyatukan toko, katalog, dan percakapan pelanggan agar bisnis Anda hadir dengan lebih jelas sejak awal.",
+  },
+  benefits: [
+    { icon: "Store", label: "Identitas bisnis", title: "Toko yang membawa nama brand Anda", description: "Tampilkan bisnis dengan ruang yang lebih meyakinkan daripada sekadar daftar tautan.", tone: "blue" },
+    { icon: "Boxes", label: "Katalog siap pakai", title: "Produk dan jasa lebih mudah dipahami", description: "Susun penawaran agar calon pelanggan bisa melihat konteks sebelum menghubungi Anda.", tone: "sky" },
+    { icon: "MessageCircle", label: "Percakapan terarah", title: "Pelanggan tahu harus mulai dari mana", description: "Lanjutkan minat menjadi percakapan tanpa memisahkan toko dari hubungan pelanggan.", tone: "indigo" },
+    { icon: "BarChart3", label: "Satu fondasi", title: "Mulai sederhana, tetap siap berkembang", description: "Gunakan satu ruang untuk membangun kehadiran digital bisnis dengan lebih terarah.", tone: "cyan" },
+  ],
+  steps: [
+    { icon: "Store", title: "Siapkan toko", description: "Atur identitas bisnis dan halaman yang siap menjadi pintu masuk pelanggan." },
+    { icon: "Boxes", title: "Susun penawaran", description: "Tambahkan produk atau jasa dengan informasi yang membantu pelanggan memahami nilainya." },
+    { icon: "MessageCircle", title: "Layani pelanggan", description: "Terima pertanyaan dan lanjutkan percakapan dari bisnis yang sudah terlihat siap." },
+  ],
+  advantages: [
+    { title: "Mulai tanpa membangun website dari nol", description: "Gunakan toko yang jelas sebagai pondasi awal kehadiran digital bisnis Anda." },
+    { title: "Katalog dan identitas hadir dalam satu pengalaman", description: "Produk, jasa, dan cerita bisnis tersusun konsisten untuk membangun kepercayaan." },
+    { title: "Minat pelanggan dapat langsung menjadi percakapan", description: "Beri pelanggan jalur yang jelas dari melihat penawaran ke bertanya." },
+    { title: "Cukup ringan untuk mulai, siap untuk bertumbuh", description: "Bangun proses bisnis secara bertahap tanpa menambah kerumitan sejak awal." },
+  ],
+  testimonials: [
+    { title: "Nara Putri", label: "Pemilik Nara Studio", description: "Sekarang calon pelanggan langsung melihat katalog dan tahu harus menghubungi kami dari mana." },
+    { title: "Raka Mahendra", label: "Pendiri Ruang Rupa", description: "Plazo membuat penawaran jasa kami lebih mudah dipahami tanpa harus membuat website dari awal." },
+    { title: "Ayu Lestari", label: "Pemilik Kopi Kecil", description: "Kami bisa membagikan satu alamat toko yang rapi ketika mengenalkan bisnis ke pelanggan baru." },
+  ],
+  plans: [
+    { plan: "FREE", name: "Gratis", description: "Untuk mulai membangun toko", monthlyPrice: 0, currency: "IDR", features: ["10 produk atau jasa", "Toko online", "Chat dengan pelanggan"] },
+    { plan: "BASIC", name: "Basic", description: "Untuk bisnis yang mulai berkembang", badge: "Paling dipilih", monthlyPrice: 49000, currency: "IDR", features: ["50 produk atau jasa", "Publikasi marketplace", "Badge terverifikasi"] },
+    { plan: "PREMIUM", name: "Premium", description: "Untuk bisnis yang butuh jangkauan lebih", monthlyPrice: 99000, currency: "IDR", features: ["100 produk atau jasa", "Analitik lanjutan", "Tema toko kustom"] },
+  ],
+  faqs: [
+    { question: "Apa itu Plazo?", answer: "Plazo adalah ruang digital bagi bisnis untuk membuat toko, menyusun katalog produk atau jasa, dan menerima percakapan pelanggan." },
+    { question: "Apakah saya harus bisa coding?", answer: "Tidak. Plazo memberi fondasi toko dan katalog agar Anda bisa mulai tanpa membangun website sendiri." },
+    { question: "Apakah saya bisa menawarkan jasa?", answer: "Ya. Toko Plazo dirancang untuk produk maupun jasa profesional." },
+  ],
 };
 
-// Banner slides (fallback if no CMS banners)
-// Ultimate fallback banners (jika API gagal dan tidak ada banner di database)
-// Sekarang fallback banners dikelola dari CMS Admin dengan flag isFallback=true
-const fallbackBannerSlides = [
-  {
-    title: "Produk Digital Terlengkap",
-    subtitle: "Temukan ribuan produk digital berkualitas dengan harga terbaik",
-    cta: "Belanja Sekarang",
-    href: "/products",
-    bg: "from-blue-600 to-blue-800",
-  },
-  {
-    title: "Jasa Profesional Terpercaya",
-    subtitle: "Freelancer dan agensi siap membantu proyek Anda",
-    cta: "Cari Jasa",
-    href: "/services",
-    bg: "from-indigo-600 to-purple-700",
-  },
-  {
-    title: "Buka Toko Gratis",
-    subtitle: "Mulai jual produk dan jasa digital Anda hari ini",
-    cta: "Daftar Seller",
-    href: "/register?role=SELLER",
-    bg: "from-blue-700 to-cyan-600",
-  },
-];
-
-interface CmsBanner {
-  id: string;
-  title: string;
-  subtitle?: string;
-  imageUrl: string;
-  linkUrl?: string;
-  buttonText?: string;
-  buttonUrl?: string;
-  position: string;
-  sortOrder: number;
-  isActive?: boolean;
-  status?: string;
-}
-
-interface FlashSaleEvent {
-  id: string;
-  name: string;
-  startDate: string;
-  endDate: string;
-  isActive: boolean;
-}
-
-interface FlashSaleItem {
-  id: string;
-  salePrice: number;
-  originalPrice: number;
-  discountPercent?: number;
-  startDate?: string;
-  endDate?: string;
-  product?: Product & { tenant?: { id: string; name: string; subdomain: string } };
-  service?: Service & { tenant?: { id: string; name: string; subdomain: string } };
-}
-
-interface NearbySeller {
-  id?: string;
-  subdomain: string;
-  name: string;
-  logo?: string;
-  isVerified?: boolean;
-  city?: string;
-  description?: string;
-  owner?: {
-    sellerProfile?: {
-      averageRating?: number | null;
-      totalReviews?: number | null;
-    };
+const iconMap = { BarChart3, Boxes, Building2, Coffee, Cpu, FileText, Globe2, GraduationCap, Heart, MessageCircle, Music, PenTool, ShieldCheck, ShoppingBag, Sparkles, Star, Store, Truck, Zap };
+const toneClasses: Record<string, string> = { blue: "bg-[rgb(var(--color-primary-rgb)/0.10)] text-[var(--color-primary)]", sky: "bg-[rgb(var(--color-primary-rgb)/0.14)] text-[var(--color-primary)]", indigo: "bg-[rgb(var(--color-primary-rgb)/0.18)] text-[var(--color-primary)]", cyan: "bg-[rgb(var(--color-primary-rgb)/0.22)] text-[var(--color-primary)]" };
+const getIcon = (name: string) => iconMap[name as keyof typeof iconMap] || Sparkles;
+const formatPlanPrice = (price: number, currency = "IDR") => price === 0 ? "Gratis" : new Intl.NumberFormat("id-ID", { style: "currency", currency, maximumFractionDigits: 0 }).format(price);
+const getPlanFeatures = (features: unknown) => Array.isArray(features) ? features.filter((feature): feature is string => typeof feature === "string") : [];
+const getInitials = (name: string) => name.split(" ").filter(Boolean).slice(0, 2).map((word) => word[0]).join("").toUpperCase();
+const getSectionCopy = (items: Array<{ sectionEyebrow?: string; sectionHeading?: string; sectionDescription?: string }>, key: keyof typeof defaultSectionCopies): LandingSectionCopy => {
+  const copy = items[0];
+  const fallback = defaultSectionCopies[key];
+  return {
+    eyebrow: copy?.sectionEyebrow || fallback.eyebrow,
+    title: copy?.sectionHeading || fallback.title,
+    description: copy?.sectionDescription || fallback.description,
   };
+};
+
+function StorePreview() {
+  return (
+    <div className="plazo-preview border border-slate-300 bg-white p-3 sm:p-5">
+      <div className="border border-slate-200 bg-slate-50">
+        <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
+          <div className="flex items-center gap-2"><span className="grid h-8 w-8 place-items-center bg-[var(--color-primary)] text-white"><Store className="h-4 w-4" /></span><div><p className="text-sm font-bold">Nara Studio</p><p className="text-[11px] text-slate-500">nama-bisnis.plazo.id</p></div></div>
+          <span className="border border-[rgb(var(--color-primary-rgb)/0.22)] bg-[rgb(var(--color-primary-rgb)/0.08)] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--color-primary)]">Toko aktif</span>
+        </div>
+        <div className="grid gap-3 p-4 sm:grid-cols-[1.25fr_0.75fr]">
+          <div className="bg-[var(--color-primary)] p-5 text-white"><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/80">Tampilan toko</p><h2 className="mt-5 max-w-xs text-3xl font-semibold leading-tight tracking-[-0.045em]">Penawaran yang mudah dibaca pelanggan.</h2><div className="mt-8 flex items-center gap-2 text-xs text-slate-300"><Globe2 className="h-4 w-4 text-[rgb(var(--color-primary-rgb)/0.85)]" /> nama-bisnis.plazo.id</div></div>
+          <div className="space-y-3"><div className="border border-slate-200 bg-white p-4"><div className="flex items-center justify-between text-xs font-bold"><span>Katalog</span><Boxes className="h-4 w-4 text-[var(--color-primary)]" /></div><div className="mt-4 h-2 w-4/5 bg-slate-200" /><div className="mt-2 h-2 w-3/5 bg-slate-100" /></div><div className="plazo-preview-message p-4"><div className="flex items-center justify-between text-xs font-bold text-slate-950"><span>Pesan baru</span><MessageCircle className="h-4 w-4 text-[var(--color-primary)]" /></div><p className="mt-3 text-sm font-semibold text-slate-950">Boleh konsultasi dulu?</p></div></div>
+        </div>
+        <div className="grid grid-cols-3 border-t border-slate-200 bg-white text-center text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500"><span className="border-r border-slate-200 px-2 py-3 text-[var(--color-primary)]">01 Toko</span><span className="border-r border-slate-200 px-2 py-3">02 Katalog</span><span className="px-2 py-3">03 Chat</span></div>
+      </div>
+    </div>
+  );
 }
 
-interface FaqItem {
-  id: string;
-  question: string;
-  answer: string;
-  sortOrder: number;
-}
-
-export default function HomePage() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
-  const [cmsBanners, setCmsBanners] = useState<CmsBanner[]>([]);
-  const [flashSaleItems, setFlashSaleItems] = useState<FlashSaleItem[]>([]);
-  const [flashSaleEvent, setFlashSaleEvent] = useState<FlashSaleEvent | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [siteSettings, setSiteSettings] = useState<Record<string, string>>({});
-  const [productCategories, setProductCategories] = useState<Category[]>([]);
-  const [serviceCategories, setServiceCategories] = useState<Category[]>([]);
-  const [faqs, setFaqs] = useState<FaqItem[]>([]);
-  const [expandedFaq, setExpandedFaq] = useState<string | null>(null);
-
-  // City filter state
-  const [selectedCity, setSelectedCity] = useState<string>(() => {
-    if (typeof window === "undefined") return "";
-    return localStorage.getItem("plazo_selected_city") || "";
-  });
-  const [nearbySellers, setNearbySellers] = useState<NearbySeller[]>([]);
-  const [loadingNearby, setLoadingNearby] = useState(false);
-  const [cityList, setCityList] = useState<string[]>([]);
-  const [loadingCities, setLoadingCities] = useState(false);
-
-  const siteName = siteSettings.site_name || "Plazo Marketplace";
-
-  // Fetch cities from API
-  useEffect(() => {
-    const fetchCities = async () => {
-      setLoadingCities(true);
-      try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-        console.log('[Location] Fetching cities from:', `${apiUrl}/api/location/cities`);
-        
-        const response = await fetch(`${apiUrl}/api/location/cities`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        
-        console.log('[Location] Response status:', response.status);
-        
-        if (response.ok) {
-          const data = await response.json();
-          console.log('[Location] Response data:', data);
-          
-          // Handle different response formats
-          let cities: string[] = [];
-          
-          if (data.data && Array.isArray(data.data)) {
-            // Extract unique city names
-            cities = [...new Set(data.data.map((city: any) => city.name))].sort();
-            console.log('[Location] Parsed cities:', cities.length, 'cities');
-          } else if (Array.isArray(data)) {
-            cities = [...new Set(data.map((city: any) => city.name))].sort();
-          }
-          
-          setCityList(cities);
-          
-          if (cities.length === 0) {
-            console.warn('[Location] No cities found in response');
-            toast.error("Data kota tidak ditemukan. Silakan hubungi admin.");
-          }
-        } else {
-          console.error('[Location] Failed to fetch cities, status:', response.status);
-          const errorText = await response.text();
-          console.error('[Location] Error response:', errorText);
-          toast.error("Gagal memuat data kota. Silakan refresh halaman.");
-          setCityList([]);
-        }
-      } catch (error) {
-        console.error("[Location] Failed to fetch cities:", error);
-        toast.error("Tidak dapat terhubung ke server. Periksa koneksi internet Anda.");
-        setCityList([]);
-      } finally {
-        setLoadingCities(false);
-      }
-    };
-
-    fetchCities();
-  }, []);
-
-  // Handle city change
-  const handleCityChange = useCallback((city: string) => {
-    setSelectedCity(city);
-    if (city) {
-      localStorage.setItem("plazo_selected_city", city);
-    } else {
-      localStorage.removeItem("plazo_selected_city");
-    }
-  }, []);
+function HeroBanner({ banners }: { banners: CmsBanner[] }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const banner = banners[currentIndex] || banners[0];
 
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        const cityParam = selectedCity || undefined;
-        const [prodRes, svcRes, bannersRes, flashRes, settingsRes, prodCatsRes, svcCatsRes, faqsRes] = await Promise.all([
-          marketplaceApi.getProducts({ page: 1, limit: 24, sortBy: "newest", city: cityParam }),
-          marketplaceApi.getServices({ page: 1, limit: 16, sortBy: "newest", city: cityParam }),
-          marketplaceApi
-            .getCmsBanners("homepage_hero")
-            .catch(() => ({ data: [] })),
-          marketplaceApi
-            .getFlashSaleItems("flash_sale")
-            .catch(() => ({ data: [] })),
-          marketplaceApi
-            .getSiteSettings()
-            .catch(() => ({ data: [] })),
-          marketplaceApi
-            .getCategories("PRODUCT")
-            .catch(() => ({ data: [] })),
-          marketplaceApi
-            .getCategories("SERVICE")
-            .catch(() => ({ data: [] })),
-          marketplaceApi
-            .getFaqs()
-            .catch(() => ({ data: [] })),
-        ]);
-        setProducts(prodRes.data.data || []);
-        setServices(svcRes.data.data || []);
-        
-        // Parse banners - handle different response formats
-        const bannersData = bannersRes.data;
-        let parsedBanners: CmsBanner[] = [];
-        
-        if (Array.isArray(bannersData)) {
-          parsedBanners = bannersData;
-        } else if (bannersData && typeof bannersData === 'object') {
-          // Check if data is wrapped in a 'data' property
-          if (Array.isArray(bannersData.data)) {
-            parsedBanners = bannersData.data;
-          } else if (bannersData.banners && Array.isArray(bannersData.banners)) {
-            parsedBanners = bannersData.banners;
-          }
-        }
-        
-        // Filter only active banners
-        const activeBanners = parsedBanners.filter((b: CmsBanner) => {
-          // Check if banner is active using status field
-          const isActive = b.status === 'ACTIVE' || (!b.status && b.isActive !== false);
-          return isActive && b.imageUrl; // Must have imageUrl
-        });
-        
-        console.log('[Homepage] Banners loaded:', {
-          raw: bannersData,
-          parsed: parsedBanners,
-          active: activeBanners,
-          count: activeBanners.length
-        });
-        
-        setCmsBanners(activeBanners);
-        
-        // Site settings
-        const settingsArray = Array.isArray(settingsRes.data) ? settingsRes.data : settingsRes.data?.data || [];
-        const settingsMap: Record<string, string> = {};
-        settingsArray.forEach((item: { key: string; value: string }) => {
-          settingsMap[item.key] = item.value;
-        });
-        setSiteSettings(settingsMap);
-        
-        // Categories
-        const prodCatsData = prodCatsRes.data as Category[] | { categories?: Category[] };
-        const svcCatsData = svcCatsRes.data as Category[] | { categories?: Category[] };
-        const prodCats = Array.isArray(prodCatsData) ? prodCatsData : prodCatsData?.categories || [];
-        const svcCats = Array.isArray(svcCatsData) ? svcCatsData : svcCatsData?.categories || [];
-        setProductCategories(prodCats.slice(0, 8));
-        setServiceCategories(svcCats.slice(0, 8));
-        
-        // FAQs
-        const faqsData = Array.isArray(faqsRes.data) ? faqsRes.data : faqsRes.data?.data || [];
-        setFaqs(faqsData.slice(0, 6));
-        
-        // Flash sale response: { event, items} or legacy array
-        const flashData = flashRes.data;
-        if (flashData && typeof flashData === 'object' && 'items' in flashData) {
-          setFlashSaleEvent(flashData.event || null);
-          setFlashSaleItems(Array.isArray(flashData.items) ? flashData.items : []);
-        } else {
-          setFlashSaleEvent(null);
-          setFlashSaleItems(Array.isArray(flashData) ? flashData : []);
-        }
-      } catch (error) {
-        console.error("Failed to load homepage data:", error);
-        toast.error("Gagal memuat data. Silakan refresh halaman.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
-  }, [selectedCity]);
+    setCurrentIndex((current) => Math.min(current, Math.max(banners.length - 1, 0)));
+    if (banners.length < 2 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = window.setInterval(() => setCurrentIndex((current) => (current + 1) % banners.length), 6000);
+    return () => window.clearInterval(timer);
+  }, [banners.length]);
 
-  // Fetch nearby sellers when city changes
-  useEffect(() => {
-    if (!selectedCity) {
-      return;
-    }
-    const fetchNearby = async () => {
-      setLoadingNearby(true);
-      try {
-        const res = await marketplaceApi.getSellers({ page: 1, limit: 10, city: selectedCity });
-        const sellersData = res.data?.data || res.data?.sellers || [];
-        setNearbySellers(Array.isArray(sellersData) ? sellersData : []);
-      } catch {
-        setNearbySellers([]);
-      } finally {
-        setLoadingNearby(false);
-      }
-    };
-    fetchNearby();
-  }, [selectedCity]);
+  if (!banner) return <StorePreview />;
 
-  // Flash sale countdown timer
-  const [flashCountdown, setFlashCountdown] = useState<string>("00:00:00");
-  const [flashSaleEnded, setFlashSaleEnded] = useState(false);
-
-  useEffect(() => {
-    // Use event endDate (global), fallback to first item's endDate (legacy)
-    const endDateStr = flashSaleEvent?.endDate || flashSaleItems[0]?.endDate;
-    
-    if (!endDateStr) {
-      const timer = window.setTimeout(() => {
-        setFlashCountdown("00:00:00");
-        setFlashSaleEnded(false);
-      }, 0);
-      return () => window.clearTimeout(timer);
-    }
-    
-    const endDate = new Date(endDateStr).getTime();
-
-    const updateCountdown = () => {
-      const now = Date.now();
-      const diff = endDate - now;
-
-      if (diff <= 0) {
-        setFlashCountdown("00:00:00");
-        setFlashSaleEnded(true);
-        return false; // signal to clear interval
-      }
-
-      const hours = Math.floor(diff / (1000 * 60 * 60));
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-      setFlashCountdown(
-        `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
-      );
-      setFlashSaleEnded(false);
-      return true; // still running
-    };
-
-    // Run immediately, then every second
-    const stillRunning = updateCountdown();
-    if (!stillRunning) {
-      // Already ended, no need to set interval
-      return;
-    }
-    
-    const interval = setInterval(() => {
-      const running = updateCountdown();
-      if (!running) {
-        clearInterval(interval);
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [flashSaleItems, flashSaleEvent]);
-
-  // Banner slides: use CMS banners if available, fallback to static
-  const hasCmsBanners = cmsBanners.length > 0;
-  const bannerCount = hasCmsBanners
-    ? cmsBanners.length
-    : fallbackBannerSlides.length;
-
-  // Debug logging
-  useEffect(() => {
-    console.log('[Banner Slider] State:', {
-      hasCmsBanners,
-      cmsBannersCount: cmsBanners.length,
-      bannerCount,
-      currentSlide,
-      fallbackCount: fallbackBannerSlides.length
-    });
-  }, [hasCmsBanners, cmsBanners.length, bannerCount, currentSlide]);
-
-  // Reset slide when banners change
-  useEffect(() => {
-    console.log('[Banner Slider] Resetting slide to 0, banners changed:', cmsBanners.length);
-    setCurrentSlide(0);
-  }, [cmsBanners.length]);
-
-  // Auto-slide banner
-  useEffect(() => {
-    if (bannerCount <= 1) {
-      console.log('[Banner Slider] Auto-slide disabled, only', bannerCount, 'banner(s)');
-      return;
-    }
-    
-    console.log('[Banner Slider] Auto-slide enabled, interval: 5s, banners:', bannerCount);
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => {
-        const next = (prev + 1) % bannerCount;
-        console.log('[Banner Slider] Auto-slide:', prev, '→', next);
-        return next;
-      });
-    }, 5000);
-    return () => {
-      console.log('[Banner Slider] Auto-slide cleanup');
-      clearInterval(timer);
-    };
-  }, [bannerCount]);
-
-  const nextSlide = useCallback(() => {
-    setCurrentSlide((prev) => {
-      const next = (prev + 1) % bannerCount;
-      console.log('[Banner Slider] Next clicked:', prev, '→', next);
-      return next;
-    });
-  }, [bannerCount]);
-
-  const prevSlide = useCallback(() => {
-    setCurrentSlide((prev) => {
-      const next = (prev - 1 + bannerCount) % bannerCount;
-      console.log('[Banner Slider] Prev clicked:', prev, '→', next);
-      return next;
-    });
-  }, [bannerCount]);
+  const goTo = (index: number) => setCurrentIndex((index + banners.length) % banners.length);
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* ========== HERO: Banner + Categories ========== */}
-      <section className="bg-blue-600">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-6 pb-6">
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-            {/* Banner Carousel */}
-            <div className="lg:col-span-3 relative overflow-hidden rounded-lg shadow-md bg-white min-h-[12rem] sm:min-h-[16rem] lg:min-h-[20rem]">
-              <div
-                className="flex transition-transform duration-500 ease-out h-full"
-                style={{ transform: `translateX(-${currentSlide * 100}%)` }}
-              >
-                {hasCmsBanners
-                  ? cmsBanners.map((banner, i) => (
-                      <div key={banner.id} className="w-full shrink-0 relative">
-                        {banner.imageUrl ? (
-                          <div className="relative w-full h-48 sm:h-64 lg:h-80">
-                            <Image
-                              src={banner.imageUrl}
-                              alt={banner.title || "Banner"}
-                              fill
-                              className="object-cover"
-                              priority={i === 0}
-                              unoptimized
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
-                            <div className="absolute inset-0 flex flex-col justify-center px-8 sm:px-12 lg:px-16">
-                              <h2 className="text-2xl sm:text-4xl font-bold text-white leading-tight max-w-xl">
-                                {banner.title}
-                              </h2>
-                              {banner.subtitle && (
-                                <p className="mt-3 text-sm sm:text-base text-white/90 max-w-md">
-                                  {banner.subtitle}
-                                </p>
-                              )}
-                              {/* Button CTA - prioritas tertinggi */}
-                              {banner.buttonText && banner.buttonUrl ? (
-                                <Link
-                                  href={banner.buttonUrl}
-                                  className="mt-6 inline-block w-fit rounded-lg bg-emerald-600 px-6 py-3 text-sm font-semibold text-white hover:bg-emerald-700 transition-all hover:scale-105 shadow-lg"
-                                >
-                                  {banner.buttonText}
-                                </Link>
-                              ) : banner.linkUrl ? (
-                                <Link
-                                  href={banner.linkUrl}
-                                  className="mt-6 inline-block w-fit rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-700 transition-colors"
-                                >
-                                  Lihat Selengkapnya
-                                </Link>
-                              ) : null}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="w-full bg-blue-600 p-8 sm:p-12 lg:p-16 h-48 sm:h-64 lg:h-80 flex flex-col justify-center">
-                            <h2 className="text-2xl sm:text-4xl font-bold text-white leading-tight max-w-xl">
-                              {banner.title}
-                            </h2>
-                            {banner.subtitle && (
-                              <p className="mt-3 text-sm sm:text-base text-white/90 max-w-md">
-                                {banner.subtitle}
-                              </p>
-                            )}
-                            {/* Button CTA - prioritas tertinggi */}
-                            {banner.buttonText && banner.buttonUrl ? (
-                              <Link
-                                href={banner.buttonUrl}
-                                className="mt-6 inline-block w-fit rounded-lg bg-white px-6 py-3 text-sm font-semibold text-emerald-600 hover:bg-gray-50 transition-all hover:scale-105 shadow-lg"
-                              >
-                                {banner.buttonText}
-                              </Link>
-                            ) : banner.linkUrl ? (
-                              <Link
-                                href={banner.linkUrl}
-                                className="mt-6 inline-block w-fit rounded-lg bg-white px-6 py-3 text-sm font-semibold text-blue-600 hover:bg-gray-50 transition-colors"
-                              >
-                                Lihat Selengkapnya
-                              </Link>
-                            ) : null}
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  : fallbackBannerSlides.map((slide, i) => (
-                      <div
-                        key={i}
-                        className="w-full shrink-0 bg-blue-600 p-8 sm:p-12 lg:p-16 h-48 sm:h-64 lg:h-80 flex flex-col justify-center"
-                      >
-                        <h2 className="text-2xl sm:text-4xl font-bold text-white leading-tight max-w-xl">
-                          {slide.title}
-                        </h2>
-                        <p className="mt-3 text-sm sm:text-base text-white/90 max-w-md">
-                          {slide.subtitle}
-                        </p>
-                        <Link
-                          href={slide.href}
-                          className="mt-6 inline-block w-fit rounded-lg bg-white px-6 py-3 text-sm font-semibold text-blue-600 hover:bg-gray-50 transition-colors"
-                        >
-                          {slide.cta}
-                        </Link>
-                      </div>
-                    ))}
+    <article className="relative min-h-[25rem] overflow-hidden border border-[rgb(var(--color-primary-rgb)/0.22)] bg-slate-950 text-white shadow-[10px_10px_0_0_rgb(var(--color-primary-rgb)/0.18)]">
+      {banner.imageUrl && <Image key={banner.id} src={banner.imageUrl} alt={banner.title || "Banner Plazo"} fill priority sizes="(max-width: 1024px) 100vw, 50vw" className="object-cover" />}
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgb(15_23_42/0.78),rgb(15_23_42/0.30),transparent)]" />
+      <div className="relative z-10 flex min-h-[25rem] max-w-md flex-col justify-end p-7 sm:p-10"><p className="text-xs font-bold uppercase tracking-[0.18em] text-white/80">Info dari Plazo</p><h2 className="mt-4 text-3xl font-semibold leading-tight tracking-[-0.05em] sm:text-4xl">{banner.title}</h2>{banner.subtitle && <p className="mt-4 leading-7 text-white/85">{banner.subtitle}</p>}{banner.buttonText && banner.buttonUrl && <Link href={banner.buttonUrl} className="mt-7 inline-flex w-fit min-h-11 items-center gap-2 rounded-lg bg-white px-5 text-sm font-bold text-[var(--color-primary)] transition hover:-translate-y-0.5 hover:bg-white/90">{banner.buttonText}<ArrowRight className="h-4 w-4" /></Link>}</div>
+      {banners.length > 1 && <>
+        <button type="button" aria-label="Banner sebelumnya" onClick={() => goTo(currentIndex - 1)} className="absolute left-4 top-1/2 z-20 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full border border-white/40 bg-slate-950/40 text-white backdrop-blur transition hover:bg-slate-950/70 sm:left-5"><ChevronLeft className="h-5 w-5" /></button>
+        <button type="button" aria-label="Banner berikutnya" onClick={() => goTo(currentIndex + 1)} className="absolute right-4 top-1/2 z-20 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full border border-white/40 bg-slate-950/40 text-white backdrop-blur transition hover:bg-slate-950/70 sm:right-5"><ChevronRight className="h-5 w-5" /></button>
+        <div className="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/25 bg-slate-950/40 px-3 py-2 backdrop-blur">
+          {banners.map((item, index) => <button key={item.id} type="button" aria-label={"Tampilkan banner " + (index + 1)} aria-current={index === currentIndex} onClick={() => goTo(index)} className={"h-2.5 rounded-full transition " + (index === currentIndex ? "w-7 bg-white" : "w-2.5 bg-white/55 hover:bg-white/85")} />)}
+        </div>
+      </>}
+    </article>
+  );
+}
+
+export default function LandingPage() {
+  const pageRef = useRef<HTMLElement>(null);
+  const [content, setContent] = useState(defaultContent);
+  const [sellerLogos, setSellerLogos] = useState<LandingSeller[]>([]);
+  const [banners, setBanners] = useState<CmsBanner[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    marketplaceApi.getLandingContent().then(({ data }) => {
+      if (!active) return;
+      const raw = (data?.data || data) as Partial<LandingContent>;
+      setContent((current) => ({
+        hero: raw.hero ? { ...current.hero, ...raw.hero } : current.hero,
+        benefits: Array.isArray(raw.benefits) && raw.benefits.length ? raw.benefits : current.benefits,
+        steps: Array.isArray(raw.steps) && raw.steps.length ? raw.steps : current.steps,
+        advantages: Array.isArray(raw.advantages) && raw.advantages.length ? raw.advantages : current.advantages,
+        testimonials: Array.isArray(raw.testimonials) && raw.testimonials.length ? raw.testimonials : current.testimonials,
+        plans: Array.isArray(raw.plans) && raw.plans.length ? raw.plans : current.plans,
+        faqs: Array.isArray(raw.faqs) && raw.faqs.length ? raw.faqs : current.faqs,
+      }));
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    marketplaceApi.getCmsBanners("homepage_hero").then(({ data }) => {
+      if (!active) return;
+      const raw = (data?.data || data) as CmsBanner[] | { banners?: CmsBanner[] };
+      const banners = Array.isArray(raw) ? raw : Array.isArray(raw.banners) ? raw.banners : [];
+      setBanners(banners);
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    marketplaceApi.getSellers({ page: 1, limit: 12 }).then(({ data }) => {
+      if (!active) return;
+      const payload = (data?.data || data) as { data?: LandingSeller[] } | LandingSeller[];
+      const sellers = Array.isArray(payload) ? payload : Array.isArray(payload.data) ? payload.data : [];
+      setSellerLogos(sellers.filter((seller) => seller.name?.trim()));
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    const page = pageRef.current;
+    if (!page) return;
+
+    const targets = Array.from(page.querySelectorAll<HTMLElement>("[data-plazo-reveal]"));
+    const show = (target: HTMLElement) => target.classList.add("is-visible");
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    if (reducedMotion || !("IntersectionObserver" in window)) {
+      targets.forEach(show);
+      return;
+    }
+
+    page.classList.add("plazo-motion-ready");
+    const observer = new IntersectionObserver(
+      (entries) => entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        show(entry.target as HTMLElement);
+        observer.unobserve(entry.target);
+      }),
+      { threshold: 0.16, rootMargin: "0px 0px -48px" },
+    );
+
+    targets.forEach((target) => observer.observe(target));
+    return () => {
+      observer.disconnect();
+      page.classList.remove("plazo-motion-ready");
+    };
+  }, [banners.length, sellerLogos.length]);
+
+  const benefitCopy = getSectionCopy(content.benefits, "benefits");
+  const stepsCopy = getSectionCopy(content.steps, "steps");
+  const advantagesCopy = getSectionCopy(content.advantages, "advantages");
+  const testimonialsCopy = getSectionCopy(content.testimonials, "testimonials");
+
+  return (
+    <main ref={pageRef} className="overflow-hidden bg-[rgb(var(--color-primary-rgb)/0.035)] text-slate-950">
+      <section className="border-b border-slate-200 bg-[rgb(var(--color-primary-rgb)/0.035)]">
+        <div className="mx-auto max-w-7xl px-5 py-12 sm:px-8 lg:px-10 lg:py-20">
+          <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-end lg:gap-20">
+            <div className="plazo-reveal pb-2">
+              <p className="inline-flex items-center gap-2 border-l-2 border-[var(--color-primary)] pl-3 text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-primary)]">{content.hero.eyebrow}</p>
+              <h1 className="mt-7 max-w-2xl text-5xl font-semibold leading-[0.98] tracking-[-0.065em] text-slate-950 sm:text-6xl lg:text-7xl">{content.hero.title}<br />{content.hero.titleAccent}</h1>
+              <p className="mt-7 max-w-xl text-base leading-7 text-slate-600 sm:text-lg">{content.hero.description}</p>
+              <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+                <Link href="/register?role=SELLER" className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[var(--color-primary)] px-6 text-sm font-bold text-white shadow-[0_14px_28px_rgb(var(--color-primary-rgb)/0.22)] transition hover:-translate-y-0.5"><span>Buat toko gratis</span><ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /></Link>
+                <Link href="/#cara-kerja" className="inline-flex min-h-12 items-center justify-center rounded-xl border border-slate-300 bg-white px-6 text-sm font-bold text-slate-800 transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]">Lihat alurnya</Link>
               </div>
-              
-              {/* Navigation - only show if more than 1 banner */}
-              {bannerCount > 1 && (
-                <>
-                  {/* Arrows */}
-                  <button
-                    onClick={prevSlide}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 backdrop-blur-sm p-2 text-blue-600 hover:bg-white transition-colors shadow-lg z-10"
-                    aria-label="Previous slide"
-                  >
-                    <ChevronLeft className="h-5 w-5" />
-                  </button>
-                  <button
-                    onClick={nextSlide}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 backdrop-blur-sm p-2 text-blue-600 hover:bg-white transition-colors shadow-lg z-10"
-                    aria-label="Next slide"
-                  >
-                    <ChevronRight className="h-5 w-5" />
-                  </button>
-                  
-                  {/* Dots */}
-                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-                    {Array.from({ length: bannerCount }).map((_, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setCurrentSlide(i)}
-                        className={`h-2 rounded-full transition-all ${
-                          i === currentSlide ? "w-8 bg-white" : "w-2 bg-white/50"
-                        }`}
-                        aria-label={`Go to slide ${i + 1}`}
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
+              <div className="mt-8 flex items-center gap-3 text-sm font-medium text-slate-500"><ShieldCheck className="h-4 w-4 text-[var(--color-primary)]" /> Mulai untuk produk, jasa, maupun bisnis kreatif.</div>
             </div>
 
-            {/* Side cards */}
-            <div className="hidden lg:flex flex-col gap-4">
-              <Link
-                href="/products?sortBy=popular"
-                className="group flex-1 rounded-lg bg-white p-5 hover:shadow-lg transition-all border border-gray-200"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-red-50">
-                    <Zap className="h-6 w-6 text-red-600" />
-                  </div>
-                  <div>
-                    <span className="text-sm font-bold text-gray-900">Flash Sale</span>
-                    <p className="text-xs text-gray-500">Diskon hingga 70%</p>
-                  </div>
-                </div>
-              </Link>
-              <Link
-                href="/services?sortBy=rating"
-                className="group flex-1 rounded-lg bg-white p-5 hover:shadow-lg transition-all border border-gray-200"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-yellow-50">
-                    <Star className="h-6 w-6 text-yellow-600 fill-yellow-600" />
-                  </div>
-                  <div>
-                    <span className="text-sm font-bold text-gray-900">Top Rated</span>
-                    <p className="text-xs text-gray-500">Jasa terbaik</p>
-                  </div>
-                </div>
-              </Link>
-              <Link
-                href="/jobs"
-                className="group flex-1 rounded-lg bg-white p-5 hover:shadow-lg transition-all border border-gray-200"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-50">
-                    <Briefcase className="h-6 w-6 text-blue-600" />
-                  </div>
-                  <div>
-                    <span className="text-sm font-bold text-gray-900">Job Board</span>
-                    <p className="text-xs text-gray-500">Cari pekerjaan</p>
-                  </div>
-                </div>
-              </Link>
-            </div>
+            <HeroBanner banners={banners} />
           </div>
         </div>
       </section>
 
-      {/* ========== SEARCH BAR ========== */}
-      <section className="bg-white border-b border-gray-200 py-4">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              const formData = new FormData(e.currentTarget);
-              const q = (formData.get("q") as string)?.trim();
-              const type = formData.get("type") as string;
-              if (q) {
-                window.location.href = `/${type}?search=${encodeURIComponent(q)}`;
-              }
-            }}
-            className="flex items-center gap-2 max-w-2xl mx-auto"
-          >
-            <select
-              name="type"
-              className="shrink-0 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="products">Produk</option>
-              <option value="services">Jasa</option>
-              <option value="jobs">Cari Vendor</option>
-            </select>
-            <input
-              name="q"
-              type="text"
-              placeholder="Cari produk, jasa, atau vendor..."
-              className="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button
-              type="submit"
-              className="shrink-0 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
-            >
-              Cari
-            </button>
-          </form>
+
+      {sellerLogos.length > 0 && (
+      <section aria-label="Identitas toko" className="border-b border-slate-200 bg-white px-5 py-12 sm:px-8 lg:px-10 lg:py-16">
+        <div data-plazo-reveal className="plazo-scroll-reveal mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.86fr_1.14fr] lg:items-center">
+          <StorePreview />
+          <div className="min-w-0"><p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-primary)]">Identitas toko</p><h2 className="mt-3 max-w-xl text-3xl font-semibold tracking-[-0.045em] text-slate-950 sm:text-4xl">Setiap toko bisa tampil dengan karakternya sendiri.</h2><p className="mt-4 max-w-xl leading-7 text-slate-600">Lihat bisnis yang sudah memakai Plazo sebagai ruang untuk memperkenalkan penawarannya.</p><div className="plazo-logo-ticker mt-8"><div className="plazo-logo-track">{[...sellerLogos, ...sellerLogos].map((seller, index) => <div key={seller.name + "-" + index} className="plazo-logo-chip">{seller.logo ? <Image src={seller.logo} alt="" width={36} height={36} className="plazo-logo-mark object-contain" /> : <span className="plazo-logo-mark">{getInitials(seller.name)}</span>}<span>{seller.name}</span></div>)}</div></div></div>
         </div>
       </section>
-
-      {/* ========== TRUST BADGES ========== */}
-      <section className="bg-white border-y border-gray-200">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-gray-200">
-            {[
-              {
-                icon: Truck,
-                label: "Pengiriman Instan",
-                sub: "Produk digital langsung",
-              },
-              {
-                icon: Shield,
-                label: "Pembayaran Aman",
-                sub: "Transaksi terjamin",
-              },
-              { 
-                icon: Clock, 
-                label: "Layanan 24/7", 
-                sub: "Bantuan kapan saja",
-              },
-              {
-                icon: Headphones,
-                label: "Support Responsif",
-                sub: "Tim siap membantu",
-              },
-            ].map((item, i) => (
-              <div key={i} className="flex items-center justify-center gap-3 py-5 px-4">
-                <item.icon className="h-8 w-8 text-blue-600 shrink-0" />
-                <div>
-                  <p className="text-sm font-semibold text-gray-900">
-                    {item.label}
-                  </p>
-                  <p className="text-xs text-gray-500">{item.sub}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ========== CITY FILTER BAR ========== */}
-      <section className="bg-white border-b border-gray-100">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-3">
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
-                <MapPin className="h-4 w-4 text-blue-600" />
-              </div>
-              <span>Lokasi Anda</span>
-            </div>
-            <select
-              value={selectedCity}
-              onChange={(e) => handleCityChange(e.target.value)}
-              disabled={loadingCities}
-              className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <option value="">📍 Semua Kota</option>
-              {loadingCities ? (
-                <option disabled>Memuat data kota...</option>
-              ) : cityList.length === 0 ? (
-                <option disabled>Data kota tidak tersedia</option>
-              ) : (
-                cityList.map((city) => (
-                  <option key={city} value={city}>
-                    {city}
-                  </option>
-                ))
-              )}
-            </select>
-            {selectedCity && (
-              <button
-                onClick={() => handleCityChange("")}
-                className="flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-100 transition-colors"
-              >
-                ✕ Reset lokasi
-              </button>
-            )}
-            {selectedCity && (
-              <span className="ml-auto text-xs text-gray-400">
-                Menampilkan produk & toko di <span className="font-semibold text-gray-600">{selectedCity}</span>
-              </span>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* ========== TOKO DI KOTA ANDA ========== */}
-      {selectedCity && (
-        <section className="mt-2">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-xl shadow-lg overflow-hidden">
-              <div className="flex items-center justify-between px-6 py-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/20 backdrop-blur-sm">
-                    <Store className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-bold text-white">
-                      Toko di {selectedCity}
-                    </h2>
-                    <p className="text-xs text-emerald-100">Seller terdekat di kotamu</p>
-                  </div>
-                </div>
-                <Link
-                  href={`/services?city=${encodeURIComponent(selectedCity)}`}
-                  className="group hidden sm:flex items-center gap-1 rounded-lg bg-white/10 backdrop-blur-sm px-4 py-2 text-sm font-semibold text-white hover:bg-white/20 transition-all"
-                >
-                  Lihat Semua
-                  <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
-                </Link>
-              </div>
-
-              <div className="bg-emerald-600/50 px-6 py-4">
-                {loadingNearby ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Spinner />
-                  </div>
-                ) : nearbySellers.length > 0 ? (
-                  <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                    {nearbySellers.map((seller) => (
-                      <Link
-                        key={seller.id || seller.subdomain}
-                        href={getSubdomainLink(seller.subdomain)}
-                        className="group shrink-0 w-48 rounded-xl bg-white p-4 hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
-                      >
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-bold text-sm shadow-md shrink-0 overflow-hidden">
-                            {seller.logo ? (
-                              <Image src={seller.logo} alt={seller.name} width={40} height={40} className="rounded-full object-cover" />
-                            ) : (
-                              seller.name?.charAt(0)?.toUpperCase() || "S"
-                            )}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-bold text-gray-900 truncate group-hover:text-emerald-600 transition-colors">
-                              {seller.name}
-                            </p>
-                            {seller.isVerified && (
-                              <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-600">
-                                ✓ Verified
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1 text-xs text-gray-500">
-                          <MapPin className="h-3 w-3" />
-                          <span className="truncate">{seller.city || selectedCity}</span>
-                        </div>
-                        <div className="mt-1 flex items-center gap-1 text-xs text-gray-500">
-                          <Star
-                            className={`h-3 w-3 ${
-                              (seller.owner?.sellerProfile?.totalReviews ?? 0) > 0
-                                ? "fill-yellow-400 text-yellow-400"
-                                : "text-gray-300"
-                            }`}
-                          />
-                          {(seller.owner?.sellerProfile?.totalReviews ?? 0) > 0
-                            ? `${Number(seller.owner?.sellerProfile?.averageRating ?? 0).toFixed(1)} (${seller.owner?.sellerProfile?.totalReviews} ulasan)`
-                            : "Belum ada ulasan"}
-                        </div>
-                        {seller.description && (
-                          <p className="mt-2 text-[11px] text-gray-400 line-clamp-2">{seller.description}</p>
-                        )}
-                      </Link>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="py-6 text-center text-sm text-white/70">
-                    Belum ada toko di {selectedCity}. Jadilah yang pertama!
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </section>
       )}
 
-      {/* ========== KATEGORI PRODUK - NESTED SUPPORT ========== */}
-      <CategoryGrid
-        categories={productCategories}
-        type="PRODUCT"
-        title="Kategori Produk"
-        description="Jelajahi berbagai kategori produk digital"
-        viewAllHref="/products"
-      />
-
-      {/* ========== FLASH SALE PRODUK & JASA - REDESIGNED ========== */}
-      {/* Only show if there's an active event or flash sale items */}
-      {(flashSaleEvent || flashSaleItems.length > 0) && (
-        <section className="mt-2">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="bg-red-500 rounded-xl shadow-lg overflow-hidden">
-              <div className="flex items-center justify-between px-6 py-4">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm animate-pulse">
-                    <Zap className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-white uppercase tracking-wide flex items-center gap-2">
-                      {flashSaleEvent?.name || "Flash Sale"}
-                      <span className="inline-flex items-center rounded-full bg-white/20 backdrop-blur-sm px-3 py-1 text-xs font-semibold text-white">
-                        HOT
-                      </span>
-                    </h2>
-                    {flashSaleEnded ? (
-                      <span className="text-sm font-semibold text-white/80">
-                        Sale telah berakhir
-                      </span>
-                    ) : (
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-white/90">Berakhir dalam:</span>
-                        <div className="flex items-center gap-1">
-                          <span className="bg-white text-red-600 rounded-md px-2 py-1 font-mono font-bold text-sm shadow-sm">
-                            {flashCountdown.split(":")[0]}
-                          </span>
-                          <span className="text-white font-bold">:</span>
-                          <span className="bg-white text-red-600 rounded-md px-2 py-1 font-mono font-bold text-sm shadow-sm">
-                            {flashCountdown.split(":")[1]}
-                          </span>
-                          <span className="text-white font-bold">:</span>
-                          <span className="bg-white text-red-600 rounded-md px-2 py-1 font-mono font-bold text-sm shadow-sm">
-                            {flashCountdown.split(":")[2]}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <Link
-                  href="/products?sortBy=popular"
-                  className="group hidden sm:flex items-center gap-1 rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-red-600 hover:bg-gray-50 transition-all shadow-md"
-                >
-                  Lihat Semua 
-                  <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
-                </Link>
-              </div>
-
-              {isLoading ? (
-                <div className="flex items-center justify-center py-12 bg-red-600">
-                  <Spinner />
-                </div>
-              ) : flashSaleItems.length > 0 ? (
-                <div className="bg-red-600 px-6 py-4">
-                  <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                    {flashSaleItems.map((item) => {
-                      if (item.product) {
-                        const flashProduct: Product = {
-                          ...item.product,
-                          price: item.salePrice,
-                          comparePrice: item.originalPrice,
-                          tenantId: item.product.tenant?.id || "",
-                          description: "",
-                          stock: item.product.stock ?? 0,
-                          categoryId: item.product.category?.id || "",
-                          images: item.product.images || [],
-                          tags: [],
-                          isPublished: true,
-                          isBoosted: false,
-                          createdAt: "",
-                          updatedAt: "",
-                        };
-                        return (
-                          <div key={item.id} className="w-40 sm:w-44 shrink-0 transform hover:scale-105 transition-transform duration-300">
-                            <ProductCard product={flashProduct} />
-                          </div>
-                        );
-                      }
-                      if (item.service) {
-                        const flashService: Service = {
-                          ...item.service,
-                          basePrice: item.salePrice,
-                          comparePrice: item.originalPrice,
-                        };
-                        return (
-                          <div key={item.id} className="w-40 sm:w-44 shrink-0 transform hover:scale-105 transition-transform duration-300">
-                            <ServiceCard service={flashService} />
-                          </div>
-                        );
-                      }
-                      return null;
-                    })}
-                  </div>
-                </div>
-              ) : (
-                <div className="py-8 text-center text-sm text-white/70 bg-red-600">
-                  Belum ada item flash sale
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ========== PRODUK TERBARU - REDESIGNED ========== */}
-      <section className="mt-6 mb-6">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          {/* Section header with modern design */}
-          <div className="bg-blue-600 rounded-t-xl shadow-md">
-            <div className="flex items-center justify-between px-6 py-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/20 backdrop-blur-sm">
-                  <ShoppingBag className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-white">
-                    Produk Untuk Anda
-                  </h2>
-                  <p className="text-xs text-blue-100">Pilihan terbaik hari ini</p>
-                </div>
-              </div>
-              <Link
-                href="/products"
-                className="group flex items-center gap-1 rounded-lg bg-white/10 backdrop-blur-sm px-4 py-2 text-sm font-semibold text-white hover:bg-white/20 transition-all"
-              >
-                Lihat Semua 
-                <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
-              </Link>
-            </div>
-          </div>
-
-          {isLoading ? (
-            <div className="flex items-center justify-center py-16 bg-white rounded-b-xl shadow-md">
-              <Spinner />
-            </div>
-          ) : products.length > 0 ? (
-            <div className="bg-white rounded-b-xl shadow-md p-4">
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                {products.map((product) => (
-                  <div key={product.id} className="group">
-                    <ProductCard product={product} />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="bg-white rounded-b-xl shadow-md py-12 text-center text-sm text-gray-400">
-              Belum ada produk
-            </div>
-          )}
-
-          {products.length > 0 && (
-            <div className="mt-6 text-center">
-              <Link
-                href="/products"
-                className="group inline-flex items-center gap-2 rounded-xl bg-blue-600 px-8 py-3 text-sm font-semibold text-white shadow-lg hover:bg-blue-700 hover:shadow-xl hover:scale-105 transition-all duration-300"
-              >
-                Lihat Semua Produk 
-                <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-              </Link>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* ========== SEPARATOR ========== */}
-      <div className="h-3 bg-gray-100" />
-
-      {/* ========== KATEGORI JASA - NESTED SUPPORT ========== */}
-      <CategoryGrid
-        categories={serviceCategories}
-        type="SERVICE"
-        title="Kategori Jasa"
-        description="Temukan jasa profesional untuk kebutuhan Anda"
-        viewAllHref="/services"
-      />
-
-      {/* ========== JASA POPULER - REDESIGNED ========== */}
-      <section className="mt-6 mb-6">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="bg-purple-600 rounded-t-xl shadow-md">
-            <div className="flex items-center justify-between px-6 py-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/20 backdrop-blur-sm">
-                  <Briefcase className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-white">
-                    Jasa Untuk Anda
-                  </h2>
-                  <p className="text-xs text-purple-100">Freelancer terbaik siap membantu</p>
-                </div>
-              </div>
-              <Link
-                href="/services"
-                className="group flex items-center gap-1 rounded-lg bg-white/10 backdrop-blur-sm px-4 py-2 text-sm font-semibold text-white hover:bg-white/20 transition-all"
-              >
-                Lihat Semua 
-                <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
-              </Link>
-            </div>
-          </div>
-
-          {isLoading ? (
-            <div className="flex items-center justify-center py-16 bg-white rounded-b-xl shadow-md">
-              <Spinner />
-            </div>
-          ) : services.length > 0 ? (
-            <div className="bg-white rounded-b-xl shadow-md p-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {services.map((service) => (
-                  <div key={service.id} className="group">
-                    <ServiceCard service={service} />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="bg-white rounded-b-xl shadow-md py-12 text-center text-sm text-gray-400">
-              Belum ada jasa
-            </div>
-          )}
-
-          {services.length > 0 && (
-            <div className="mt-6 text-center">
-              <Link
-                href="/services"
-                className="group inline-flex items-center gap-2 rounded-xl bg-purple-600 px-8 py-3 text-sm font-semibold text-white shadow-lg hover:bg-purple-700 hover:shadow-xl hover:scale-105 transition-all duration-300"
-              >
-                Lihat Semua Jasa 
-                <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-              </Link>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* ========== FAQ SECTION ========== */}
-      {faqs.length > 0 && (
-        <section className="mt-8 mb-6">
-          <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-8">
-              <div className="inline-flex items-center gap-2 rounded-full bg-blue-100 px-4 py-2 mb-3">
-                <HelpCircle className="h-4 w-4 text-blue-600" />
-                <span className="text-sm font-semibold text-blue-600">Pertanyaan Umum</span>
-              </div>
-              <h2 className="text-2xl font-bold text-gray-900">
-                Frequently Asked Questions
-              </h2>
-              <p className="mt-2 text-sm text-gray-500">
-                Temukan jawaban untuk pertanyaan yang sering ditanyakan
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              {faqs.map((faq) => (
-                <div
-                  key={faq.id}
-                  className="rounded-xl border border-gray-200 bg-white overflow-hidden hover:shadow-md transition-shadow"
-                >
-                  <button
-                    onClick={() => setExpandedFaq(expandedFaq === faq.id ? null : faq.id)}
-                    className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 transition-colors"
-                  >
-                    <span className="text-sm font-semibold text-gray-900 pr-4">
-                      {faq.question}
-                    </span>
-                    <ChevronRight
-                      className={`h-5 w-5 text-gray-400 shrink-0 transition-transform ${
-                        expandedFaq === faq.id ? "rotate-90" : ""
-                      }`}
-                    />
-                  </button>
-                  {expandedFaq === faq.id && (
-                    <div className="px-6 pb-4 pt-2 border-t border-gray-100">
-                      <SafeHtml html={faq.answer || ""} className="text-sm text-gray-600" />
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-500">
-                Masih ada pertanyaan?{" "}
-                <Link href="/faq" className="font-semibold text-blue-600 hover:text-blue-700">
-                  Lihat semua FAQ
-                </Link>
-              </p>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ========== CTA SELLER - REDESIGNED ========== */}
-      <section className="mt-8 mb-6">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="relative overflow-hidden rounded-2xl bg-blue-600 shadow-2xl">
-            {/* Decorative pattern */}
-            <div className="absolute inset-0 opacity-10">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full -mr-32 -mt-32"></div>
-              <div className="absolute bottom-0 left-0 w-64 h-64 bg-white rounded-full -ml-32 -mb-32"></div>
-            </div>
-            
-            <div className="relative flex flex-col sm:flex-row items-center justify-between gap-6 px-8 py-10 sm:py-12">
-              <div className="text-center sm:text-left">
-                <div className="inline-flex items-center gap-2 rounded-full bg-white/20 backdrop-blur-sm px-4 py-1.5 mb-3">
-                  <Star className="h-4 w-4 text-yellow-300 fill-yellow-300" />
-                  <span className="text-xs font-semibold text-white">Bergabung dengan ribuan seller sukses</span>
-                </div>
-                <h2 className="text-2xl font-bold text-white sm:text-3xl">
-                  Punya Keahlian? Mulai Jual di Plazo!
-                </h2>
-                <p className="mt-2 text-sm text-blue-50 max-w-xl">
-                  Buka toko online gratis, jangkau ribuan pembeli, dan mulai dapatkan penghasilan dari keahlian Anda hari ini.
-                </p>
-                <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-blue-50">
-                  <div className="flex items-center gap-1.5">
-                    <Shield className="h-4 w-4" />
-                    <span>Gratis selamanya</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Zap className="h-4 w-4" />
-                    <span>Setup 5 menit</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0">
-                <Link
-                  href="/register?role=SELLER"
-                  className="group w-full sm:w-auto rounded-xl bg-white px-8 py-3.5 text-sm font-bold text-blue-600 hover:bg-gray-50 transition-all shadow-lg hover:shadow-xl hover:scale-105 duration-300"
-                >
-                  <span className="flex items-center gap-2">
-                    Daftar sebagai Seller
-                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                  </span>
-                </Link>
-                <Link
-                  href="/register"
-                  className="w-full sm:w-auto rounded-xl border-2 border-white/40 bg-transparent px-8 py-3.5 text-sm font-bold text-white hover:bg-white/10 transition-all"
-                >
-                  Daftar sebagai Buyer
-                </Link>
-              </div>
-            </div>
+      <section id="benefit" className="scroll-mt-24 bg-white">
+        <div className="mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
+          <div data-plazo-reveal className="plazo-scroll-reveal grid gap-8 border-b border-slate-200 pb-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-end"><p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-primary)]">{benefitCopy.eyebrow}</p><div><h2 className="max-w-3xl text-4xl font-semibold leading-tight tracking-[-0.055em] sm:text-5xl">{benefitCopy.title}</h2><p className="mt-4 max-w-2xl leading-7 text-slate-600">{benefitCopy.description}</p></div></div>
+          <div data-plazo-reveal className="plazo-scroll-reveal plazo-scroll-delay-1 grid divide-y divide-slate-200 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+            {content.benefits.map((benefit) => { const Icon = getIcon(benefit.icon); return <article key={benefit.id || benefit.title} className="py-8 transition duration-300 hover:-translate-y-1 sm:px-8 sm:first:pl-0 sm:even:pr-0"><div className={"plazo-icon-orb grid h-16 w-16 place-items-center " + (toneClasses[benefit.tone] || toneClasses.blue)}><Icon className="h-7 w-7" /></div><p className="mt-8 text-xs font-bold uppercase tracking-[0.15em] text-slate-400">{benefit.label}</p><h3 className="mt-3 text-xl font-semibold tracking-[-0.03em]">{benefit.title}</h3><p className="mt-3 max-w-sm text-sm leading-6 text-slate-600">{benefit.description}</p></article>; })}
           </div>
         </div>
       </section>
 
-      {/* Report Float Button */}
+
+      <section id="cara-kerja" className="scroll-mt-24 bg-[var(--color-primary)] text-white">
+        <div className="mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
+          <div data-plazo-reveal className="plazo-scroll-reveal grid gap-12 lg:grid-cols-[0.72fr_1.28fr]"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-white/80">{stepsCopy.eyebrow}</p><h2 className="mt-5 text-4xl font-semibold leading-tight tracking-[-0.055em] sm:text-5xl">{stepsCopy.title}</h2><p className="mt-5 max-w-md leading-7 text-white/80">{stepsCopy.description}</p></div><ol className="border-t border-white/15">{content.steps.map((step, index) => { const Icon = getIcon(step.icon); return <li key={step.id || step.title} className="grid gap-4 border-b border-white/15 py-6 sm:grid-cols-[3rem_1fr_auto] sm:items-start"><span className="text-sm font-bold text-white/80">0{index + 1}</span><div><h3 className="text-xl font-semibold">{step.title}</h3><p className="mt-2 max-w-xl text-sm leading-6 text-white/80">{step.description}</p></div><Icon className="h-7 w-7 text-white/80" /></li>; })}</ol></div>
+        </div>
+      </section>
+
+
+      <section id="keunggulan" className="scroll-mt-24 bg-[rgb(var(--color-primary-rgb)/0.08)]">
+        <div data-plazo-reveal className="plazo-scroll-reveal mx-auto grid max-w-7xl gap-12 px-5 py-20 sm:px-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-center lg:px-10 lg:py-28">
+          <div className="border-l-2 border-[var(--color-primary)] pl-6"><p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-primary)]">{advantagesCopy.eyebrow}</p><h2 className="mt-5 text-4xl font-semibold leading-tight tracking-[-0.055em] sm:text-5xl">{advantagesCopy.title}</h2><p className="mt-5 max-w-md leading-7 text-slate-600">{advantagesCopy.description}</p></div>
+          <div className="plazo-glass p-2 shadow-[8px_8px_0_0_rgb(var(--color-primary-rgb)/0.18)]"><div className="divide-y divide-slate-200">{content.advantages.map((advantage, index) => <article key={advantage.id || advantage.title} className="grid gap-4 p-5 sm:grid-cols-[2rem_1fr]"><span className="text-sm font-bold text-[var(--color-primary)]">{String(index + 1).padStart(2, "0")}</span><div><h3 className="font-semibold tracking-[-0.02em]">{advantage.title}</h3><p className="mt-2 text-sm leading-6 text-slate-600">{advantage.description}</p></div></article>)}</div></div>
+        </div>
+      </section>
+
+      <section id="harga" className="scroll-mt-24 border-y border-slate-200 bg-white">
+        <div data-plazo-reveal className="plazo-scroll-reveal mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
+          <div className="mx-auto max-w-2xl text-center"><p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-primary)]">Harga</p><h2 className="mt-5 text-4xl font-semibold leading-tight tracking-[-0.055em] sm:text-5xl">Pilih ruang tumbuh yang sesuai dengan bisnis Anda.</h2><p className="mt-5 leading-7 text-slate-600">Mulai gratis, lalu tingkatkan saat kebutuhan toko Anda berkembang.</p></div>
+          <div className="mt-12 grid gap-4 lg:grid-cols-3">{content.plans.map((plan) => { const features = getPlanFeatures(plan.features); const isFeatured = Boolean(plan.badge); return <article key={plan.id || plan.plan || plan.name} className={"relative flex flex-col border p-6 " + (isFeatured ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white shadow-[10px_10px_0_0_rgb(var(--color-primary-rgb)/0.18)]" : "border-slate-200 bg-white")}>{plan.badge && <span className="absolute left-6 top-0 -translate-y-1/2 border border-white/20 bg-blue-950 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-white shadow-[0_8px_18px_rgb(15_23_42/0.3)]">{plan.badge}</span>}<p className={"text-xs font-bold uppercase tracking-[0.16em] " + (isFeatured ? "text-white/75" : "text-slate-400")}>{plan.name}</p><p className="mt-5 text-4xl font-semibold tracking-[-0.05em]">{formatPlanPrice(plan.monthlyPrice, plan.currency)}</p><p className={"mt-2 text-sm " + (isFeatured ? "text-white/80" : "text-slate-500")}>{plan.monthlyPrice === 0 ? "untuk mulai" : "per bulan"}</p><p className={"mt-6 min-h-12 text-sm leading-6 " + (isFeatured ? "text-white/80" : "text-slate-600")}>{plan.description || "Paket untuk kebutuhan bisnis Anda."}</p><ul className={"mt-7 space-y-3 border-t pt-6 text-sm " + (isFeatured ? "border-white/20 text-white" : "border-slate-200 text-slate-700")}>{features.slice(0, 4).map((feature) => <li key={feature} className="flex gap-2"><Check className={"mt-0.5 h-4 w-4 shrink-0 " + (isFeatured ? "text-white" : "text-[var(--color-primary)]")} />{feature}</li>)}</ul><Link href="/register?role=SELLER" className={"mt-8 inline-flex min-h-11 items-center justify-center text-sm font-bold transition " + (isFeatured ? "bg-white text-[var(--color-primary)] hover:bg-white/85" : "border border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[rgb(var(--color-primary-rgb)/0.08)]")}>Pilih {plan.name}<ArrowRight className="ml-2 h-4 w-4" /></Link></article>; })}</div>
+        </div>
+      </section>
+
+      <section id="testimoni" className="scroll-mt-24 bg-[rgb(var(--color-primary-rgb)/0.06)]">
+        <div data-plazo-reveal className="plazo-scroll-reveal mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:px-10 lg:py-28"><div className="grid gap-8 border-b border-[rgb(var(--color-primary-rgb)/0.2)] pb-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-end"><p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-primary)]">{testimonialsCopy.eyebrow}</p><div><h2 className="max-w-3xl text-4xl font-semibold leading-tight tracking-[-0.055em] sm:text-5xl">{testimonialsCopy.title}</h2><p className="mt-4 max-w-2xl leading-7 text-slate-600">{testimonialsCopy.description}</p></div></div><div className="mt-10 grid gap-4 lg:grid-cols-3">{content.testimonials.map((testimonial) => <figure key={testimonial.id || testimonial.title} className="plazo-glass flex min-h-64 flex-col p-6"><blockquote className="text-lg font-medium leading-8 tracking-[-0.025em] text-slate-800">“{testimonial.description}”</blockquote><figcaption className="mt-auto flex items-center gap-3 border-t border-slate-200 pt-5"><span aria-hidden="true" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--color-primary)] text-xs font-bold tracking-wide text-white">{getInitials(testimonial.title)}</span><div><p className="font-semibold text-slate-950">{testimonial.title}</p>{testimonial.label && <p className="mt-1 text-sm text-slate-500">{testimonial.label}</p>}</div></figcaption></figure>)}</div></div>
+      </section>
+
+      <section id="faq" className="scroll-mt-24 bg-white"><div data-plazo-reveal className="plazo-scroll-reveal mx-auto max-w-4xl px-5 py-20 sm:px-8 lg:py-28"><div className="border-b border-slate-200 pb-9"><p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-primary)]">FAQ</p><h2 className="mt-4 text-4xl font-semibold tracking-[-0.055em] sm:text-5xl">Hal yang perlu diketahui sebelum mulai.</h2></div><div className="divide-y divide-slate-200">{content.faqs.map((faq, index) => <details key={faq.id || faq.question} open={index === 0} className="group"><summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-6 text-left font-semibold marker:hidden"><span>{faq.question}</span><ChevronDown className="h-5 w-5 shrink-0 text-slate-400 transition group-open:rotate-180" /></summary><p className="max-w-2xl pb-6 text-sm leading-6 text-slate-600">{faq.answer}</p></details>)}</div></div></section>
+
+      <section className="bg-[var(--color-primary)] px-5 py-16 text-white sm:px-8 lg:px-10 lg:py-20"><div data-plazo-reveal className="plazo-scroll-reveal mx-auto grid max-w-7xl gap-8 border border-white/15 p-7 sm:p-10 lg:grid-cols-[1fr_auto] lg:items-end"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-white/80">Mulai dari bisnis Anda</p><h2 className="mt-5 max-w-2xl text-4xl font-semibold tracking-[-0.055em] sm:text-5xl">Buat toko yang membantu pelanggan memahami apa yang Anda tawarkan.</h2></div><div className="flex flex-col gap-3 sm:flex-row"><Link href="/register?role=SELLER" className="inline-flex min-h-12 items-center justify-center gap-2 bg-white px-5 text-sm font-bold text-slate-950 transition hover:bg-white/85">Buat toko gratis <ArrowRight className="h-4 w-4" /></Link><Link href="/products" className="inline-flex min-h-12 items-center justify-center border border-white/70 px-5 text-sm font-bold transition hover:bg-white hover:text-[var(--color-primary)]">Jelajahi marketplace</Link></div></div></section>
       <ReportFloat />
-    </div>
+    </main>
   );
 }

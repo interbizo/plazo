@@ -293,6 +293,33 @@ export const adminApi = {
     api.post(`${BASE}/users/bulk`, data),
 
   // CMS (backend route: /admin/cms/*)
+  getLandingHero: () => api.get(`${BASE}/cms/landing/hero`),
+  updateLandingHero: (data: Record<string, unknown>) =>
+    api.put(`${BASE}/cms/landing/hero`, data),
+  getLandingBenefits: () => api.get(`${BASE}/cms/landing/benefits`),
+  createLandingBenefit: (data: Record<string, unknown>) =>
+    api.post(`${BASE}/cms/landing/benefits`, data),
+  updateLandingBenefit: (id: string, data: Record<string, unknown>) =>
+    api.put(`${BASE}/cms/landing/benefits/${id}`, data),
+  deleteLandingBenefit: (id: string) => api.delete(`${BASE}/cms/landing/benefits/${id}`),
+  getLandingSteps: () => api.get(`${BASE}/cms/landing/steps`),
+  createLandingStep: (data: Record<string, unknown>) =>
+    api.post(`${BASE}/cms/landing/steps`, data),
+  updateLandingStep: (id: string, data: Record<string, unknown>) =>
+    api.put(`${BASE}/cms/landing/steps/${id}`, data),
+  deleteLandingStep: (id: string) => api.delete(`${BASE}/cms/landing/steps/${id}`),
+  getLandingAdvantages: () => api.get(`${BASE}/cms/landing/advantages`),
+  createLandingAdvantage: (data: Record<string, unknown>) =>
+    api.post(`${BASE}/cms/landing/advantages`, data),
+  updateLandingAdvantage: (id: string, data: Record<string, unknown>) =>
+    api.put(`${BASE}/cms/landing/advantages/${id}`, data),
+  deleteLandingAdvantage: (id: string) => api.delete(`${BASE}/cms/landing/advantages/${id}`),
+  getLandingTestimonials: () => api.get(`${BASE}/cms/landing/testimonials`),
+  createLandingTestimonial: (data: Record<string, unknown>) =>
+    api.post(`${BASE}/cms/landing/testimonials`, data),
+  updateLandingTestimonial: (id: string, data: Record<string, unknown>) =>
+    api.put(`${BASE}/cms/landing/testimonials/${id}`, data),
+  deleteLandingTestimonial: (id: string) => api.delete(`${BASE}/cms/landing/testimonials/${id}`),
   getCmsPages: () => api.get(`${BASE}/cms/pages`),
   getCmsPage: (id: string) => api.get(`${BASE}/cms/pages/${id}`),
   createCmsPage: (data: Record<string, unknown>) =>

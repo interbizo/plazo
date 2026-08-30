@@ -7,6 +7,15 @@ import { PrismaService } from "../database/prisma.service";
 import {
   CreateCmsPageDto,
   UpdateCmsPageDto,
+  UpsertLandingHeroDto,
+  CreateLandingBenefitDto,
+  UpdateLandingBenefitDto,
+  CreateLandingStepDto,
+  UpdateLandingStepDto,
+  CreateLandingAdvantageDto,
+  UpdateLandingAdvantageDto,
+  CreateLandingTestimonialDto,
+  UpdateLandingTestimonialDto,
   CreateBannerDto,
   UpdateBannerDto,
   UpsertSiteSettingDto,
@@ -18,6 +27,168 @@ import { PaginationHelper } from "../../common/utils/pagination.helper";
 @Injectable()
 export class CmsService {
   constructor(private prisma: PrismaService) {}
+
+  // ============ LANDING SECTIONS ============
+
+  async getLandingContent() {
+    const [hero, benefits, steps, advantages, testimonials, faqs, plans] = await Promise.all([
+      this.prisma.landingHero.findFirst({
+        where: { isPublished: true },
+        orderBy: { createdAt: "asc" },
+      }),
+      this.prisma.landingBenefit.findMany({
+        where: { isPublished: true },
+        orderBy: { sortOrder: "asc" },
+      }),
+      this.prisma.landingStep.findMany({
+        where: { isPublished: true },
+        orderBy: { sortOrder: "asc" },
+      }),
+      this.prisma.landingAdvantage.findMany({
+        where: { isPublished: true },
+        orderBy: { sortOrder: "asc" },
+      }),
+      this.prisma.landingTestimonial.findMany({
+        where: { isPublished: true },
+        orderBy: { sortOrder: "asc" },
+      }),
+      this.prisma.faqItem.findMany({
+        where: { isPublished: true },
+        orderBy: { sortOrder: "asc" },
+      }),
+      this.prisma.subscriptionPlanConfig.findMany({
+        where: { isActive: true },
+        orderBy: { sortOrder: "asc" },
+        select: {
+          id: true,
+          plan: true,
+          name: true,
+          description: true,
+          badge: true,
+          monthlyPrice: true,
+          currency: true,
+          features: true,
+        },
+      }),
+    ]);
+
+    return { hero, benefits, steps, advantages, testimonials, faqs, plans };
+  }
+
+  getLandingHero() {
+    return this.prisma.landingHero.findUnique({ where: { key: "default" } });
+  }
+
+  upsertLandingHero(dto: UpsertLandingHeroDto) {
+    return this.prisma.landingHero.upsert({
+      where: { key: "default" },
+      create: {
+        key: "default",
+        eyebrow: dto.eyebrow ?? "Untuk bisnis produk dan jasa",
+        title: dto.title ?? "Buat toko.",
+        titleAccent: dto.titleAccent ?? "Beri bisnis Anda arah.",
+        description: dto.description ?? "Plazo menyatukan toko, katalog, dan percakapan pelanggan agar bisnis Anda hadir dengan lebih jelas sejak awal.",
+        isPublished: dto.isPublished ?? true,
+      },
+      update: dto,
+    });
+  }
+
+  listLandingBenefits() {
+    return this.prisma.landingBenefit.findMany({ orderBy: { sortOrder: "asc" } });
+  }
+
+  async createLandingBenefit(dto: CreateLandingBenefitDto) {
+    const sortOrder = dto.sortOrder ?? (await this.prisma.landingBenefit.count());
+    return this.prisma.landingBenefit.create({ data: { ...dto, sortOrder } });
+  }
+
+  async updateLandingBenefit(id: string, dto: UpdateLandingBenefitDto) {
+    await this.ensureLandingBenefit(id);
+    return this.prisma.landingBenefit.update({ where: { id }, data: dto });
+  }
+
+  async deleteLandingBenefit(id: string) {
+    await this.ensureLandingBenefit(id);
+    return this.prisma.landingBenefit.delete({ where: { id } });
+  }
+
+  listLandingSteps() {
+    return this.prisma.landingStep.findMany({ orderBy: { sortOrder: "asc" } });
+  }
+
+  async createLandingStep(dto: CreateLandingStepDto) {
+    const sortOrder = dto.sortOrder ?? (await this.prisma.landingStep.count());
+    return this.prisma.landingStep.create({ data: { ...dto, sortOrder } });
+  }
+
+  async updateLandingStep(id: string, dto: UpdateLandingStepDto) {
+    await this.ensureLandingStep(id);
+    return this.prisma.landingStep.update({ where: { id }, data: dto });
+  }
+
+  async deleteLandingStep(id: string) {
+    await this.ensureLandingStep(id);
+    return this.prisma.landingStep.delete({ where: { id } });
+  }
+
+  listLandingAdvantages() {
+    return this.prisma.landingAdvantage.findMany({ orderBy: { sortOrder: "asc" } });
+  }
+
+  async createLandingAdvantage(dto: CreateLandingAdvantageDto) {
+    const sortOrder = dto.sortOrder ?? (await this.prisma.landingAdvantage.count());
+    return this.prisma.landingAdvantage.create({ data: { ...dto, sortOrder } });
+  }
+
+  async updateLandingAdvantage(id: string, dto: UpdateLandingAdvantageDto) {
+    await this.ensureLandingAdvantage(id);
+    return this.prisma.landingAdvantage.update({ where: { id }, data: dto });
+  }
+
+  async deleteLandingAdvantage(id: string) {
+    await this.ensureLandingAdvantage(id);
+    return this.prisma.landingAdvantage.delete({ where: { id } });
+  }
+
+  listLandingTestimonials() {
+    return this.prisma.landingTestimonial.findMany({ orderBy: { sortOrder: "asc" } });
+  }
+
+  async createLandingTestimonial(dto: CreateLandingTestimonialDto) {
+    const sortOrder = dto.sortOrder ?? (await this.prisma.landingTestimonial.count());
+    return this.prisma.landingTestimonial.create({ data: { ...dto, sortOrder } });
+  }
+
+  async updateLandingTestimonial(id: string, dto: UpdateLandingTestimonialDto) {
+    await this.ensureLandingTestimonial(id);
+    return this.prisma.landingTestimonial.update({ where: { id }, data: dto });
+  }
+
+  async deleteLandingTestimonial(id: string) {
+    await this.ensureLandingTestimonial(id);
+    return this.prisma.landingTestimonial.delete({ where: { id } });
+  }
+
+  private async ensureLandingBenefit(id: string) {
+    const item = await this.prisma.landingBenefit.findUnique({ where: { id } });
+    if (!item) throw new NotFoundException("Landing benefit not found");
+  }
+
+  private async ensureLandingStep(id: string) {
+    const item = await this.prisma.landingStep.findUnique({ where: { id } });
+    if (!item) throw new NotFoundException("Landing step not found");
+  }
+
+  private async ensureLandingAdvantage(id: string) {
+    const item = await this.prisma.landingAdvantage.findUnique({ where: { id } });
+    if (!item) throw new NotFoundException("Landing advantage not found");
+  }
+
+  private async ensureLandingTestimonial(id: string) {
+    const item = await this.prisma.landingTestimonial.findUnique({ where: { id } });
+    if (!item) throw new NotFoundException("Landing testimonial not found");
+  }
 
   // ============ CMS PAGES ============
 
@@ -141,7 +312,7 @@ export class CmsService {
     const banners = await this.prisma.cmsBanner.findMany({
       where: {
         status: "ACTIVE",
-        position,
+        ...(position === "homepage_hero" ? {} : { position }),
         isFallback: false,
         OR: [
           { startDate: null, endDate: null },
@@ -158,7 +329,7 @@ export class CmsService {
       return this.prisma.cmsBanner.findMany({
         where: {
           status: "ACTIVE",
-          position,
+          ...(position === "homepage_hero" ? {} : { position }),
           isFallback: true,
         },
         orderBy: { sortOrder: "asc" },

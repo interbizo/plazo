@@ -181,9 +181,20 @@ export function Navbar({ settings = {} }: NavbarProps) {
     if (!mounted) return false;
     return flags[link.flagKey] !== "false";
   });
+  const landingNavLinks = [
+    { href: "/#benefit", label: "Benefit" },
+    { href: "/#cara-kerja", label: "Cara Kerja" },
+    { href: "/#keunggulan", label: "Keunggulan" },
+    { href: "/#harga", label: "Harga" },
+    { href: "/#testimoni", label: "Testimoni" },
+    { href: "/#faq", label: "FAQ" },
+  ];
+  const isLandingPage = pathname === "/";
 
   return (
     <nav className="sticky top-0 z-40">
+      {!isLandingPage && (
+        <>
       {/* Top utility bar */}
       <div className="bg-blue-700 text-white">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -236,6 +247,9 @@ export function Navbar({ settings = {} }: NavbarProps) {
         </div>
       </div>
 
+        </>
+      )}
+
       {/* Main navbar */}
       <div className="bg-blue-600 shadow-md">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -262,8 +276,7 @@ export function Navbar({ settings = {} }: NavbarProps) {
               </span>
             </Link>
 
-            {/* Global search bar */}
-            <div ref={searchWrapRef} className="relative flex-1 min-w-0 max-w-2xl">
+            <div ref={searchWrapRef} className="relative mx-auto flex-1 min-w-0 max-w-xl">
               <form onSubmit={handleSearch} className="w-full">
                 <div className="flex">
                   <div className="relative flex-1">
@@ -516,24 +529,19 @@ export function Navbar({ settings = {} }: NavbarProps) {
       {/* Bottom nav links — desktop */}
       <div className="hidden md:block bg-white border-b border-gray-200">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-8 h-10 text-sm">
-            {navLinks.map((link) => {
+          <div className={"flex h-10 items-center text-sm " + (isLandingPage ? "justify-center gap-3 lg:gap-5" : "gap-8")}>
+            {isLandingPage && (
+              <details className="group relative shrink-0">
+                <summary className="flex h-8 cursor-pointer list-none items-center gap-1.5 rounded-md px-2.5 text-sm font-semibold text-gray-700 transition hover:bg-blue-50 hover:text-blue-700 [&::-webkit-details-marker]:hidden">Jelajahi <ChevronDown className="h-4 w-4 transition group-open:rotate-180" /></summary>
+                <div className="absolute left-0 top-full z-50 mt-2 w-52 overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
+                  {navLinks.map((link) => { const Icon = link.icon; return <Link key={link.href} href={link.href} onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")} className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-blue-700"><Icon className="h-4 w-4 text-blue-600" />{link.label}</Link>; })}
+                </div>
+              </details>
+            )}
+            {isLandingPage ? landingNavLinks.map((link) => <Link key={link.href} href={link.href} className="font-medium text-gray-600 transition-colors hover:text-blue-600">{link.label}</Link>) : navLinks.map((link) => {
               const Icon = link.icon;
               const isActive = pathname === link.href;
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`flex items-center gap-1.5 font-medium transition-colors ${
-                    isActive
-                      ? "text-blue-600"
-                      : "text-gray-600 hover:text-blue-600"
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {link.label}
-                </Link>
-              );
+              return <Link key={link.href} href={link.href} className={`flex items-center gap-1.5 font-medium transition-colors ${isActive ? "text-blue-600" : "text-gray-600 hover:text-blue-600"}`}><Icon className="h-4 w-4" />{link.label}</Link>;
             })}
           </div>
         </div>
@@ -543,19 +551,20 @@ export function Navbar({ settings = {} }: NavbarProps) {
       {mobileOpen && (
         <div className="bg-white border-b border-gray-200 md:hidden">
           <div className="space-y-1 px-4 py-3">
-            {navLinks.map((link) => {
+            {isLandingPage ? (
+              <>
+                <p className="px-3 pt-1 text-xs font-semibold uppercase tracking-[0.14em] text-gray-400">Jelajahi</p>
+                {navLinks.map((link) => {
+                  const Icon = link.icon;
+                  return <Link key={link.href} href={link.href} className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600" onClick={() => setMobileOpen(false)}><Icon className="h-4 w-4" />{link.label}</Link>;
+                })}
+                <div className="my-2 border-t border-gray-100" />
+                <p className="px-3 text-xs font-semibold uppercase tracking-[0.14em] text-gray-400">Landing page</p>
+                {landingNavLinks.map((link) => <Link key={link.href} href={link.href} className="block rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600" onClick={() => setMobileOpen(false)}>{link.label}</Link>)}
+              </>
+            ) : navLinks.map((link) => {
               const Icon = link.icon;
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  <Icon className="h-4 w-4" />
-                  {link.label}
-                </Link>
-              );
+              return <Link key={link.href} href={link.href} className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600" onClick={() => setMobileOpen(false)}><Icon className="h-4 w-4" />{link.label}</Link>;
             })}
             {!isAuthenticated && (
               <div className="flex items-center gap-2 pt-2 border-t border-gray-100 mt-2">

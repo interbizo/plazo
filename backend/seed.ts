@@ -23,6 +23,7 @@ import * as bcrypt from "bcryptjs";
 import * as crypto from "crypto";
 import { seedArticles } from "./prisma/seed-articles";
 import { seedForum } from "./prisma/seed-forum";
+import { seedLandingContent } from "./prisma/seed-landing";
 
 const prisma = new PrismaClient();
 const PASSWORD = "Password@123";
@@ -1780,6 +1781,7 @@ async function main() {
   const password = await bcrypt.hash(PASSWORD, 10);
   const planCount = await seedPlans();
   const categories = await seedCategories();
+  const landingContentCount = await seedLandingContent(prisma);
   const users = await seedUsersAndStores(password);
   const listings = await seedListings(categories, users.sellers);
 
@@ -1793,6 +1795,7 @@ async function main() {
   console.log("");
   console.log("Seed completed.");
   console.log(`Plans: ${planCount}`);
+  console.log(`Landing content: ${landingContentCount}`);
   console.log(`Categories: ${Object.keys(categories).length}`);
   console.log(`Users: ${2 + users.buyers.length + users.sellers.length}`);
   console.log(`Stores: ${users.sellers.length}`);

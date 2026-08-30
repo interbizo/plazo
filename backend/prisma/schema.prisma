@@ -260,11 +260,11 @@ model User {
   bio       String?
 
   // Address Information (required for registration)
-  address        String?
-  city           String?
-  province       String?
-  postalCode     String?
-  whatsappNumber String?
+  address                  String?
+  city                     String?
+  province                 String?
+  postalCode               String?
+  whatsappNumber           String?
   shippingDestinationId    String?
   shippingDestinationLabel String?
 
@@ -325,14 +325,14 @@ model User {
   reviewsReceived Review[] @relation("ReviewReceiver")
 
   // Forum
-  forumPosts          ForumPost[]    @relation("ForumPostAuthor")
-  forumComments       ForumComment[] @relation("ForumCommentAuthor")
-  forumLikes          ForumLike[]
-  forumStrikes        ForumStrike[]  @relation("ForumStrikeRecipient")
-  forumStrikesIssued  ForumStrike[]  @relation("ForumStrikeModerator")
+  forumPosts         ForumPost[]    @relation("ForumPostAuthor")
+  forumComments      ForumComment[] @relation("ForumCommentAuthor")
+  forumLikes         ForumLike[]
+  forumStrikes       ForumStrike[]  @relation("ForumStrikeRecipient")
+  forumStrikesIssued ForumStrike[]  @relation("ForumStrikeModerator")
 
   // Notifications
-  notifications Notification[]
+  notifications          Notification[]
   notificationDeliveries NotificationDelivery[] @relation("NotificationDeliveryUser")
 
   // OTP
@@ -448,23 +448,23 @@ model Tenant {
   members User[] @relation("TenantMembers")
 
   // ============ STORE INFO ============
-  name            String
-  description     String? @db.Text
-  tagline         String? // Slogan singkat toko
-  logo            String?
-  banner          String?
-  favicon         String?
-  contactEmail    String?
-  contactPhone    String?
-  contactWhatsapp String?
-  address         String? @db.Text // Alamat fisik toko (opsional)
-  city            String? // Kota toko, e.g. "Jakarta", "Bandung"
-  province        String? // Provinsi toko
+  name                String
+  description         String? @db.Text
+  tagline             String? // Slogan singkat toko
+  logo                String?
+  banner              String?
+  favicon             String?
+  contactEmail        String?
+  contactPhone        String?
+  contactWhatsapp     String?
+  address             String? @db.Text // Alamat fisik toko (opsional)
+  city                String? // Kota toko, e.g. "Jakarta", "Bandung"
+  province            String? // Provinsi toko
   shippingOriginId    String?
   shippingOriginLabel String?
   shippingCourierCode String? // Kurir utama toko, mis. jne atau sicepat
-  latitude        Float? // Koordinat opsional
-  longitude       Float? // Koordinat opsional
+  latitude            Float? // Koordinat opsional
+  longitude           Float? // Koordinat opsional
 
   // ============ SUBSCRIPTION ============
   subscriptionPlan      SubscriptionPlan @default(FREE)
@@ -530,21 +530,21 @@ model Tenant {
   referredByUser   User?   @relation("ReferredTenants", fields: [referredBy], references: [id], onDelete: SetNull)
 
   // ============ RELATIONS ============
-  products             Product[]
-  services             Service[]
-  jobs                 Job[]
-  orders               Order[]
-  chatRooms            ChatRoom[]
-  notifications        Notification[]
+  products               Product[]
+  services               Service[]
+  jobs                   Job[]
+  orders                 Order[]
+  chatRooms              ChatRoom[]
+  notifications          Notification[]
   notificationDeliveries NotificationDelivery[] @relation("NotificationDeliveryTenant")
-  subscription         Subscription?
-  subscriptionPayments SubscriptionPayment[]
-  affiliateBonuses     AffiliateBonus[]
-  flashSaleItems       FlashSaleItem[]
-  paymentAccounts      PaymentAccount[]
-  storePages           StorePage[]
-  storeMenus           StoreMenu[]
-  physicalVerification PhysicalVerification?
+  subscription           Subscription?
+  subscriptionPayments   SubscriptionPayment[]
+  affiliateBonuses       AffiliateBonus[]
+  flashSaleItems         FlashSaleItem[]
+  paymentAccounts        PaymentAccount[]
+  storePages             StorePage[]
+  storeMenus             StoreMenu[]
+  physicalVerification   PhysicalVerification?
 
   // Timestamps
   createdAt DateTime  @default(now())
@@ -1604,22 +1604,22 @@ model Notification {
 // ============================================
 
 model NotificationDelivery {
-  id          String  @id @default(cuid())
-  tenantId    String?
-  tenant      Tenant? @relation("NotificationDeliveryTenant", fields: [tenantId], references: [id])
-  userId      String?
-  user        User?   @relation("NotificationDeliveryUser", fields: [userId], references: [id])
+  id       String  @id @default(cuid())
+  tenantId String?
+  tenant   Tenant? @relation("NotificationDeliveryTenant", fields: [tenantId], references: [id])
+  userId   String?
+  user     User?   @relation("NotificationDeliveryUser", fields: [userId], references: [id])
 
-  channel     NotificationChannel
-  event       String
-  recipient   String? // nomor WhatsApp tujuan
-  title       String?
-  message     String?  @db.Text
+  channel   NotificationChannel
+  event     String
+  recipient String? // nomor WhatsApp tujuan
+  title     String?
+  message   String?             @db.Text
 
-  status  NotificationDeliveryStatus @default(PENDING)
-  attempts Int @default(0)
-  lastError String? @db.Text
-  sentAt  DateTime?
+  status       NotificationDeliveryStatus @default(PENDING)
+  attempts     Int                        @default(0)
+  lastError    String?                    @db.Text
+  sentAt       DateTime?
   scheduledFor DateTime?
 
   createdAt DateTime @default(now())
@@ -2564,6 +2564,85 @@ model ReportMessage {
 // ============================================
 // CMS SYSTEM
 // ============================================
+
+model LandingHero {
+  id          String   @id @default(cuid())
+  key         String   @unique @default("default")
+  eyebrow     String   @default("Untuk bisnis produk dan jasa")
+  title       String   @default("Buat toko.")
+  titleAccent String   @default("Beri bisnis Anda arah.")
+  description String   @default("Plazo menyatukan toko, katalog, dan percakapan pelanggan agar bisnis Anda hadir dengan lebih jelas sejak awal.") @db.Text
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isPublished])
+}
+
+model LandingBenefit {
+  id          String   @id @default(cuid())
+  sectionEyebrow String @default("")
+  sectionHeading String @default("")
+  sectionDescription String @default("") @db.Text
+  label       String
+  title       String
+  description String   @db.Text
+  icon        String   @default("Sparkles")
+  tone        String   @default("blue")
+  sortOrder   Int      @default(0)
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isPublished, sortOrder])
+}
+
+model LandingStep {
+  id          String   @id @default(cuid())
+  sectionEyebrow String @default("")
+  sectionHeading String @default("")
+  sectionDescription String @default("") @db.Text
+  title       String
+  description String   @db.Text
+  icon        String   @default("Store")
+  sortOrder   Int      @default(0)
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isPublished, sortOrder])
+}
+
+model LandingAdvantage {
+  id          String   @id @default(cuid())
+  sectionEyebrow String @default("")
+  sectionHeading String @default("")
+  sectionDescription String @default("") @db.Text
+  title       String
+  description String   @db.Text
+  sortOrder   Int      @default(0)
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isPublished, sortOrder])
+}
+
+model LandingTestimonial {
+  id          String   @id @default(cuid())
+  sectionEyebrow String @default("")
+  sectionHeading String @default("")
+  sectionDescription String @default("") @db.Text
+  label       String?
+  title       String
+  description String   @db.Text
+  sortOrder   Int      @default(0)
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isPublished, sortOrder])
+}
 
 model CmsPage {
   id      String  @id @default(cuid())
