@@ -433,7 +433,7 @@ export class ServicesService {
         title: service.metaTitle || service.name,
         description:
           service.metaDescription || service.description.substring(0, 160),
-        keywords: service.tags.join(", "),
+        keywords: service.metaKeywords || service.tags.join(", "),
         ogImage: service.thumbnail,
         canonicalUrl: `/${service.tenant.subdomain}/services/${service.slug}`,
       },

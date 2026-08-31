@@ -179,10 +179,12 @@ export class CreateProductDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(60)
   metaTitle?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(160)
   metaDescription?: string;
 
   @IsOptional()
@@ -326,10 +328,12 @@ export class UpdateProductDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(60)
   metaTitle?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(160)
   metaDescription?: string;
 
   @IsOptional()

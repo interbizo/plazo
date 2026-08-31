@@ -172,6 +172,7 @@ export interface Product {
   // SEO
   metaTitle?: string;
   metaDescription?: string;
+  metaKeywords?: string;
   // Status
   isPublished: boolean;
   publishToMarketplace: boolean;
@@ -234,6 +235,7 @@ export interface Service {
   faq?: Array<{ question: string; answer: string }>;
   metaTitle?: string;
   metaDescription?: string;
+  metaKeywords?: string;
   isPublished: boolean;
   publishToMarketplace: boolean;
   isBoosted: boolean;

@@ -113,7 +113,7 @@ export default function EditServicePage() {
             categoryId: mainCategoryId,
             subcategoryId: subCategoryId,
             tags: Array.isArray(svc.tags) ? svc.tags.join(", ") : "",
-            metaKeywords: (svc as any).metaKeywords || "",
+            metaKeywords: svc.metaKeywords || "",
             metaTitle: svc.metaTitle || "",
             metaDescription: svc.metaDescription || "",
             publishToMarketplace: svc.publishToMarketplace ?? false,
@@ -499,13 +499,6 @@ export default function EditServicePage() {
             helperText="Tags membantu pelanggan menemukan layanan Anda"
           />
 
-          <Input
-            label="Keywords SEO"
-            value={form.metaKeywords}
-            onChange={(e) => setForm({ ...form, metaKeywords: e.target.value })}
-            placeholder="jasa desain logo, branding profesional, desain grafis"
-            helperText="Kata kunci untuk membantu SEO (pisahkan dengan koma)"
-          />
         </div>
 
         {/* Service Packages */}
@@ -786,22 +779,14 @@ export default function EditServicePage() {
           )}
         </div>
 
-        {/* SEO Settings */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
-          <div>
-            <h2 className="text-sm font-semibold text-gray-900">
-              SEO (Opsional)
-            </h2>
-            <p className="text-xs text-gray-500 mt-1">
-              Optimasi untuk mesin pencari
-            </p>
-          </div>
+        <div className="space-y-4 rounded-xl border border-gray-200 bg-white p-5">
+          <h2 className="text-sm font-semibold text-gray-900">SEO</h2>
 
           <Input
             label="Meta Title"
             value={form.metaTitle}
             onChange={(e) => setForm({ ...form, metaTitle: e.target.value })}
-            placeholder="Judul untuk mesin pencari (kosongkan untuk otomatis)"
+            placeholder="Jika dikosongkan, diambil dari nama layanan"
             maxLength={60}
           />
 
@@ -819,10 +804,13 @@ export default function EditServicePage() {
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               placeholder="Deskripsi singkat untuk mesin pencari (kosongkan untuk otomatis)"
             />
-            <p className="mt-1 text-xs text-gray-500">
-              {form.metaDescription.length}/160 karakter
-            </p>
           </div>
+          <Input
+            label="Meta Keywords"
+            value={form.metaKeywords}
+            onChange={(e) => setForm({ ...form, metaKeywords: e.target.value })}
+            placeholder="jasa desain logo, branding profesional, desain grafis"
+          />
         </div>
 
         {/* Marketplace Publishing */}

@@ -247,6 +247,8 @@ export interface Service {
   gallery: string[];
   tags: string[];
   faq?: Array<{ question: string; answer: string }>; // FAQ field
+  metaTitle?: string;
+  metaDescription?: string;
   metaKeywords?: string;
   categoryId: string;
   isPublished: boolean;

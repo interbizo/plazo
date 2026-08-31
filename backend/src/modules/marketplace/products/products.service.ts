@@ -553,7 +553,7 @@ export class ProductsService {
         title: product.metaTitle || product.name,
         description:
           product.metaDescription || product.description.substring(0, 160),
-        keywords: product.tags.join(", "),
+        keywords: product.metaKeywords || product.tags.join(", "),
         ogImage: product.thumbnail || product.images[0],
         canonicalUrl: `/${product.tenant.subdomain}/products/${product.slug}`,
       },

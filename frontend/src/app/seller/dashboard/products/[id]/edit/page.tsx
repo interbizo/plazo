@@ -55,6 +55,8 @@ export default function EditProductPage() {
     categoryId: "",
     subcategoryId: "",
     tags: "",
+    metaTitle: "",
+    metaDescription: "",
     metaKeywords: "",
     isPublished: true,
     publishToMarketplace: false,
@@ -103,7 +105,9 @@ export default function EditProductPage() {
             categoryId: mainCategoryId,
             subcategoryId: subCategoryId,
             tags: Array.isArray(product.tags) ? product.tags.join(", ") : "",
-            metaKeywords: (product as any).metaKeywords || "",
+            metaTitle: product.metaTitle || "",
+            metaDescription: product.metaDescription || "",
+            metaKeywords: product.metaKeywords || "",
             isPublished: product.isPublished ?? true,
             publishToMarketplace: product.publishToMarketplace ?? false,
           });
@@ -342,6 +346,8 @@ export default function EditProductPage() {
         comparePrice: form.comparePrice ? Number(form.comparePrice) : undefined,
         categoryId: form.subcategoryId || form.categoryId, // Use subcategory if selected, otherwise use main category
         tags: form.tags ? form.tags.split(",").map((t) => t.trim()) : [],
+        metaTitle: form.metaTitle.trim() || undefined,
+        metaDescription: form.metaDescription.trim() || undefined,
         metaKeywords: form.metaKeywords,
         isPublished: form.isPublished,
         publishToMarketplace: true, // Always publish to marketplace
@@ -728,14 +734,6 @@ export default function EditProductPage() {
             placeholder="Pisahkan dengan koma"
           />
 
-          <Input
-            label="Keywords SEO"
-            value={form.metaKeywords}
-            onChange={(e) => setForm({ ...form, metaKeywords: e.target.value })}
-            placeholder="baju pria, kaos distro, fashion indonesia"
-            helperText="Kata kunci untuk membantu SEO (pisahkan dengan koma)"
-          />
-
           <div className="flex items-center gap-2">
             <input
               type="checkbox"
@@ -750,6 +748,36 @@ export default function EditProductPage() {
               Publish produk
             </label>
           </div>
+        </div>
+
+        <div className="space-y-4 rounded-xl border border-gray-200 bg-white p-5">
+          <h2 className="text-sm font-semibold text-gray-900">SEO</h2>
+          <Input
+            label="Meta Title"
+            value={form.metaTitle}
+            maxLength={60}
+            onChange={(e) => setForm({ ...form, metaTitle: e.target.value })}
+            placeholder="Jika dikosongkan, diambil dari nama produk"
+          />
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Meta Description
+            </label>
+            <textarea
+              value={form.metaDescription}
+              maxLength={160}
+              onChange={(e) => setForm({ ...form, metaDescription: e.target.value })}
+              rows={3}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+              placeholder="Jika dikosongkan, diambil dari deskripsi produk"
+            />
+          </div>
+          <Input
+            label="Meta Keywords"
+            value={form.metaKeywords}
+            onChange={(e) => setForm({ ...form, metaKeywords: e.target.value })}
+            placeholder="baju pria, kaos distro, fashion indonesia"
+          />
         </div>
 
         {/* Product Variants - Only for Physical Products */}
