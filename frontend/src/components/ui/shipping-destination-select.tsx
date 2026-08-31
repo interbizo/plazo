@@ -12,8 +12,15 @@ interface ShippingDestinationSelectProps {
   province?: string;
   district?: string;
   value?: string;
+  valueLabel?: string;
   onChange: (destination: ShippingDestination | null) => void;
   required?: boolean;
+}
+
+function formatStoredDestinationLabel(label: string) {
+  const parts = label.split(",").map((part) => part.trim()).filter(Boolean);
+  const postalCode = parts.find((part) => /^\d{5}$/.test(part));
+  return [parts[0], postalCode].filter(Boolean).join(" - ") || label;
 }
 
 export function ShippingDestinationSelect({
@@ -21,15 +28,23 @@ export function ShippingDestinationSelect({
   province = "",
   district = "",
   value = "",
+  valueLabel = "",
   onChange,
   required = false,
 }: ShippingDestinationSelectProps) {
   const [destinations, setDestinations] = useState<ShippingDestination[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [shouldLoadDestinations, setShouldLoadDestinations] = useState(false);
 
   useEffect(() => {
     if (!city || !province || !district) {
+      setDestinations([]);
+      setError("");
+      return;
+    }
+
+    if (value && !shouldLoadDestinations) {
       setDestinations([]);
       setError("");
       return;
@@ -61,7 +76,11 @@ export function ShippingDestinationSelect({
     return () => {
       cancelled = true;
     };
-  }, [city, province, district]);
+  }, [city, province, district, shouldLoadDestinations, value]);
+
+  const hasSelectedDestination = destinations.some(
+    (destination) => String(destination.id) === value,
+  );
 
   return (
     <div>
@@ -69,12 +88,13 @@ export function ShippingDestinationSelect({
         htmlFor="shipping-destination"
         className="mb-1 block text-sm font-medium text-gray-700"
       >
-        Kelurahan / Kode Pos {required && <span className="text-red-500">*</span>}
+        Kelurahan - Kode Pos {required && <span className="text-red-500">*</span>}
       </label>
       <div className="relative">
         <select
           id="shipping-destination"
           value={value}
+          onFocus={() => setShouldLoadDestinations(true)}
           onChange={(event) => {
             const destination = destinations.find(
               (item) => String(item.id) === event.target.value,
@@ -102,6 +122,9 @@ export function ShippingDestinationSelect({
                   ? "Memuat kelurahan dan kode pos..."
                   : "Pilih kelurahan dan kode pos"}
           </option>
+          {value && !hasSelectedDestination && (
+            <option value={value}>{formatStoredDestinationLabel(valueLabel || "Tujuan tersimpan")}</option>
+          )}
           {destinations.map((destination) => (
             <option key={destination.id} value={destination.id}>
               {destination.subdistrictName || destination.label}{" - "}

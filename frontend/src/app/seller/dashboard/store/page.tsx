@@ -699,6 +699,7 @@ export default function SellerStoreSettingsPage() {
             province={form.province}
             district={form.district}
             value={form.shippingOriginId}
+            valueLabel={form.shippingOriginLabel}
             required
             onChange={(destination) => {
               setForm((prev) => ({

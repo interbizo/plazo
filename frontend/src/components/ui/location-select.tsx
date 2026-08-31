@@ -76,7 +76,7 @@ export function LocationSelect({
       c.id === cityValue ||
       normalizeLocationName(c.name) === normalizeLocationName(cityValue),
   );
-  const matchedCityId = selectedCityObj ? selectedCityObj.id : cityValue;
+  const matchedCityId = selectedCityObj?.id || "";
 
   const selectedDistrictObj = districts.find(
     (d) =>

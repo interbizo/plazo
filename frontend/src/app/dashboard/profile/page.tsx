@@ -323,6 +323,7 @@ export default function BuyerProfilePage() {
                   province={profileForm.province}
                   district={profileForm.district}
                   value={profileForm.shippingDestinationId}
+                  valueLabel={profileForm.shippingDestinationLabel}
                   required
                   onChange={(destination) => {
                     setProfileForm((prev) => ({
