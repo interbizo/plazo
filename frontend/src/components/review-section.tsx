@@ -350,7 +350,7 @@ export function ReviewSection({ sellerId, productId, serviceId }: ReviewSectionP
       let imageUrls: string[] = [];
       if (reviewImages.length > 0) {
         const files = reviewImages.map((img) => img.file);
-        const { data } = await uploadApi.uploadMultiple(files);
+        const { data } = await uploadApi.uploadMultiple(files, "ATTACHMENT", "REVIEW");
         // Backend returns { files: [...] } not { urls: [...] }
         imageUrls = data.files.map(f => f.url);
       }

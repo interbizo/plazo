@@ -171,7 +171,7 @@ export default function AdminToolsPage() {
         category: "ATTACHMENT"
       });
       
-      const { data } = await uploadApi.uploadFile(formData, "ATTACHMENT");
+      const { data } = await uploadApi.uploadFile(formData, "ATTACHMENT", "ADMIN_TOOL");
       
       console.log(`[Upload] Success:`, data.file.url);
       
@@ -220,7 +220,7 @@ export default function AdminToolsPage() {
         category: "ATTACHMENT"
       });
       
-      const { data } = await uploadApi.uploadFile(formData, "ATTACHMENT");
+      const { data } = await uploadApi.uploadFile(formData, "ATTACHMENT", "ADMIN_TOOL");
       
       console.log(`[Upload] Success:`, data.file.url);
       

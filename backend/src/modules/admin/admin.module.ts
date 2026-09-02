@@ -6,9 +6,10 @@ import { SubscriptionModule } from "../subscription/subscription.module";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { DatabaseBackupService } from "./database-backup.service";
 import { GoogleDriveService } from "./google-drive.service";
+import { UploadModule } from "@modules/upload/upload.module";
 
 @Module({
-  imports: [DatabaseModule, SubscriptionModule, NotificationsModule],
+  imports: [DatabaseModule, SubscriptionModule, NotificationsModule, UploadModule],
   providers: [AdminService, DatabaseBackupService, GoogleDriveService],
   controllers: [AdminController],
   exports: [AdminService],

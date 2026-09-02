@@ -100,8 +100,13 @@ export const adminApi = {
   ) => api.put(`${BASE}/products/${id}/moderate`, data),
   deleteProduct: (id: string) => api.delete(`${BASE}/products/${id}`),
   // Don't set Content-Type header explicitly - let axios set it automatically with boundary
-  uploadFiles: (formData: FormData) =>
-    api.post("/api/upload/multiple", formData),
+  uploadFiles: (formData: FormData, category?: string, scope?: string) => {
+    const params = new URLSearchParams();
+    if (category) params.set("category", category);
+    if (scope) params.set("scope", scope);
+    const query = params.toString();
+    return api.post(query ? `/api/upload/multiple?${query}` : "/api/upload/multiple", formData);
+  },
   getServices: (params?: { page?: number; limit?: number; search?: string }) =>
     api.get(`${BASE}/services`, { params }),
   getInternalServices: (params?: {

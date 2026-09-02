@@ -158,8 +158,13 @@ export const sellerApi = {
 
   // File Upload
   // Don't set Content-Type header explicitly - let axios set it automatically with boundary
-  uploadFiles: (formData: FormData) =>
-    api.post("/api/upload/multiple", formData),
+  uploadFiles: (formData: FormData, category?: string, scope?: string) => {
+    const params = new URLSearchParams();
+    if (category) params.set("category", category);
+    if (scope) params.set("scope", scope);
+    const query = params.toString();
+    return api.post(query ? `/api/upload/multiple?${query}` : "/api/upload/multiple", formData);
+  },
 
   // Reviews
   getReviews: (params?: { page?: number; limit?: number }) =>

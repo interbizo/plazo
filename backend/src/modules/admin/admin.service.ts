@@ -41,6 +41,7 @@ import { SubscriptionService } from "../subscription/subscription.service";
 import { NotificationEventsService } from "../notifications/notification-events.service";
 import { DatabaseBackupService } from "./database-backup.service";
 import { MeilisearchService } from "@modules/search/meilisearch.service";
+import { UploadService } from "@modules/upload/upload.service";
 import { Parser } from '@json2csv/plainjs';
 import * as ExcelJS from 'exceljs';
 import * as path from 'path';
@@ -53,6 +54,7 @@ export class AdminService {
     private notificationEvents: NotificationEventsService,
     private backupService: DatabaseBackupService,
     private meilisearch: MeilisearchService,
+    private uploadService: UploadService,
   ) {}
 
   // ============ USER MANAGEMENT ============
@@ -1387,6 +1389,11 @@ export class AdminService {
       });
     });
 
+    await this.uploadService.deleteRemovedFiles(
+      [...existingProduct.images, existingProduct.thumbnail, existingProduct.digitalFileUrl],
+      updated ? [...updated.images, updated.thumbnail, updated.digitalFileUrl] : [],
+    );
+
     await this.logAction(adminId, "update_internal_product", "product", productId, {
       publishToMarketplace: updated?.publishToMarketplace,
       isPublished: updated?.isPublished,
@@ -1409,6 +1416,11 @@ export class AdminService {
     await this.prisma.cartItem.deleteMany({
       where: { productId },
     });
+
+    await this.uploadService.deleteRemovedFiles(
+      [...product.images, product.thumbnail, product.digitalFileUrl],
+      [],
+    );
 
     await this.logAction(adminId, "delete_internal_product", "product", productId, {
       tenantId: product.tenantId,
@@ -1679,6 +1691,11 @@ export class AdminService {
       });
     });
 
+    await this.uploadService.deleteRemovedFiles(
+      [...existingService.gallery, existingService.thumbnail],
+      updated ? [...updated.gallery, updated.thumbnail] : [],
+    );
+
     await this.logAction(adminId, "update_internal_service", "service", serviceId, {
       publishToMarketplace: updated?.publishToMarketplace,
       isPublished: updated?.isPublished,
@@ -1698,6 +1715,11 @@ export class AdminService {
       where: { id: serviceId },
       data: { deletedAt: new Date() },
     });
+
+    await this.uploadService.deleteRemovedFiles(
+      [...service.gallery, service.thumbnail],
+      [],
+    );
 
     await this.logAction(adminId, "delete_internal_service", "service", serviceId, {
       tenantId: service.tenantId,
@@ -1819,10 +1841,18 @@ export class AdminService {
   }
 
   async deleteProductAdmin(productId: string, adminId: string) {
+    const product = await this.prisma.product.findUnique({ where: { id: productId } });
+    if (!product) throw new NotFoundException("Product not found");
+
     await this.prisma.product.update({
       where: { id: productId },
       data: { deletedAt: new Date(), isPublished: false },
     });
+
+    await this.uploadService.deleteRemovedFiles(
+      [...product.images, product.thumbnail, product.digitalFileUrl],
+      [],
+    );
 
     // Hapus dari index Meilisearch
     void this.meilisearch.removeProduct(productId).catch(() => {});
@@ -1839,10 +1869,18 @@ export class AdminService {
   }
 
   async deleteServiceAdmin(serviceId: string, adminId: string) {
+    const service = await this.prisma.service.findUnique({ where: { id: serviceId } });
+    if (!service) throw new NotFoundException("Service not found");
+
     await this.prisma.service.update({
       where: { id: serviceId },
       data: { deletedAt: new Date(), isPublished: false },
     });
+
+    await this.uploadService.deleteRemovedFiles(
+      [...service.gallery, service.thumbnail],
+      [],
+    );
 
     // Hapus dari index Meilisearch
     void this.meilisearch.removeService(serviceId).catch(() => {});
@@ -2964,17 +3002,18 @@ export class AdminService {
       // Convert URL to filesystem path if needed
       // Stored paths may be URLs like "http://localhost:3001/uploads/documents/uuid.webp"
       // or relative paths like "/uploads/documents/uuid.webp"
-      // Dalam mode S3, path adalah URL publik bucket — kembalikan sebagai externalUrl.
+      // Dalam mode S3, kembalikan URL publik bucket dari path relatif atau URL lama.
       const uploadStorage = (process.env.UPLOAD_STORAGE || "local").toLowerCase();
-      const isS3Url =
-        uploadStorage === "s3" &&
-        (filePath.startsWith('http://') || filePath.startsWith('https://'));
+      if (uploadStorage === "s3") {
+        const s3PublicUrl = (process.env.S3_PUBLIC_URL || "").replace(/\/$/, "");
+        const externalUrl = filePath.startsWith("/uploads/") && s3PublicUrl
+          ? `${s3PublicUrl}/${filePath.slice("/uploads/".length)}`
+          : filePath;
 
-      if (isS3Url) {
-        console.log(`[KYC File] S3 mode — returning public URL for ${type}: ${filePath}`);
+        console.log(`[KYC File] S3 mode — returning public URL for ${type}: ${externalUrl}`);
         return {
           filePath,
-          externalUrl: filePath,
+          externalUrl,
           type,
           kycId: id,
         };

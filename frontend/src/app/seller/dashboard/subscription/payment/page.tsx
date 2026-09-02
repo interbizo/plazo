@@ -127,7 +127,7 @@ function SubscriptionPaymentContent() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const { data } = await uploadApi.uploadFile(formData, "ATTACHMENT");
+      const { data } = await uploadApi.uploadFile(formData, "ATTACHMENT", "PAYMENT_PROOF");
       setForm((prev) => ({ ...prev, proofImageUrl: data.file.url }));
       toast.success("Bukti transfer berhasil diupload");
     } catch {

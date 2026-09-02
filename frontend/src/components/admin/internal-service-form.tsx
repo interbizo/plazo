@@ -337,7 +337,7 @@ export function InternalServiceForm({
     if (newImageFiles.length === 0) return [];
     const formData = new FormData();
     newImageFiles.forEach((file) => formData.append("files", file));
-    const response = await adminApi.uploadFiles(formData);
+    const response = await adminApi.uploadFiles(formData, "SERVICE_IMAGE");
     const uploadedFiles = (response.data?.files || []) as Array<{ url: string }>;
     return uploadedFiles.map((file) => file.url);
   };

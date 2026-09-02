@@ -12,12 +12,8 @@ export class LocalStorageService {
   }
 
   private ensureUploadDir() {
-    const dirs = ["images", "documents", "avatars", "cv", "portfolio"];
-    for (const dir of dirs) {
-      const fullPath = path.join(this.uploadDir, dir);
-      if (!fs.existsSync(fullPath)) {
-        fs.mkdirSync(fullPath, { recursive: true });
-      }
+    if (!fs.existsSync(this.uploadDir)) {
+      fs.mkdirSync(this.uploadDir, { recursive: true });
     }
   }
 

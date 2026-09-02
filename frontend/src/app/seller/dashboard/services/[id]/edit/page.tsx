@@ -283,7 +283,7 @@ export default function EditServicePage() {
       let newUploadedUrls: string[] = [];
       if (imageFiles.length > 0) {
         try {
-          const { data } = await uploadApi.uploadMultiple(imageFiles);
+          const { data } = await uploadApi.uploadMultiple(imageFiles, "SERVICE_IMAGE");
           // Backend returns { files: [...] } not { urls: [...] }
           newUploadedUrls = data.files.map(f => f.url);
         } catch (uploadErr) {

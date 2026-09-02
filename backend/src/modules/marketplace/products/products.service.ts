@@ -10,6 +10,7 @@ import { CreateProductDto, UpdateProductDto } from "./products.dto";
 import { PaginationHelper } from "@common/utils/pagination.helper";
 import { StringHelper } from "@common/utils/string.helper";
 import { MeilisearchService } from "@modules/search/meilisearch.service";
+import { UploadService } from "@modules/upload/upload.service";
 
 @Injectable()
 export class ProductsService {
@@ -18,6 +19,7 @@ export class ProductsService {
   constructor(
     private prisma: PrismaService,
     private meilisearch: MeilisearchService,
+    private uploadService: UploadService,
   ) {}
 
   /**
@@ -392,6 +394,11 @@ export class ProductsService {
       });
     });
 
+    await this.uploadService.deleteRemovedFiles(
+      [...product.images, product.thumbnail, product.digitalFileUrl],
+      updated ? [...updated.images, updated.thumbnail, updated.digitalFileUrl] : [],
+    );
+
     // Sync ke Meilisearch (fire-and-forget)
     if (updated) {
       void this.meilisearch.syncProduct(updated.id).catch(() => {});
@@ -432,6 +439,11 @@ export class ProductsService {
       where: { id: tenantId },
       data: { usedPosts: { decrement: 1 } },
     });
+
+    await this.uploadService.deleteRemovedFiles(
+      [...product.images, product.thumbnail, product.digitalFileUrl],
+      [],
+    );
 
     // Hapus dari index Meilisearch
     void this.meilisearch.removeProduct(productId).catch(() => {});

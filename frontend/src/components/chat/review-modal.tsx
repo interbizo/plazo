@@ -57,7 +57,7 @@ export function ReviewModal({ isOpen, onClose, transaction, onSuccess }: ReviewM
 
     setUploadingImages(true);
     try {
-      const uploadPromises = files.map(file => uploadApi.uploadFile(file, "ATTACHMENT"));
+      const uploadPromises = files.map(file => uploadApi.uploadFile(file, "ATTACHMENT", "REVIEW"));
       const results = await Promise.all(uploadPromises);
       const urls = results.map(r => r.data.file.url);
       setImages(prev => [...prev, ...urls]);

@@ -227,7 +227,7 @@ export default function EditProductPage() {
       });
 
       console.log("Uploading to server...");
-      const response = await sellerApi.uploadFiles(formData);
+      const response = await sellerApi.uploadFiles(formData, "PRODUCT_IMAGE");
 
       console.log("Upload response:", response);
       console.log("Response data:", response.data);
@@ -279,11 +279,11 @@ export default function EditProductPage() {
     setIsUploadingDigitalFile(true);
     try {
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('files', file);
 
       console.log("Uploading digital file:", file.name, file.size);
 
-      const response = await sellerApi.uploadFiles(formData);
+      const response = await sellerApi.uploadFiles(formData, "ATTACHMENT", "PRODUCT_FILE");
 
       console.log("Digital file upload response:", response);
 

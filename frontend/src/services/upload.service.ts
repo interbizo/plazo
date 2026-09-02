@@ -1,7 +1,7 @@
 import api from "@/lib/api";
 
 export const uploadApi = {
-  uploadFile: (fileOrFormData: File | FormData, category?: string) => {
+  uploadFile: (fileOrFormData: File | FormData, category?: string, scope?: string) => {
     const formData = fileOrFormData instanceof FormData 
       ? fileOrFormData 
       : (() => {
@@ -11,7 +11,10 @@ export const uploadApi = {
         })();
     
     // Build URL with category as query parameter
-    const url = category ? `/api/upload?category=${encodeURIComponent(category)}` : "/api/upload";
+    const params = new URLSearchParams();
+    if (category) params.set("category", category);
+    if (scope) params.set("scope", scope);
+    const url = params.size ? `/api/upload?${params}` : "/api/upload";
     
     // Don't set Content-Type header explicitly - let axios set it automatically with boundary
     // This ensures Authorization and x-tenant-subdomain headers from interceptor are preserved
@@ -28,12 +31,15 @@ export const uploadApi = {
     }>(url, formData);
   },
 
-  uploadMultiple: (files: File[], category?: string) => {
+  uploadMultiple: (files: File[], category?: string, scope?: string) => {
     const formData = new FormData();
     files.forEach((f) => formData.append("files", f));
     
     // Build URL with category as query parameter
-    const url = category ? `/api/upload/multiple?category=${encodeURIComponent(category)}` : "/api/upload/multiple";
+    const params = new URLSearchParams();
+    if (category) params.set("category", category);
+    if (scope) params.set("scope", scope);
+    const url = params.size ? `/api/upload/multiple?${params}` : "/api/upload/multiple";
     
     // Don't set Content-Type header explicitly - let axios set it automatically with boundary
     // This ensures Authorization and x-tenant-subdomain headers from interceptor are preserved

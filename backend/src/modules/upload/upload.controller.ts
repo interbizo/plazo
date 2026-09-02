@@ -39,6 +39,7 @@ export class UploadController {
     @GetUser("id") userId: string,
     @UploadedFile() file: Express.Multer.File,
     @Query("category") category?: string,
+    @Query("scope") scope?: string,
   ) {
     if (!file) {
       throw new BadRequestException("No file provided");
@@ -48,6 +49,7 @@ export class UploadController {
       userId,
       file,
       category || "ATTACHMENT",
+      scope,
     );
   }
 
@@ -67,7 +69,7 @@ export class UploadController {
     if (!file) {
       throw new BadRequestException("No file provided");
     }
-    return this.uploadService.uploadFile(userId, file, "ATTACHMENT");
+    return this.uploadService.uploadFile(userId, file, "ATTACHMENT", "CHAT");
   }
 
   @Post("multiple")
@@ -83,11 +85,13 @@ export class UploadController {
     @GetUser("id") userId: string,
     @UploadedFiles() files: Express.Multer.File[],
     @Query("category") category?: string,
+    @Query("scope") scope?: string,
   ) {
     return this.uploadService.uploadMultiple(
       userId,
       files,
       category || "ATTACHMENT",
+      scope,
     );
   }
 

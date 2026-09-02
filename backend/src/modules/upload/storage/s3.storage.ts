@@ -53,7 +53,6 @@ export class S3StorageService {
     }
 
     const key = `${subDir}/${fileName}`;
-
     await this.client.send(
       new PutObjectCommand({
         Bucket: this.bucket,
@@ -61,6 +60,7 @@ export class S3StorageService {
         Body: buffer,
         ContentType: mimeType || "application/octet-stream",
         CacheControl: "public, max-age=31536000, immutable",
+        ACL: "public-read",
       }),
     );
 
@@ -80,6 +80,7 @@ export class S3StorageService {
       );
     } catch (error) {
       this.logger.error(`[S3] Failed to delete ${key}: ${(error as Error).message}`);
+      throw error;
     }
   }
 

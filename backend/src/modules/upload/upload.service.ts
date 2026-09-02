@@ -58,6 +58,15 @@ const VALID_FILE_CATEGORIES = [
   "ARTICLE_THUMBNAIL",
 ];
 
+const ATTACHMENT_DIRS: Record<string, string> = {
+  CHAT: "chats",
+  REVIEW: "reviews",
+  PAYMENT_PROOF: "payments",
+  PRODUCT_FILE: "products/files",
+  AFFILIATE_PROOF: "affiliates",
+  ADMIN_TOOL: "admin-tools",
+};
+
 /**
  * Image processing configuration per category.
  * maxWidth: Maximum width in pixels (height auto-calculated to preserve aspect ratio)
@@ -190,6 +199,7 @@ export class UploadService {
     userId: string,
     file: Express.Multer.File,
     category: string = "ATTACHMENT",
+    scope?: string,
   ) {
     if (!file) {
       throw new BadRequestException("No file provided");
@@ -210,13 +220,17 @@ export class UploadService {
       );
     }
 
+    if (scope && (category !== "ATTACHMENT" || !ATTACHMENT_DIRS[scope])) {
+      throw new BadRequestException("Invalid upload scope");
+    }
+
     // Validate actual file content (magic bytes)
     const verifiedMimeType = this.validateFileContent(
       file.buffer,
       file.mimetype,
     );
 
-    const subDir = this.getSubDir(category);
+    const subDir = this.getSubDir(category, new Date(), scope);
     const isImage = ALLOWED_MIME_TYPES.image.includes(verifiedMimeType) ||
       verifiedMimeType.startsWith('image/');
 
@@ -268,10 +282,9 @@ export class UploadService {
     }
 
     const fileName = `${crypto.randomUUID()}${finalExt}`;
-    const fullUrl = await this.storage.save(subDir, fileName, buffer, finalMimeType);
+    await this.storage.save(subDir, fileName, buffer, finalMimeType);
 
-    // DB menyimpan path relatif (portable lintas domain/storage).
-    // Full URL dibangun saat dibutuhkan (response upload, frontend resolveImageUrl).
+    // Simpan dan kembalikan path relatif agar tidak terikat domain atau bucket saat ini.
     const relativeUrl = `/uploads/${subDir}/${fileName}`;
 
     const record = await this.prisma.fileUpload.create({
@@ -286,13 +299,13 @@ export class UploadService {
       },
     });
 
-    this.logger.log(`[Upload] Upload completed - URL: ${fullUrl}, Size: ${(finalSize / 1024).toFixed(0)}KB`);
+    this.logger.log(`[Upload] Upload completed - URL: ${relativeUrl}, Size: ${(finalSize / 1024).toFixed(0)}KB`);
 
     return {
       message: "File uploaded successfully",
       file: {
         id: record.id,
-        url: fullUrl,
+        url: relativeUrl,
         originalName: record.originalName,
         mimeType: record.mimeType,
         size: record.size,
@@ -305,6 +318,7 @@ export class UploadService {
     userId: string,
     files: Express.Multer.File[],
     category: string = "ATTACHMENT",
+    scope?: string,
   ) {
     if (!files || files.length === 0) {
       throw new BadRequestException("No files provided");
@@ -316,7 +330,7 @@ export class UploadService {
 
     const results = [];
     for (const file of files) {
-      const result = await this.uploadFile(userId, file, category);
+      const result = await this.uploadFile(userId, file, category, scope);
       results.push(result.file);
     }
 
@@ -335,11 +349,7 @@ export class UploadService {
       orderBy: { createdAt: "desc" },
     });
 
-    // DB menyimpan path relatif — kembalikan full URL agar konsumen API tidak berubah
-    return files.map((file) => ({
-      ...file,
-      url: this.storage.buildFullUrl(file.url),
-    }));
+    return files;
   }
 
   async deleteFile(userId: string, fileId: string) {
@@ -351,12 +361,39 @@ export class UploadService {
       throw new BadRequestException("File not found");
     }
 
-    const subDir = this.getSubDir(file.category);
+    const subDir = this.getStoredSubDir(file.url, file.category);
     await this.storage.delete(subDir, file.fileName);
 
     await this.prisma.fileUpload.delete({ where: { id: fileId } });
 
     return { message: "File deleted successfully" };
+  }
+
+  async deleteRemovedFiles(
+    previousUrls: Array<string | null | undefined>,
+    currentUrls: Array<string | null | undefined>,
+  ) {
+    const current = new Set(
+      currentUrls.filter((url): url is string => Boolean(url)).map((url) => this.toRelativeUploadUrl(url)),
+    );
+    const removed = [...new Set(
+      previousUrls.filter((url): url is string => Boolean(url)).map((url) => this.toRelativeUploadUrl(url)),
+    )].filter((url) => url.startsWith("/uploads/") && !current.has(url));
+
+    if (!removed.length) return;
+
+    const files = await this.prisma.fileUpload.findMany({
+      where: { url: { in: removed } },
+    });
+
+    for (const file of files) {
+      try {
+        await this.storage.delete(this.getStoredSubDir(file.url, file.category), file.fileName);
+        await this.prisma.fileUpload.delete({ where: { id: file.id } });
+      } catch (error) {
+        this.logger.error(`[Upload] Failed to remove ${file.url}: ${(error as Error).message}`);
+      }
+    }
   }
 
   /**
@@ -436,22 +473,66 @@ export class UploadService {
     };
   }
 
-  private getSubDir(category: string): string {
+  private getSubDir(category: string, date = new Date(), scope?: string): string {
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+    let moduleDir: string;
+
     switch (category) {
       case "PRODUCT_IMAGE":
+        moduleDir = "products";
+        break;
       case "SERVICE_IMAGE":
-      case "BANNER":
-      case "LOGO":
-      case "ARTICLE_THUMBNAIL":
-        return "images";
+        moduleDir = "services";
+        break;
       case "AVATAR":
-        return "avatars";
+        moduleDir = "avatars";
+        break;
       case "CV":
-        return "cv";
+        moduleDir = "cv";
+        break;
       case "PORTFOLIO":
-        return "portfolio";
+        moduleDir = "portfolios";
+        break;
+      case "BANNER":
+        moduleDir = "banners";
+        break;
+      case "LOGO":
+        moduleDir = "logos";
+        break;
+      case "ARTICLE_THUMBNAIL":
+        moduleDir = "articles";
+        break;
+      case "KYC_DOCUMENT":
+        moduleDir = "kyc";
+        break;
       default:
-        return "documents";
+        moduleDir = scope ? ATTACHMENT_DIRS[scope] : "attachments";
+    }
+
+    return `${moduleDir}/${year}/${month}`;
+  }
+
+  private getStoredSubDir(url: string, category: string): string {
+    const pathName = url.replace(/^\/uploads\//, "");
+    const subDir = path.posix.dirname(pathName);
+
+    return subDir === "." ? this.getSubDir(category) : subDir;
+  }
+
+  private toRelativeUploadUrl(url: string): string {
+    if (url.startsWith("/uploads/")) return url;
+
+    const publicUrl = (process.env.S3_PUBLIC_URL || "").replace(/\/$/, "");
+    if (publicUrl && url.startsWith(`${publicUrl}/`)) {
+      return `/uploads/${url.slice(publicUrl.length + 1)}`;
+    }
+
+    try {
+      const parsed = new URL(url);
+      return parsed.pathname.startsWith("/uploads/") ? parsed.pathname : url;
+    } catch {
+      return url;
     }
   }
 }

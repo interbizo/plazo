@@ -31,6 +31,19 @@ const nextConfig = {
   // Enable gzip/brotli compression
   compress: true,
 
+  async rewrites() {
+    const uploadBaseUrl = (
+      process.env.NEXT_PUBLIC_S3_PUBLIC_URL ||
+      process.env.NEXT_PUBLIC_API_URL ||
+      "http://localhost:3001"
+    ).replace(/\/$/, "");
+
+    return [{
+      source: "/uploads/:path*",
+      destination: `${uploadBaseUrl}/:path*`,
+    }];
+  },
+
   // Performance: Power headers for SEO & caching
   async headers() {
     if (!isProduction) {

@@ -215,7 +215,7 @@ export default function CreateServicePage() {
     try {
       let uploadedUrls: string[] = [];
       if (imageFiles.length > 0) {
-        const { data } = await uploadApi.uploadMultiple(imageFiles);
+        const { data } = await uploadApi.uploadMultiple(imageFiles, "SERVICE_IMAGE");
         // Backend returns { files: [...] } not { urls: [...] }
         uploadedUrls = data.files.map(f => f.url);
       }

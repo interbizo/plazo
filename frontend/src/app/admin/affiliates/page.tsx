@@ -232,7 +232,7 @@ export default function AdminAffiliatesPage() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const { data } = await uploadApi.uploadFile(formData, "ATTACHMENT");
+      const { data } = await uploadApi.uploadFile(formData, "ATTACHMENT", "AFFILIATE_PROOF");
       setPaymentProofUrl(data.file.url);
       toast.success("Bukti transfer berhasil diupload");
     } catch {

@@ -15,6 +15,7 @@ import {
 import { PaginationHelper } from "@common/utils/pagination.helper";
 import { StringHelper } from "@common/utils/string.helper";
 import { MeilisearchService } from "@modules/search/meilisearch.service";
+import { UploadService } from "@modules/upload/upload.service";
 
 @Injectable()
 export class ServicesService {
@@ -22,6 +23,7 @@ export class ServicesService {
   constructor(
     private prisma: PrismaService,
     private meilisearch: MeilisearchService,
+    private uploadService: UploadService,
   ) {}
 
   // Reusable category select with parent
@@ -192,7 +194,7 @@ export class ServicesService {
   ) {
     const service = await this.prisma.service.findUnique({
       where: { id },
-      select: { tenantId: true },
+      select: { tenantId: true, thumbnail: true, gallery: true },
     });
 
     if (!service) {
@@ -207,6 +209,11 @@ export class ServicesService {
       include: { category: { select: this.categorySelect } },
     });
 
+    await this.uploadService.deleteRemovedFiles(
+      [...service.gallery, service.thumbnail],
+      [...updated.gallery, updated.thumbnail],
+    );
+
     // Sync ke Meilisearch (fire-and-forget)
     void this.meilisearch.syncService(updated.id).catch(() => {});
 
@@ -216,7 +223,7 @@ export class ServicesService {
   async deleteService(id: string, userId: string) {
     const service = await this.prisma.service.findUnique({
       where: { id },
-      select: { tenantId: true },
+      select: { tenantId: true, thumbnail: true, gallery: true },
     });
 
     if (!service) {
@@ -235,6 +242,11 @@ export class ServicesService {
       where: { id: service.tenantId },
       data: { usedPosts: { decrement: 1 } },
     });
+
+    await this.uploadService.deleteRemovedFiles(
+      [...service.gallery, service.thumbnail],
+      [],
+    );
 
     // Hapus dari index Meilisearch
     void this.meilisearch.removeService(id).catch(() => {});

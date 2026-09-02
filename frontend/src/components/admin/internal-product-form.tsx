@@ -247,7 +247,7 @@ export function InternalProductForm({
     try {
       const formData = new FormData();
       validFiles.forEach((file) => formData.append("files", file));
-      const response = await adminApi.uploadFiles(formData);
+      const response = await adminApi.uploadFiles(formData, "PRODUCT_IMAGE");
       const uploadedFiles = (response.data?.files || []) as Array<{ url: string }>;
       const uploadedUrls = uploadedFiles.map((file) => file.url);
       setImages((prev) => [...prev, ...uploadedUrls]);
@@ -268,7 +268,7 @@ export function InternalProductForm({
     try {
       const formData = new FormData();
       formData.append("files", file);
-      const response = await adminApi.uploadFiles(formData);
+      const response = await adminApi.uploadFiles(formData, "ATTACHMENT", "PRODUCT_FILE");
       const uploadedFile =
         (response.data?.file as
           | { url: string; size: number; originalName?: string }
