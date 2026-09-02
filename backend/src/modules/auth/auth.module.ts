@@ -16,10 +16,12 @@ import { EmailVerificationService } from "@common/services/email-verification.se
 import { EmailVerificationController } from "./email-verification.controller";
 import { UnifiedVerificationService } from "@common/services/unified-verification.service";
 import { UnifiedVerificationController } from "./unified-verification.controller";
+import { TenantsModule } from "@modules/tenants/tenants.module";
 
 @Module({
   imports: [
     DatabaseModule,
+    TenantsModule,
     ConfigModule,
     JwtModule.register({
       global: true,

@@ -1,12 +1,14 @@
 import {
   Injectable,
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   NotFoundException,
 } from "@nestjs/common";
 import { PrismaService } from "../database/prisma.service";
 import { CreateTenantDto, UpdateTenantDto, UpdateTenantSeoDto, UpdateTenantThemeDto } from "./tenants.dto";
 import { MeilisearchService } from "@modules/search/meilisearch.service";
+import { UserRole } from "@prisma/client";
 
 @Injectable()
 export class TenantsService {
@@ -61,51 +63,98 @@ export class TenantsService {
   }
 
   async createTenant(userId: string, createTenantDto: CreateTenantDto) {
+    const subdomain = this.validateSubdomain(createTenantDto.subdomain);
+    const referralCode = createTenantDto.referralCode?.trim().toUpperCase();
+
     try {
-      console.log(`[Tenant] Creating tenant for user: ${userId}`);
-      console.log(`[Tenant] Subdomain requested: ${createTenantDto.subdomain}`);
-      
-      const subdomain = this.validateSubdomain(createTenantDto.subdomain);
+      const result = await this.prisma.$transaction(async (tx) => {
+        const user = await tx.user.findUnique({
+          where: { id: userId },
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+            isActive: true,
+          },
+        });
 
-      // Check uniqueness before DB constraint
-      const existing = await this.prisma.tenant.findUnique({
-        where: { subdomain },
+        if (!user || !user.isActive) {
+          throw new BadRequestException("User not found or inactive");
+        }
+
+        const [existingSubdomain, existingStore] = await Promise.all([
+          tx.tenant.findUnique({ where: { subdomain } }),
+          tx.tenant.findFirst({ where: { ownerId: userId } }),
+        ]);
+        if (existingSubdomain) {
+          throw new ConflictException("Subdomain already taken");
+        }
+        if (existingStore) {
+          throw new BadRequestException("You already have a store");
+        }
+
+        const affiliateProfile = referralCode
+          ? await tx.affiliateProfile.findUnique({
+              where: { referralCode },
+              select: { userId: true, referralCode: true, isActive: true },
+            })
+          : null;
+
+        if (referralCode && (!affiliateProfile || !affiliateProfile.isActive)) {
+          throw new BadRequestException("Kode referral tidak valid atau tidak aktif.");
+        }
+        if (affiliateProfile?.userId === userId) {
+          throw new BadRequestException("Anda tidak dapat menggunakan kode referral sendiri.");
+        }
+
+        const tenant = await tx.tenant.create({
+          data: {
+            subdomain,
+            name: createTenantDto.name.trim(),
+            city: createTenantDto.city.trim(),
+            province: createTenantDto.province.trim(),
+            address: createTenantDto.address.trim(),
+            postalCode: createTenantDto.postalCode.trim(),
+            shippingOriginId: createTenantDto.shippingOriginId,
+            shippingOriginLabel: createTenantDto.shippingOriginLabel.trim(),
+            description: createTenantDto.description?.trim() || null,
+            contactEmail: createTenantDto.contactEmail,
+            contactPhone: createTenantDto.contactPhone,
+            ownerId: userId,
+            referralCodeUsed: affiliateProfile?.referralCode,
+            referredBy: affiliateProfile?.userId,
+          },
+        });
+
+        const updatedUser = user.role === UserRole.BUYER
+          ? await tx.user.update({
+              where: { id: userId },
+              data: { role: UserRole.SELLER },
+              select: { id: true, email: true, firstName: true, lastName: true, role: true },
+            })
+          : user;
+
+        await tx.sellerProfile.upsert({
+          where: { userId },
+          create: { userId },
+          update: {},
+        });
+
+        return { tenant, user: updatedUser };
       });
-      
-      if (existing) {
-        console.error(`[Tenant] Subdomain already taken: ${subdomain}`);
-        throw new BadRequestException(
-          `Subdomain "${subdomain}" is already taken. Please choose another.`,
-        );
+
+      void this.meilisearch.syncSeller(result.tenant.id).catch(() => {});
+      return {
+        message: "Toko berhasil dibuat",
+        tenant: result.tenant,
+        user: { ...result.user, tenantSubdomain: result.tenant.subdomain },
+      };
+    } catch (error: any) {
+      if (error?.code === "P2002") {
+        throw new ConflictException("Subdomain already taken");
       }
-
-      // Check if user already has a tenant
-      const userTenants = await this.prisma.tenant.findMany({
-        where: { ownerId: userId },
-      });
-
-      if (userTenants.length > 0) {
-        console.error(`[Tenant] User already has ${userTenants.length} tenant(s)`);
-        throw new BadRequestException(
-          "You already have a store. Each user can only create one store.",
-        );
-      }
-
-      const tenant = await this.prisma.tenant.create({
-        data: {
-          ...createTenantDto,
-          subdomain,
-          ownerId: userId,
-        },
-      });
-
-      // Sync ke Meilisearch (fire-and-forget)
-      void this.meilisearch.syncSeller(tenant.id).catch(() => {});
-
-      console.log(`[Tenant] Successfully created tenant: ${tenant.id}`);
-      return tenant;
-    } catch (error) {
-      console.error('[Tenant] Error creating tenant:', error);
       throw error;
     }
   }

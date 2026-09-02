@@ -77,9 +77,10 @@ function SubscriptionPaymentContent() {
       }
 
       try {
-        const [plansRes, accountsRes] = await Promise.all([
+        const [plansRes, accountsRes, subscriptionRes] = await Promise.all([
           sellerApi.getSubscriptionPlans(),
           api.get("/api/subscription/payment-accounts").then((r: any) => r.data),
+          sellerApi.getCurrentSubscription(),
         ]);
         
         const selectedPlan = plansRes.data.find((p: PlanConfig) => p.plan === planParam);
@@ -92,6 +93,10 @@ function SubscriptionPaymentContent() {
 
         setPlan(selectedPlan);
         setPaymentAccounts(accountsRes?.data || accountsRes || []);
+        const savedReferralCode = subscriptionRes.data?.tenant?.referralCodeUsed;
+        if (savedReferralCode) {
+          setForm((prev) => prev.referralCode ? prev : { ...prev, referralCode: savedReferralCode });
+        }
       } catch {
         toast.error("Gagal memuat data");
       } finally {

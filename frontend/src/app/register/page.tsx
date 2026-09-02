@@ -9,10 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Turnstile, TurnstileRef } from "@/components/ui/turnstile";
 import { LocationSelect } from "@/components/ui/location-select";
+import { ShippingDestinationSelect } from "@/components/ui/shipping-destination-select";
 import { Eye, EyeOff, Check } from "lucide-react";
 import toast from "react-hot-toast";
-
-type Role = "BUYER" | "SELLER";
 
 function getSafeReturnUrl(url: string | null): string | null {
   if (!url || !url.startsWith("/")) return null;
@@ -23,19 +22,16 @@ function RegisterPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { register } = useAuthStore();
-  const initialRole: Role =
-    searchParams.get("role") === "SELLER" ? "SELLER" : "BUYER";
   const returnUrl =
     getSafeReturnUrl(searchParams.get("returnUrl")) ??
     getSafeReturnUrl(searchParams.get("redirect"));
-  const referralCode = searchParams.get("ref");
+  const referralCode = searchParams.get("ref")?.trim().toUpperCase();
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
     email: "",
     password: "",
     confirmPassword: "",
-    role: initialRole,
     address: "",
     city: "",
     cityId: "",
@@ -44,12 +40,9 @@ function RegisterPageContent() {
     district: "",
     districtId: "",
     postalCode: "",
+    shippingDestinationId: "",
+    shippingDestinationLabel: "",
     whatsappNumber: "",
-    storeName: "",
-    storeSubdomain: "",
-    storeCity: "",
-    storeCityId: "",
-    referralCode: referralCode || "",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -61,12 +54,9 @@ function RegisterPageContent() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       sessionStorage.removeItem('pendingVerification');
-    }
-  }, []);
-
-  useEffect(() => {
-    if (referralCode && typeof window !== "undefined") {
-      window.localStorage.setItem("affiliateReferralCode", referralCode);
+      if (referralCode) {
+        window.localStorage.setItem("affiliateReferralCode", referralCode);
+      }
     }
   }, [referralCode]);
 
@@ -95,6 +85,8 @@ function RegisterPageContent() {
       errs.address = "Alamat lengkap minimal 10 karakter";
     if (!form.city.trim()) errs.city = "Kota wajib diisi";
     if (!form.province.trim()) errs.province = "Provinsi wajib diisi";
+    if (!form.district.trim()) errs.district = "Kecamatan wajib diisi";
+    if (!form.shippingDestinationId) errs.shippingDestinationId = "Kelurahan dan kode pos wajib dipilih";
     if (!form.postalCode.trim()) errs.postalCode = "Kode pos wajib diisi";
     else if (!/^\d{5}$/.test(form.postalCode.trim()))
       errs.postalCode = "Kode pos harus 5 digit angka";
@@ -102,15 +94,6 @@ function RegisterPageContent() {
       errs.whatsappNumber = "Nomor WhatsApp wajib diisi";
     else if (!/^(\+62|62|0)[0-9]{9,13}$/.test(form.whatsappNumber.replace(/[\s-]/g, '')))
       errs.whatsappNumber = "Format nomor tidak valid (contoh: 08123456789)";
-    if (form.role === "SELLER") {
-      if (!form.storeName.trim()) errs.storeName = "Nama toko wajib diisi";
-      if (!form.storeSubdomain.trim()) errs.storeSubdomain = "Subdomain toko wajib diisi";
-      else if (form.storeSubdomain.length < 3)
-        errs.storeSubdomain = "Subdomain minimal 3 karakter";
-      else if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(form.storeSubdomain.toLowerCase()))
-        errs.storeSubdomain = "Hanya huruf kecil, angka, dan tanda hubung";
-      if (!form.storeCity.trim()) errs.storeCity = "Kota toko wajib diisi";
-    }
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -130,23 +113,16 @@ function RegisterPageContent() {
         password: form.password,
         firstName: form.firstName,
         lastName: form.lastName,
-        role: form.role,
         address: form.address,
         city: form.city,
         province: form.province,
         postalCode: form.postalCode,
+        shippingDestinationId: form.shippingDestinationId,
+        shippingDestinationLabel: form.shippingDestinationLabel,
         whatsappNumber: form.whatsappNumber.replace(/[\s-]/g, ''),
         turnstileToken,
       };
 
-      if (form.role === "SELLER") {
-        payload.storeName = form.storeName;
-        payload.storeSubdomain = form.storeSubdomain.toLowerCase();
-        payload.storeCity = form.storeCity;
-        if (form.referralCode.trim()) {
-          payload.referralCode = form.referralCode.trim().toUpperCase();
-        }
-      }
 
       const result = await register(payload);
 
@@ -180,16 +156,6 @@ function RegisterPageContent() {
   return (
     <div className="flex min-h-[85vh] items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
-        {/* Referral Banner */}
-        {referralCode && (
-          <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4">
-            <p className="text-sm text-green-800">
-              Kode referral <span className="font-mono font-semibold">{referralCode}</span> telah diterapkan.
-              Anda akan mendapat benefit saat berlangganan.
-            </p>
-          </div>
-        )}
-
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
@@ -207,113 +173,6 @@ function RegisterPageContent() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Role Selector */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Daftar sebagai
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              {(["BUYER", "SELLER"] as const).map((role) => (
-                <button
-                  key={role}
-                  type="button"
-                  onClick={() => update("role", role)}
-                  className={`rounded-lg border-2 px-4 py-3 text-sm font-medium transition-colors ${
-                    form.role === role
-                      ? "border-blue-600 bg-blue-50 text-blue-700"
-                      : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
-                  }`}
-                >
-                  {role === "BUYER" ? "Pembeli" : "Penjual"}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Seller Store Info */}
-          {form.role === "SELLER" && (
-            <div className="space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-5">
-              <h3 className="text-sm font-semibold text-gray-900">
-                Informasi Toko
-              </h3>
-
-              <Input
-                id="storeName"
-                label="Nama Toko"
-                placeholder="Contoh: Toko Digital Kreatif"
-                value={form.storeName}
-                onChange={(e) => update("storeName", e.target.value)}
-                error={errors.storeName}
-                required
-              />
-
-              <div>
-                <Input
-                  id="storeSubdomain"
-                  label="Subdomain Toko"
-                  placeholder="contoh: tokodigital"
-                  value={form.storeSubdomain}
-                  onChange={(e) => update("storeSubdomain", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                  error={errors.storeSubdomain}
-                  required
-                />
-                <p className="mt-1.5 text-xs text-gray-500">
-                  URL toko Anda akan menjadi:{" "}
-                  <span className="font-medium text-gray-700">
-                    {form.storeSubdomain || "subdomain"}.plazo.id
-                  </span>
-                </p>
-                <p className="mt-1 text-xs text-gray-400">
-                  Subdomain digunakan sebagai alamat URL toko pribadi Anda di Plazo.
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Kota Toko <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={form.storeCityId}
-                  onChange={(e) => {
-                    const selectedId = e.target.value;
-                    const selectedOption = e.target.options[e.target.selectedIndex];
-                    const selectedName = selectedOption.text;
-                    setForm((prev) => ({ ...prev, storeCityId: selectedId, storeCity: selectedName }));
-                    setErrors((prev) => { const next = { ...prev }; delete next.storeCity; return next; });
-                  }}
-                  disabled={!form.cityId}
-                  className={`w-full rounded-lg border bg-white px-3.5 py-2.5 text-sm text-gray-900 outline-none transition-colors ${
-                    errors.storeCity
-                      ? "border-red-400 focus:border-red-500 focus:ring-1 focus:ring-red-500"
-                      : "border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                  } ${!form.cityId ? "bg-gray-100 cursor-not-allowed" : ""}`}
-                  required
-                >
-                  <option value="">
-                    {!form.cityId ? "Isi alamat terlebih dahulu" : "Pilih kota toko"}
-                  </option>
-                  {form.cityId && <option value={form.cityId}>{form.city}</option>}
-                </select>
-                {errors.storeCity && (
-                  <p className="mt-1.5 text-xs text-red-600">{errors.storeCity}</p>
-                )}
-                <p className="mt-1.5 text-xs text-gray-400">
-                  Kota toko memudahkan pengguna mencari produk/jasa berdasarkan lokasi terdekat.
-                </p>
-              </div>
-
-              <Input
-                id="referralCode"
-                label="Kode Referral (Opsional)"
-                placeholder="Masukkan kode referral jika ada"
-                value={form.referralCode}
-                onChange={(e) => update("referralCode", e.target.value.toUpperCase())}
-                error={errors.referralCode}
-                readOnly={!!referralCode}
-              />
-            </div>
-          )}
-
           {/* Personal Info */}
           <div className="grid grid-cols-2 gap-3">
             <Input
@@ -417,34 +276,37 @@ function RegisterPageContent() {
               cityValue={form.cityId}
               districtValue={form.districtId}
               onProvinceChange={(id, name) => {
-                setForm((prev) => ({ ...prev, provinceId: id, province: name, cityId: "", city: "", districtId: "", district: "" }));
-                setErrors((prev) => { const next = { ...prev }; delete next.province; return next; });
+                setForm((prev) => ({ ...prev, provinceId: id, province: name, cityId: "", city: "", districtId: "", district: "", postalCode: "", shippingDestinationId: "", shippingDestinationLabel: "" }));
+                setErrors((prev) => ({ ...prev, province: "", city: "", district: "", postalCode: "", shippingDestinationId: "" }));
               }}
               onCityChange={(id, name) => {
-                setForm((prev) => ({ ...prev, cityId: id, city: name, districtId: "", district: "" }));
-                setErrors((prev) => { const next = { ...prev }; delete next.city; return next; });
+                setForm((prev) => ({ ...prev, cityId: id, city: name, districtId: "", district: "", postalCode: "", shippingDestinationId: "", shippingDestinationLabel: "" }));
+                setErrors((prev) => ({ ...prev, city: "", district: "", postalCode: "", shippingDestinationId: "" }));
               }}
               onDistrictChange={(id, name) => {
-                setForm((prev) => ({ ...prev, districtId: id, district: name }));
-                setErrors((prev) => { const next = { ...prev }; delete next.district; return next; });
+                setForm((prev) => ({ ...prev, districtId: id, district: name, postalCode: "", shippingDestinationId: "", shippingDestinationLabel: "" }));
+                setErrors((prev) => ({ ...prev, district: "", postalCode: "", shippingDestinationId: "" }));
               }}
               provinceError={errors.province}
               cityError={errors.city}
               districtError={errors.district}
               required
-              showDistrict={false}
+              showDistrict
             />
 
-            <Input
-              id="postalCode"
-              label="Kode Pos"
-              placeholder="12345"
-              value={form.postalCode}
-              onChange={(e) => update("postalCode", e.target.value.replace(/\D/g, '').slice(0, 5))}
-              error={errors.postalCode}
-              maxLength={5}
+            <ShippingDestinationSelect
+              city={form.city}
+              province={form.province}
+              district={form.district}
+              value={form.shippingDestinationId}
+              valueLabel={form.shippingDestinationLabel}
               required
+              onChange={(destination) => {
+                setForm((prev) => ({ ...prev, postalCode: destination?.zipCode || "", shippingDestinationId: destination ? String(destination.id) : "", shippingDestinationLabel: destination?.label || "" }));
+                setErrors((prev) => ({ ...prev, postalCode: "", shippingDestinationId: "" }));
+              }}
             />
+            {errors.shippingDestinationId && <p className="-mt-3 text-xs text-red-600">{errors.shippingDestinationId}</p>}
 
             <div>
               <Input

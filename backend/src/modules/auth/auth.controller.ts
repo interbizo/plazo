@@ -259,7 +259,7 @@ export class AuthController {
     @Res({ passthrough: true }) res?: Response,
     @Query("returnUrl") returnUrl?: string,
   ) {
-    const result = await this.googleAuthService.authenticateWithGoogle(dto.idToken, dto.role);
+    const result = await this.googleAuthService.authenticateWithGoogle(dto.idToken);
     
     // Set cookies for SSO
     if (res) {

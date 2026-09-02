@@ -420,6 +420,7 @@ export class SubscriptionService implements OnModuleInit {
           usedPosts: tenant.usedPosts,
           postsRemaining: Math.max(0, tenant.postsLimit - tenant.usedPosts),
           subscriptionExpiresAt: tenant.subscriptionExpiresAt,
+          referralCodeUsed: tenant.referralCodeUsed,
         },
         features, // ✅ Return all features including canBoostListing
         subscription: tenant.subscription,
@@ -1088,7 +1089,7 @@ export class SubscriptionService implements OnModuleInit {
       sellerUserId: userId,
       tenantId: tenant.id,
       tenantCity: tenant.city,
-      referralCode: dto.referralCode,
+      referralCode: dto.referralCode || tenant.referralCodeUsed,
     });
 
     // Create payment record

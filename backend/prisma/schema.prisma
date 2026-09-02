@@ -460,6 +460,7 @@ model Tenant {
   address             String? @db.Text // Alamat fisik toko (opsional)
   city                String? // Kota toko, e.g. "Jakarta", "Bandung"
   province            String? // Provinsi toko
+  postalCode          String?
   shippingOriginId    String?
   shippingOriginLabel String?
   shippingCourierCode String? // Kurir utama toko, mis. jne atau sicepat

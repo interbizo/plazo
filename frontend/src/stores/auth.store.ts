@@ -19,11 +19,14 @@ interface RegisterData {
   password: string;
   firstName: string;
   lastName: string;
-  role: "BUYER" | "SELLER";
   turnstileToken: string;
-  storeName?: string;
-  storeSubdomain?: string;
-  storeCity?: string;
+  address?: string;
+  city?: string;
+  province?: string;
+  postalCode?: string;
+  whatsappNumber?: string;
+  shippingDestinationId?: string;
+  shippingDestinationLabel?: string;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({

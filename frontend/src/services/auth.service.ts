@@ -20,12 +20,29 @@ export const authApi = {
     password: string;
     firstName: string;
     lastName: string;
-    role: "BUYER" | "SELLER";
     phone?: string;
-    storeName?: string;
-    storeSubdomain?: string;
-    storeCity?: string;
+    address?: string;
+    city?: string;
+    province?: string;
+    postalCode?: string;
+    whatsappNumber?: string;
+    shippingDestinationId?: string;
+    shippingDestinationLabel?: string;
+    turnstileToken?: string;
   }) => api.post<RegisterResponse>("/api/auth/register", data),
+
+  createTenant: (data: {
+    name: string;
+    subdomain: string;
+    address: string;
+    province: string;
+    city: string;
+    postalCode: string;
+    shippingOriginId: string;
+    shippingOriginLabel: string;
+    referralCode?: string;
+  }) =>
+    api.post("/api/auth/tenant/create", data),
 
   me: () => api.get<ProfileResponse>("/api/auth/profile"),
 

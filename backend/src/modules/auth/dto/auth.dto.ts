@@ -4,7 +4,6 @@ import {
   MinLength,
   MaxLength,
   IsOptional,
-  IsIn,
 } from "class-validator";
 
 export class RegisterDto {
@@ -28,10 +27,6 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   phone?: string;
-
-  @IsOptional()
-  @IsIn(["BUYER", "SELLER"])
-  role?: string;
 
   // Address fields (optional for all users)
   @IsOptional()
@@ -64,29 +59,15 @@ export class RegisterDto {
   @MaxLength(20)
   whatsappNumber?: string;
 
-  // Store data for SELLER registration
-
   @IsOptional()
   @IsString()
-  @MinLength(2)
-  @MaxLength(100)
-  storeName?: string;
-
-  @IsOptional()
-  @IsString()
-  @MinLength(3)
   @MaxLength(50)
-  storeSubdomain?: string;
+  shippingDestinationId?: string;
 
   @IsOptional()
   @IsString()
-  storeCity?: string;
-
-  // Referral code (optional)
-  @IsOptional()
-  @IsString()
-  @MaxLength(20)
-  referralCode?: string;
+  @MaxLength(255)
+  shippingDestinationLabel?: string;
 
   // Turnstile token
   @IsString()
@@ -120,6 +101,39 @@ export class CreateTenantDto {
   @MinLength(2)
   @MaxLength(100)
   name: string;
+
+  @IsString()
+  @MinLength(2)
+  @MaxLength(100)
+  city: string;
+
+  @IsString()
+  @MinLength(2)
+  @MaxLength(100)
+  province: string;
+
+  @IsString()
+  @MinLength(10)
+  @MaxLength(500)
+  address: string;
+
+  @IsString()
+  @MinLength(5)
+  @MaxLength(10)
+  postalCode: string;
+
+  @IsString()
+  @MaxLength(50)
+  shippingOriginId: string;
+
+  @IsString()
+  @MaxLength(255)
+  shippingOriginLabel: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  referralCode?: string;
 
   @IsOptional()
   @IsString()
@@ -260,10 +274,6 @@ export class GoogleAuthDto {
   @IsString()
   @MinLength(10)
   idToken: string;
-
-  @IsOptional()
-  @IsIn(["BUYER", "SELLER"])
-  role?: string;
 
   @IsOptional()
   @IsString()

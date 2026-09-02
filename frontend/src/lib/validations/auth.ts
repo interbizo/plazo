@@ -44,29 +44,6 @@ export const registerSchema = z.object({
       'Format nomor telepon tidak valid (contoh: 081234567890)'
     ),
   
-  role: z
-    .enum(['BUYER', 'SELLER'], {
-      errorMap: () => ({ message: 'Role harus BUYER atau SELLER' }),
-    })
-    .optional(),
-  
-  // Seller-specific fields
-  storeName: z
-    .string()
-    .min(2, 'Nama toko minimal 2 karakter')
-    .max(100, 'Nama toko maksimal 100 karakter')
-    .optional(),
-  
-  storeSubdomain: z
-    .string()
-    .min(3, 'Subdomain minimal 3 karakter')
-    .max(50, 'Subdomain maksimal 50 karakter')
-    .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/, 'Subdomain hanya boleh huruf kecil, angka, dan dash')
-    .optional(),
-  
-  storeCity: z
-    .string()
-    .optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'Password dan konfirmasi password tidak cocok',
   path: ['confirmPassword'],
@@ -205,6 +182,10 @@ export const createTenantSchema = z.object({
     .string()
     .min(2, 'Nama toko minimal 2 karakter')
     .max(100, 'Nama toko maksimal 100 karakter'),
+  city: z
+    .string()
+    .min(2, 'Kota toko minimal 2 karakter')
+    .max(100, 'Kota toko maksimal 100 karakter'),
   
   description: z
     .string()

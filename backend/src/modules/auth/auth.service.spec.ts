@@ -8,6 +8,7 @@ import { AuthService } from './auth.service';
 import { PrismaService } from '../database/prisma.service';
 import { EmailService } from '../email/email.service';
 import { PasswordHelper } from '../../common/utils/password.helper';
+import { UserRole } from '@prisma/client';
 
 // ---------------------------------------------------------------------------
 // Mock PasswordHelper so we never touch bcrypt in unit tests
@@ -137,6 +138,9 @@ describe('AuthService', () => {
       prisma as unknown as PrismaService,
       jwt as unknown as JwtService,
       email as unknown as EmailService,
+      {} as any,
+      {} as any,
+      {} as any,
     );
 
     jest.useRealTimers();
@@ -151,7 +155,7 @@ describe('AuthService', () => {
       firstName: 'Jane',
       lastName: 'Doe',
       password: STRONG_PASSWORD,
-      role: 'BUYER' as const,
+      whatsappNumber: '081234567890',
     };
 
     it('should register a new user successfully', async () => {
@@ -166,7 +170,7 @@ describe('AuthService', () => {
 
       const result = await service.register(registerDto);
 
-      expect(result.message).toBe('Registration successful');
+      expect(result.message).toContain('Registrasi berhasil');
       expect(result.user.email).toBe(registerDto.email);
       expect(prisma.user.findUnique).toHaveBeenCalledWith({
         where: { email: registerDto.email },
@@ -201,27 +205,20 @@ describe('AuthService', () => {
       expect(prisma.user.create).not.toHaveBeenCalled();
     });
 
-    it('should auto-create tenant and seller profile for SELLER role', async () => {
+    it('should always register a public account as BUYER', async () => {
       prisma.user.findUnique.mockResolvedValue(null);
       prisma.user.create.mockResolvedValue({
         ...mockUser,
-        id: 'seller-id',
-        role: 'SELLER',
-      });
-      prisma.tenant.findUnique.mockResolvedValue(null);
-      prisma.tenant.create.mockResolvedValue({ id: 'tenant-1' });
-      prisma.sellerProfile.create.mockResolvedValue({ id: 'sp-1' });
-
-      await service.register({
-        ...registerDto,
-        role: 'SELLER',
-        storeName: 'Seller Store',
-        storeSubdomain: 'seller-store',
-        storeCity: 'Jakarta',
+        id: 'buyer-id',
+        role: 'BUYER',
       });
 
-      expect(prisma.tenant.create).toHaveBeenCalledTimes(1);
-      expect(prisma.sellerProfile.create).toHaveBeenCalledTimes(1);
+      await service.register(registerDto);
+
+      expect(prisma.user.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ role: UserRole.BUYER }),
+      }));
+      expect(prisma.tenant.create).not.toHaveBeenCalled();
     });
   });
 

@@ -190,6 +190,7 @@ export const createTenantSchema = z.object({
       "Subdomain hanya boleh huruf kecil, angka, dan tanda hubung",
     ),
   name: z.string().min(1, "Nama toko wajib diisi").max(100, "Nama toko maksimal 100 karakter"),
+  city: z.string().min(2, "Kota toko minimal 2 karakter").max(100, "Kota toko maksimal 100 karakter"),
   description: z.string().max(500, "Deskripsi maksimal 500 karakter").optional(),
 });
 

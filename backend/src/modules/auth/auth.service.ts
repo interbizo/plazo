@@ -23,6 +23,7 @@ import * as crypto from "crypto";
 import { EmailService } from "@modules/email/email.service";
 import { OTPService } from "@common/services/otp.service";
 import { EmailVerificationService } from "@common/services/email-verification.service";
+import { TenantsService } from "@modules/tenants/tenants.service";
 
 // Max failed login attempts before temporary lockout
 const MAX_LOGIN_ATTEMPTS = 5;
@@ -63,6 +64,7 @@ export class AuthService {
     private emailService: EmailService,
     private otpService: OTPService,
     private emailVerificationService: EmailVerificationService,
+    private tenantsService: TenantsService,
   ) {
     // Cleanup expired refresh tokens every hour
     setInterval(() => this.cleanupExpiredTokens(), 60 * 60 * 1000);
@@ -157,9 +159,9 @@ export class AuthService {
    */
   async register(registerDto: RegisterDto) {
     const { 
-      email, firstName, lastName, password, phone, role, 
+      email, firstName, lastName, password, phone,
       address, city, province, postalCode, whatsappNumber,
-      storeName, storeSubdomain, storeCity, referralCode 
+      shippingDestinationId, shippingDestinationLabel,
     } = registerDto;
 
     // Check email already exists
@@ -187,8 +189,7 @@ export class AuthService {
     // Generate verification token
     const verificationToken = crypto.randomBytes(32).toString("hex");
 
-    // Determine user role (only BUYER or SELLER allowed)
-    const userRole = role === "SELLER" ? UserRole.SELLER : UserRole.BUYER;
+    const userRole = UserRole.BUYER;
 
     // Determine phone number to use (prefer whatsappNumber, fallback to phone)
     const phoneNumber = whatsappNumber || phone;
@@ -231,94 +232,10 @@ export class AuthService {
         ...(city && { city }),
         ...(province && { province }),
         ...(postalCode && { postalCode }),
+        ...(shippingDestinationId && { shippingDestinationId }),
+        ...(shippingDestinationLabel && { shippingDestinationLabel }),
       },
     });
-
-    // If registering as SELLER, auto-create Tenant + SellerProfile
-    if (userRole === UserRole.SELLER) {
-      // Validate store data for seller
-      if (!storeName || !storeSubdomain || !storeCity) {
-        // Rollback user creation
-        await this.prisma.user.delete({ where: { id: user.id } });
-        throw new BadRequestException(
-          "Nama toko, subdomain, dan kota wajib diisi untuk registrasi seller"
-        );
-      }
-
-      // Validate subdomain format
-      const RESERVED = [
-        "www", "api", "admin", "app", "mail", "smtp", "ftp", "dashboard",
-        "panel", "support", "help", "billing", "auth", "login", "register",
-        "static", "assets", "cdn", "media", "upload", "uploads", "public",
-      ];
-      const cleanSub = storeSubdomain.toLowerCase().trim();
-      
-      if (cleanSub.length < 3 || cleanSub.length > 30) {
-        await this.prisma.user.delete({ where: { id: user.id } });
-        throw new BadRequestException("Subdomain harus 3-30 karakter");
-      }
-      
-      if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(cleanSub)) {
-        await this.prisma.user.delete({ where: { id: user.id } });
-        throw new BadRequestException(
-          "Subdomain hanya boleh mengandung huruf kecil, angka, dan tanda hubung"
-        );
-      }
-      
-      if (RESERVED.includes(cleanSub)) {
-        await this.prisma.user.delete({ where: { id: user.id } });
-        throw new BadRequestException(`"${cleanSub}" adalah subdomain yang sudah direservasi`);
-      }
-
-      // Check if subdomain already exists
-      const existingTenant = await this.prisma.tenant.findUnique({
-        where: { subdomain: cleanSub },
-      });
-
-      if (existingTenant) {
-        await this.prisma.user.delete({ where: { id: user.id } });
-        throw new ConflictException("Subdomain sudah digunakan, silakan pilih yang lain");
-      }
-
-      // Create tenant with store data
-      const tenantData: any = {
-        subdomain: cleanSub,
-        name: storeName,
-        city: storeCity,
-        ownerId: user.id,
-        subscriptionPlan: "FREE",
-        sellerTier: "FREE",
-      };
-
-      // Save referral code if provided
-      if (referralCode) {
-        const cleanReferralCode = referralCode.trim().toUpperCase();
-        // Verify referral code exists
-        const affiliateProfile = await this.prisma.affiliateProfile.findUnique({
-          where: { referralCode: cleanReferralCode },
-        });
-        
-        if (affiliateProfile) {
-          tenantData.referralCodeUsed = cleanReferralCode;
-          tenantData.referredBy = affiliateProfile.userId;
-          this.logger.log(`Referral code ${cleanReferralCode} applied for tenant ${cleanSub}`);
-        } else {
-          this.logger.warn(`Invalid referral code ${cleanReferralCode} provided during registration`);
-        }
-      }
-
-      await this.prisma.tenant.create({
-        data: tenantData,
-      });
-
-      await this.prisma.sellerProfile.create({
-        data: { userId: user.id },
-      });
-
-      this.logger.log(
-        `Seller tenant created: ${cleanSub} (${storeName}) in ${storeCity} for user ${user.id}`,
-      );
-    }
 
     // Don't send verification automatically - let user choose method first
     this.logger.log(`User registered: ${email} as ${userRole}. Waiting for user to choose verification method.`);
@@ -792,117 +709,8 @@ export class AuthService {
     };
   }
 
-  /**
-   * Create Tenant for Seller
-   */
   async createTenant(userId: string, createTenantDto: CreateTenantDto) {
-    const { subdomain, name, description } = createTenantDto;
-
-    // Validate subdomain
-    const RESERVED = [
-      "www",
-      "api",
-      "admin",
-      "app",
-      "mail",
-      "smtp",
-      "ftp",
-      "dashboard",
-      "panel",
-      "support",
-      "help",
-      "billing",
-      "auth",
-      "login",
-      "register",
-      "static",
-      "assets",
-      "cdn",
-      "media",
-      "upload",
-      "uploads",
-      "public",
-    ];
-    const cleanSub = subdomain.toLowerCase().trim();
-    if (cleanSub.length < 3 || cleanSub.length > 30) {
-      throw new BadRequestException("Subdomain must be 3-30 characters");
-    }
-    if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(cleanSub)) {
-      throw new BadRequestException(
-        "Subdomain can only contain lowercase letters, numbers, and hyphens",
-      );
-    }
-    if (RESERVED.includes(cleanSub)) {
-      throw new BadRequestException(`"${cleanSub}" is a reserved subdomain`);
-    }
-
-    // Check if user exists and is active
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!user || !user.isActive) {
-      throw new BadRequestException("User not found or inactive");
-    }
-
-    // Check if subdomain already exists
-    const existingTenant = await this.prisma.tenant.findUnique({
-      where: { subdomain: cleanSub },
-    });
-
-    if (existingTenant) {
-      throw new ConflictException("Subdomain already taken");
-    }
-
-    // Check if user already has a tenant (sellers can only have 1 for now)
-    const userTenant = await this.prisma.tenant.findFirst({
-      where: { ownerId: userId },
-    });
-
-    if (userTenant) {
-      throw new BadRequestException("User already has a tenant");
-    }
-
-    // Create tenant
-    const tenant = await this.prisma.tenant.create({
-      data: {
-        subdomain: cleanSub,
-        name,
-        description: description || null,
-        ownerId: userId,
-      },
-    });
-
-    // Update user role to SELLER if not already
-    if (user.role === UserRole.BUYER) {
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: { role: UserRole.SELLER },
-      });
-    }
-
-    // Create seller profile if doesn't exist
-    const existingProfile = await this.prisma.sellerProfile.findUnique({
-      where: { userId },
-    });
-
-    if (!existingProfile) {
-      await this.prisma.sellerProfile.create({
-        data: { userId },
-      });
-    }
-
-    this.logger.log(`Tenant created: ${subdomain} for user ${userId}`);
-
-    return {
-      message: "Tenant created successfully",
-      tenant: {
-        id: tenant.id,
-        subdomain: tenant.subdomain,
-        name: tenant.name,
-        createdAt: tenant.createdAt,
-      },
-    };
+    return this.tenantsService.createTenant(userId, createTenantDto);
   }
 
   /**
