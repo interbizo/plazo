@@ -1149,6 +1149,9 @@ export class AdminService {
       ...(dto.metaDescription !== undefined
         ? { metaDescription: dto.metaDescription }
         : {}),
+      ...(dto.metaKeywords !== undefined
+        ? { metaKeywords: dto.metaKeywords }
+        : {}),
       productType: dto.productType || "PHYSICAL",
       isDigital: dto.isDigital || false,
       hasVariants: dto.hasVariants || false,
@@ -1507,6 +1510,9 @@ export class AdminService {
       ...(dto.metaTitle !== undefined ? { metaTitle: dto.metaTitle } : {}),
       ...(dto.metaDescription !== undefined
         ? { metaDescription: dto.metaDescription }
+        : {}),
+      ...(dto.metaKeywords !== undefined
+        ? { metaKeywords: dto.metaKeywords }
         : {}),
       isPublished: dto.isPublished ?? true,
       publishToMarketplace: dto.publishToMarketplace ?? true,

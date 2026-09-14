@@ -88,5 +88,6 @@ kebenaran.
 
 - **Jangan menjalankan `git push` secara otomatis.** Biarkan user yang push
   ke GitHub secara manual setelah review perubahan.
-- Tugas agent hanya sampai membuat perubahan kode dan commit lokal.
+- **Jangan membuat commit secara otomatis.** Buat commit lokal hanya jika user
+  meminta commit secara eksplisit.
 - User akan push sendiri dan memicu GitHub Actions untuk deploy ke VPS.

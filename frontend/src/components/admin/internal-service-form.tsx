@@ -50,6 +50,7 @@ interface InternalServiceResponse {
   tags?: string[] | null;
   metaTitle?: string | null;
   metaDescription?: string | null;
+  metaKeywords?: string | null;
   isPublished?: boolean | null;
   publishToMarketplace?: boolean | null;
   gallery?: string[] | null;
@@ -184,7 +185,7 @@ export function InternalServiceForm({
             categoryId: mainCategoryId,
             subcategoryId: subCategoryId,
             tags: Array.isArray(service.tags) ? service.tags.join(", ") : "",
-            metaKeywords: (service as any).metaKeywords || "",
+            metaKeywords: service.metaKeywords || "",
             metaTitle: service.metaTitle || "",
             metaDescription: service.metaDescription || "",
             isPublished: service.isPublished ?? true,
@@ -370,11 +371,11 @@ export function InternalServiceForm({
         tags: form.tags
           ? form.tags.split(",").map((tag) => tag.trim()).filter(Boolean)
           : [],
-        metaKeywords: form.metaKeywords || undefined,
+        metaKeywords: form.metaKeywords.trim() || null,
         isPublished: form.isPublished,
         publishToMarketplace: form.publishToMarketplace,
-        metaTitle: form.metaTitle.trim() || undefined,
-        metaDescription: form.metaDescription.trim() || undefined,
+        metaTitle: form.metaTitle.trim() || null,
+        metaDescription: form.metaDescription.trim() || null,
         thumbnail: allImages[0] || undefined,
         gallery: allImages,
         faq: faqs.filter((faq) => faq.question.trim() && faq.answer.trim()),
@@ -443,7 +444,7 @@ export function InternalServiceForm({
       </div>
 
       <form onSubmit={handleSubmit} className="max-w-4xl space-y-5">
-        <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
+        <div className="space-y-4 rounded-xl border border-gray-200 bg-white p-5">
           <h2 className="text-sm font-semibold text-gray-900">Informasi Dasar</h2>
 
           <Input
@@ -532,14 +533,6 @@ export function InternalServiceForm({
             value={form.tags}
             onChange={(e) => setForm((prev) => ({ ...prev, tags: e.target.value }))}
             placeholder="branding, desain, konsultasi"
-          />
-
-          <Input
-            label="Keywords SEO"
-            value={form.metaKeywords}
-            onChange={(e) => setForm((prev) => ({ ...prev, metaKeywords: e.target.value }))}
-            placeholder="jasa desain, branding profesional, konsultasi bisnis"
-            helperText="Kata kunci untuk membantu SEO (pisahkan dengan koma)"
           />
 
           <div className="space-y-3">
@@ -877,6 +870,7 @@ export function InternalServiceForm({
             onChange={(e) =>
               setForm((prev) => ({ ...prev, metaTitle: e.target.value }))
             }
+            placeholder="Jika dikosongkan, diambil dari nama layanan"
             maxLength={60}
           />
           <div>
@@ -885,13 +879,21 @@ export function InternalServiceForm({
             </label>
             <textarea
               value={form.metaDescription}
+              maxLength={160}
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, metaDescription: e.target.value }))
               }
               rows={3}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+              placeholder="Jika dikosongkan, diambil dari deskripsi layanan"
             />
           </div>
+          <Input
+            label="Meta Keywords"
+            value={form.metaKeywords}
+            onChange={(e) => setForm((prev) => ({ ...prev, metaKeywords: e.target.value }))}
+            placeholder="Jika dikosongkan, diambil dari tags layanan"
+          />
         </div>
 
         <div className="flex items-center gap-3 pt-2">

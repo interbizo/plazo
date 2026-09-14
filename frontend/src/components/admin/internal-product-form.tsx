@@ -72,6 +72,8 @@ export function InternalProductForm({
     categoryId: "",
     subcategoryId: "",
     tags: "",
+    metaTitle: "",
+    metaDescription: "",
     metaKeywords: "",
     isPublished: true,
     publishToMarketplace: true,
@@ -150,7 +152,9 @@ export function InternalProductForm({
             categoryId: mainCategoryId,
             subcategoryId: subCategoryId,
             tags: Array.isArray(product.tags) ? product.tags.join(", ") : "",
-            metaKeywords: (product as any).metaKeywords || "",
+            metaTitle: product.metaTitle || "",
+            metaDescription: product.metaDescription || "",
+            metaKeywords: product.metaKeywords || "",
             isPublished: product.isPublished ?? true,
             publishToMarketplace: product.publishToMarketplace ?? true,
           });
@@ -337,7 +341,9 @@ export function InternalProductForm({
         tags: form.tags
           ? form.tags.split(",").map((tag) => tag.trim()).filter(Boolean)
           : [],
-        metaKeywords: form.metaKeywords || undefined,
+        metaTitle: form.metaTitle.trim() || null,
+        metaDescription: form.metaDescription.trim() || null,
+        metaKeywords: form.metaKeywords.trim() || null,
         isPublished: form.isPublished,
         publishToMarketplace: form.publishToMarketplace,
         productType,
@@ -631,14 +637,6 @@ export function InternalProductForm({
             placeholder="template, website, umkm"
           />
 
-          <Input
-            label="Keywords SEO"
-            value={form.metaKeywords}
-            onChange={(e) => setForm((prev) => ({ ...prev, metaKeywords: e.target.value }))}
-            placeholder="produk digital, template website, umkm"
-            helperText="Kata kunci untuk membantu SEO (pisahkan dengan koma)"
-          />
-
           <div className="space-y-3">
             <label className="flex items-center gap-3 text-sm text-gray-700">
               <input
@@ -666,6 +664,36 @@ export function InternalProductForm({
               Tampilkan di marketplace utama
             </label>
           </div>
+        </div>
+
+        <div className="space-y-4 rounded-xl border border-gray-200 bg-white p-5">
+          <h2 className="text-sm font-semibold text-gray-900">SEO</h2>
+          <Input
+            label="Meta Title"
+            value={form.metaTitle}
+            maxLength={60}
+            onChange={(e) => setForm((prev) => ({ ...prev, metaTitle: e.target.value }))}
+            placeholder="Jika dikosongkan, diambil dari nama produk"
+          />
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Meta Description
+            </label>
+            <textarea
+              value={form.metaDescription}
+              maxLength={160}
+              onChange={(e) => setForm((prev) => ({ ...prev, metaDescription: e.target.value }))}
+              rows={3}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+              placeholder="Jika dikosongkan, diambil dari deskripsi produk"
+            />
+          </div>
+          <Input
+            label="Meta Keywords"
+            value={form.metaKeywords}
+            onChange={(e) => setForm((prev) => ({ ...prev, metaKeywords: e.target.value }))}
+            placeholder="Jika dikosongkan, diambil dari tags produk"
+          />
         </div>
 
         {productType === "PHYSICAL" && (
