@@ -1127,6 +1127,8 @@ export class SubscriptionService implements OnModuleInit {
             type: "SUBSCRIPTION_PAYMENT_PENDING",
             title: "Pembayaran Langganan Baru",
             message: `${tenant.name} mengajukan pembayaran langganan ${planConfig.name} sebesar Rp ${dto.amount.toLocaleString("id-ID")}`,
+            referenceId: payment.id,
+            referenceType: "subscription_payment",
             metadata: {
               paymentId: payment.id,
               tenantId: tenant.id,
@@ -1369,6 +1371,8 @@ export class SubscriptionService implements OnModuleInit {
             type: "AFFILIATE_CLAIM_PENDING",
             title: "Klaim Bonus Affiliate Baru",
             message: `${tenant.name} mengajukan klaim bonus affiliate sebesar Rp ${amount.toLocaleString("id-ID")}.`,
+            referenceId: claim.id,
+            referenceType: "affiliate_claim",
             metadata: {
               claimId: claim.id,
               affiliateUserId: userId,
@@ -1760,6 +1764,8 @@ export class SubscriptionService implements OnModuleInit {
             type: "AFFILIATE_BONUS_PENDING",
             title: "Bonus Affiliate Baru",
             message: `Seller referral ${payment.tenant.name} berhasil berlangganan. Bonus Anda menunggu klaim.`,
+            referenceId: payment.id,
+            referenceType: "affiliate_bonus",
             metadata: {
               tenantId: payment.tenantId,
               paymentId: payment.id,
@@ -1778,6 +1784,8 @@ export class SubscriptionService implements OnModuleInit {
           type: "SUBSCRIPTION_ACTIVATED",
           title: "Langganan Diaktifkan",
           message: `Pembayaran langganan ${payment.planName} Anda telah disetujui. Langganan aktif hingga ${renewalDate.toLocaleDateString("id-ID")}.`,
+          referenceId: payment.id,
+          referenceType: "subscription_payment",
           metadata: {
             paymentId: payment.id,
             plan: payment.plan,
@@ -1826,6 +1834,8 @@ export class SubscriptionService implements OnModuleInit {
               type: "SUBSCRIPTION_UPGRADED",
               title: "Upgrade Langganan Berhasil",
               message: `${payment.tenant.name} berhasil upgrade ke ${payment.planName} (Rp ${payment.amount.toLocaleString("id-ID")})`,
+              referenceId: payment.id,
+              referenceType: "subscription_payment",
               metadata: {
                 paymentId: payment.id,
                 tenantId: payment.tenantId,
@@ -1865,6 +1875,8 @@ export class SubscriptionService implements OnModuleInit {
           type: "SUBSCRIPTION_REJECTED",
           title: "Pembayaran Ditolak",
           message: `Pembayaran langganan ${payment.planName} Anda ditolak. ${dto.rejectionReason || "Silakan hubungi admin untuk informasi lebih lanjut."}`,
+          referenceId: payment.id,
+          referenceType: "subscription_payment",
           metadata: {
             paymentId: payment.id,
             plan: payment.plan,
@@ -2224,6 +2236,8 @@ export class SubscriptionService implements OnModuleInit {
             : dto.status === "APPROVED"
               ? `Klaim bonus affiliate Anda sebesar Rp ${claim.amount.toLocaleString("id-ID")} telah disetujui admin dan akan segera diproses.`
               : `Klaim bonus affiliate Anda ditolak. ${dto.rejectionReason || ""}`.trim(),
+        referenceId: claim.id,
+        referenceType: "affiliate_claim",
         metadata: {
           claimId: claim.id,
           amount: claim.amount,

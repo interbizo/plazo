@@ -172,7 +172,11 @@ export function getNotificationRoute(
   const type = normalizeNotificationType(notif.type);
   const referenceType = normalizeReferenceType(notif.referenceType);
   const referenceId = notif.referenceId || undefined;
+  // Beberapa notifikasi menyimpan ID penting di metadata, jadi kita baca dari sana juga.
   const roomId = getMetadataString(notif, "roomId");
+  const metadataPaymentId = getMetadataString(notif, "paymentId");
+  const verificationId = getMetadataString(notif, "verificationId");
+  const claimId = getMetadataString(notif, "claimId");
 
   switch (referenceType) {
     case "chat":
@@ -201,11 +205,20 @@ export function getNotificationRoute(
           ? "/admin/jobs"
           : "/dashboard/jobs";
     case "order":
+      if (type === "REVIEW") {
+        return isAdminRole(role) ? "/admin/reviews" : `${base}/reviews`;
+      }
       return getChatRoute(role);
     case "subscription_payment":
       return isAdminRole(role)
         ? appendQuery("/admin/subscription-payments", "paymentId", referenceId)
         : "/seller/dashboard/subscription";
+    case "account_appeal":
+      return isAdminRole(role)
+        ? appendQuery("/admin/appeals", "appealId", referenceId)
+        : "/account-suspended";
+    case "custom_offer":
+      return getChatRoute(role, roomId);
     case "user":
       if (type === "KYC") {
         return isAdminRole(role)
@@ -213,6 +226,14 @@ export function getNotificationRoute(
           : role === "SELLER"
             ? "/seller/dashboard/verification"
             : "/dashboard/kyc";
+      }
+      if (type === "SUBSCRIPTION" || type.startsWith("SUBSCRIPTION.")) {
+        return isAdminRole(role)
+          ? "/admin/subscriptions"
+          : "/seller/dashboard/subscription";
+      }
+      if ((type === "SECURITY" || type === "ALERT") && isAdminRole(role)) {
+        return "/admin/audit-logs";
       }
       return isAdminRole(role)
         ? appendQuery("/admin/users", "userId", referenceId)
@@ -237,6 +258,12 @@ export function getNotificationRoute(
       return isAdminRole(role)
         ? appendQuery("/admin/affiliates", "claimId", referenceId)
         : "/seller/dashboard/affiliate";
+    case "affiliate_bonus":
+      return isAdminRole(role)
+        ? "/admin/affiliates"
+        : "/seller/dashboard/affiliate";
+    case "broadcast":
+      return getFallbackRoute(role);
     case "withdrawal":
       if (role === "SELLER") return "/seller/dashboard";
       if (isAdminRole(role)) return "/admin";
@@ -246,8 +273,7 @@ export function getNotificationRoute(
       if (role === "SELLER") return "/seller/dashboard/promotions";
       return getFallbackRoute(role);
     case "dispute":
-      if (isAdminRole(role)) return "/admin/chat";
-      return getFallbackRoute(role);
+      return getChatRoute(role);
     case "security":
       if (isAdminRole(role)) return "/admin/audit-logs";
       return getFallbackRoute(role);
@@ -255,6 +281,38 @@ export function getNotificationRoute(
 
   if (type === "CHAT") {
     return getChatRoute(role, roomId || referenceId);
+  }
+
+  // Subscription payment notifications created by the legacy payment flow
+  // stored the payment id in metadata instead of referenceId. Keep those
+  // existing notifications actionable while new records use references.
+  if (
+    type.startsWith("SUBSCRIPTION_") &&
+    (referenceType === "" || referenceType === "subscription_payment")
+  ) {
+    return isAdminRole(role)
+      ? appendQuery(
+          "/admin/subscription-payments",
+          "paymentId",
+          referenceId || metadataPaymentId,
+        )
+      : "/seller/dashboard/subscription";
+  }
+
+  if (type.startsWith("PHYSICAL_VERIFICATION_") && referenceType === "") {
+    return isAdminRole(role)
+      ? appendQuery(
+          "/admin/physical-verifications",
+          "verificationId",
+          verificationId,
+        )
+      : "/seller/dashboard/physical-verification";
+  }
+
+  if (type.startsWith("AFFILIATE_") && referenceType === "") {
+    return isAdminRole(role)
+      ? appendQuery("/admin/affiliates", "claimId", claimId)
+      : "/seller/dashboard/affiliate";
   }
 
   if (!referenceId) {

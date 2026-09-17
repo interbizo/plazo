@@ -167,6 +167,8 @@ export class PhysicalVerificationService {
             type: "PHYSICAL_VERIFICATION_REQUEST",
             title: "Pengajuan Verifikasi Fisik Baru",
             message: `${tenant.name} mengajukan verifikasi fisik untuk toko mereka`,
+            referenceId: verification.id,
+            referenceType: "physical_verification",
             metadata: {
               verificationId: verification.id,
               tenantId: tenant.id,
@@ -347,6 +349,8 @@ export class PhysicalVerificationService {
         type: "PHYSICAL_VERIFICATION_SCHEDULED",
         title: "Kunjungan Verifikasi Dijadwalkan",
         message: `Kunjungan verifikasi fisik untuk toko Anda dijadwalkan pada ${new Date(dto.scheduledDate).toLocaleDateString("id-ID")}`,
+        referenceId: id,
+        referenceType: "physical_verification",
         metadata: {
           verificationId: id,
           scheduledDate: dto.scheduledDate,
@@ -438,6 +442,8 @@ export class PhysicalVerificationService {
         type: "PHYSICAL_VERIFICATION_APPROVED",
         title: "Verifikasi Fisik Disetujui",
         message: "Selamat! Toko Anda telah berhasil diverifikasi. Badge 'Verified' sekarang muncul di profil toko Anda.",
+        referenceId: id,
+        referenceType: "physical_verification",
         metadata: {
           verificationId: id,
           approvedAt: new Date().toISOString(),
@@ -486,6 +492,8 @@ export class PhysicalVerificationService {
         type: "PHYSICAL_VERIFICATION_REJECTED",
         title: "Verifikasi Fisik Ditolak",
         message: `Pengajuan verifikasi fisik Anda ditolak. Alasan: ${dto.rejectionReason}`,
+        referenceId: id,
+        referenceType: "physical_verification",
         metadata: {
           verificationId: id,
           rejectionReason: dto.rejectionReason,
@@ -533,6 +541,8 @@ export class PhysicalVerificationService {
         type: "PHYSICAL_VERIFICATION_CERTIFICATE",
         title: "Sertifikat Verifikasi Tersedia",
         message: "Sertifikat verifikasi fisik Anda sudah tersedia dan dapat didownload.",
+        referenceId: id,
+        referenceType: "physical_verification",
         metadata: {
           verificationId: id,
           certificateUrl: dto.certificateUrl,
