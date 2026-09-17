@@ -331,7 +331,7 @@ export default function CreateServicePage() {
             <CKEditor4
               value={form.description}
               onChange={(value) =>
-                setForm({ ...form, description: value })
+                setForm((prev) => ({ ...prev, description: value }))
               }
               placeholder="Tulis deskripsi layanan 800 sampai 1600 kata..."
               minHeight="400px"

@@ -567,7 +567,7 @@ export default function CreateProductPage() {
             <CKEditor4
               value={form.description}
               onChange={(value) =>
-                setForm({ ...form, description: value })
+                setForm((prev) => ({ ...prev, description: value }))
               }
               placeholder="Tulis deskripsi produk 800 sampai 1600 kata..."
               minHeight="400px"

@@ -116,7 +116,12 @@ export function CKEditor4({
   const [isClient, setIsClient] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const editorReady = useRef(false);
+  const onChangeRef = useRef(onChange);
   const isCleanPreset = preset !== "full";
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   useEffect(() => {
     let isMounted = true;
@@ -241,7 +246,7 @@ export function CKEditor4({
           // This prevents the initial load from resetting form fields
           if (!editorReady.current) return;
           const data = evt.editor.getData();
-          onChange(data);
+          onChangeRef.current(data);
         }}
         onInstanceReady={() => {
           // Mark editor as ready after a short delay to skip initial change events
