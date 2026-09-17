@@ -127,25 +127,29 @@ jobs:
             echo "3. Validasi Docker Compose..."
             docker compose config > /dev/null
 
-            echo "4. Pull image production terbaru..."
+            echo "4. Bersihkan image Docker lama yang tidak dipakai (retensi 24 jam)..."
+            docker image prune -af --filter "until=24h"
+            df -h /
+
+            echo "5. Pull image production terbaru..."
             docker compose pull backend-prod frontend-prod
 
-            echo "5. Jalankan Prisma migration production..."
+            echo "6. Jalankan Prisma migration production..."
             docker compose run --rm backend-prod \
               npx --yes prisma migrate deploy
 
-            echo "6. Recreate container production..."
+            echo "7. Recreate container production..."
             docker compose up -d \
               --force-recreate \
               backend-prod \
               frontend-prod
 
-            echo "7. Recreate Nginx..."
+            echo "8. Recreate Nginx..."
             docker compose up -d \
               --force-recreate \
               nginx
 
-            echo "8. Status container..."
+            echo "9. Status container..."
             docker compose ps
 
             echo "========================================"
@@ -263,25 +267,29 @@ jobs:
             echo "3. Validasi Docker Compose..."
             docker compose config > /dev/null
 
-            echo "4. Pull image development terbaru..."
+            echo "4. Bersihkan image Docker lama yang tidak dipakai (retensi 24 jam)..."
+            docker image prune -af --filter "until=24h"
+            df -h /
+
+            echo "5. Pull image development terbaru..."
             docker compose pull backend-dev frontend-dev
 
-            echo "5. Jalankan Prisma migration development..."
+            echo "6. Jalankan Prisma migration development..."
             docker compose run --rm backend-dev \
               npx --yes prisma migrate deploy
 
-            echo "6. Recreate container development..."
+            echo "7. Recreate container development..."
             docker compose up -d \
               --force-recreate \
               backend-dev \
               frontend-dev
 
-            echo "7. Recreate Nginx..."
+            echo "8. Recreate Nginx..."
             docker compose up -d \
               --force-recreate \
               nginx
 
-            echo "8. Status container..."
+            echo "9. Status container..."
             docker compose ps
 
             echo "========================================"
