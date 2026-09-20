@@ -260,7 +260,7 @@ export default function CreateProductPage() {
     }
 
     // Validation
-    if (!form.name || !form.price || !form.categoryId) {
+    if (!form.name.trim() || form.price === "" || !form.categoryId) {
       toast.error("Nama, harga, dan kategori wajib diisi");
       return;
     }
@@ -270,11 +270,10 @@ export default function CreateProductPage() {
       return;
     }
 
-    if (productType === 'PHYSICAL' && !hasVariants && !form.stock) {
+    if (productType === 'PHYSICAL' && !hasVariants && form.stock === "") {
       toast.error("Stok wajib diisi untuk produk fisik");
       return;
     }
-
     setIsSubmitting(true);
     try {
       const createData: any = {
@@ -328,13 +327,13 @@ export default function CreateProductPage() {
         createData.digitalDeliveryMethod = digitalData.digitalDeliveryMethod;
 
         // Validate based on delivery method
-        if (digitalData.digitalDeliveryMethod === 'FILE_DOWNLOAD' && !digitalData.digitalFileUrl) {
+        if (form.isPublished && digitalData.digitalDeliveryMethod === 'FILE_DOWNLOAD' && !digitalData.digitalFileUrl) {
           toast.error("Upload file digital terlebih dahulu");
           setIsSubmitting(false);
           return;
         }
 
-        if ((digitalData.digitalDeliveryMethod === 'EXTERNAL_LINK' ||
+        if (form.isPublished && (digitalData.digitalDeliveryMethod === 'EXTERNAL_LINK' ||
              digitalData.digitalDeliveryMethod === 'GOOGLE_DRIVE') &&
             !digitalData.externalLink) {
           toast.error("Masukkan link eksternal");
@@ -342,7 +341,7 @@ export default function CreateProductPage() {
           return;
         }
 
-        if (digitalData.digitalDeliveryMethod === 'LICENSE_KEY' && !digitalData.licenseKey) {
+        if (form.isPublished && digitalData.digitalDeliveryMethod === 'LICENSE_KEY' && !digitalData.licenseKey) {
           toast.error("Masukkan license key");
           setIsSubmitting(false);
           return;
@@ -550,17 +549,17 @@ export default function CreateProductPage() {
           </h2>
 
           <Input
-            label="Nama Produk *"
+            label="Nama Produk"
+            required
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             placeholder="Contoh: Kaos Polos Premium"
-            required
           />
 
           <div>
             <div className="mb-1 flex items-center justify-between">
               <label className="block text-sm font-medium text-gray-700">
-                Deskripsi *
+                Deskripsi {form.isPublished && <span className="text-red-500">*</span>}
               </label>
               <WordCounter text={form.description} />
             </div>
@@ -579,12 +578,12 @@ export default function CreateProductPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Harga (Rp) *"
+              label="Harga (Rp)"
+              required
               type="number"
               value={form.price}
               onChange={(e) => setForm({ ...form, price: e.target.value })}
               placeholder="50000"
-              required
             />
             <Input
               label="Harga Coret (Rp)"
@@ -599,13 +598,13 @@ export default function CreateProductPage() {
           <div className="grid grid-cols-2 gap-4">
             {productType === 'PHYSICAL' && !hasVariants && (
               <Input
-                label="Stok *"
+                label="Stok"
+                required
                 type="number"
                 value={form.stock}
                 onChange={(e) => setForm({ ...form, stock: e.target.value })}
                 helperText="Jumlah stok tersedia"
                 placeholder="100"
-                required
               />
             )}
             {productType === 'PHYSICAL' && hasVariants && (

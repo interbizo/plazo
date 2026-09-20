@@ -148,7 +148,7 @@ export function InternalProductForm({
             description: product.description || "",
             price: product.price != null ? String(product.price) : "",
             comparePrice: product.comparePrice != null ? String(product.comparePrice) : "",
-            stock: String(product.stock || ""),
+            stock: product.stock != null ? String(product.stock) : "",
             categoryId: mainCategoryId,
             subcategoryId: subCategoryId,
             tags: Array.isArray(product.tags) ? product.tags.join(", ") : "",
@@ -305,13 +305,12 @@ export function InternalProductForm({
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-
-    if (!form.name || !form.price || !form.categoryId) {
+    if (!form.name.trim() || form.price === "" || !form.categoryId) {
       toast.error("Nama, harga, dan kategori wajib diisi");
       return;
     }
 
-    if (productType === "PHYSICAL" && !hasVariants && !form.stock) {
+    if (productType === "PHYSICAL" && !hasVariants && form.stock === "") {
       toast.error("Stok wajib diisi untuk produk fisik");
       return;
     }
@@ -323,7 +322,7 @@ export function InternalProductForm({
 
     if (
       productType === "DIGITAL" &&
-      digitalData.digitalDeliveryMethod === "FILE_DOWNLOAD" &&
+      form.isPublished && digitalData.digitalDeliveryMethod === "FILE_DOWNLOAD" &&
       !digitalData.digitalFileUrl
     ) {
       toast.error("Upload file digital terlebih dahulu");
@@ -531,7 +530,7 @@ export function InternalProductForm({
           <h2 className="text-sm font-semibold text-gray-900">Informasi Produk</h2>
 
           <Input
-            label="Nama Produk *"
+            label="Nama Produk"
             value={form.name}
             onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
             placeholder="Contoh: Paket Template Website UMKM"
@@ -541,7 +540,7 @@ export function InternalProductForm({
           <div>
             <div className="mb-1 flex items-center justify-between">
               <label className="block text-sm font-medium text-gray-700">
-                Deskripsi *
+                Deskripsi {form.isPublished && <span className="text-red-500">*</span>}
               </label>
               <WordCounter text={form.description} />
             </div>
@@ -560,7 +559,7 @@ export function InternalProductForm({
 
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Harga Jual (Rp) *"
+              label="Harga Jual (Rp)"
               type="number"
               value={form.price}
               onChange={(e) => setForm((prev) => ({ ...prev, price: e.target.value }))}
@@ -597,7 +596,7 @@ export function InternalProductForm({
           <div className="grid grid-cols-2 gap-4">
             {productType === "PHYSICAL" && !hasVariants ? (
               <Input
-                label="Stok *"
+                label="Stok"
                 type="number"
                 value={form.stock}
                 onChange={(e) => setForm((prev) => ({ ...prev, stock: e.target.value }))}

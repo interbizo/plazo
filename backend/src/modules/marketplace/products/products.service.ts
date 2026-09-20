@@ -11,6 +11,7 @@ import { PaginationHelper } from "@common/utils/pagination.helper";
 import { StringHelper } from "@common/utils/string.helper";
 import { MeilisearchService } from "@modules/search/meilisearch.service";
 import { UploadService } from "@modules/upload/upload.service";
+import { assertProductPublishable } from "@common/validators/product-publish.validator";
 
 @Injectable()
 export class ProductsService {
@@ -137,6 +138,10 @@ export class ProductsService {
           },
         })),
       };
+    }
+
+    if (productData.isPublished) {
+      assertProductPublishable({ ...productData, variants: createProductDto.variants });
     }
 
     const product = await this.prisma.product.create({
@@ -381,7 +386,7 @@ export class ProductsService {
         }
       }
 
-      return tx.product.findUnique({
+      const updatedProduct = await tx.product.findUnique({
         where: { id: productId },
         include: {
           variants: {
@@ -392,6 +397,10 @@ export class ProductsService {
           },
         },
       });
+      if (updatedProduct?.isPublished) {
+        assertProductPublishable(updatedProduct);
+      }
+      return updatedProduct;
     });
 
     await this.uploadService.deleteRemovedFiles(

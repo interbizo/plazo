@@ -42,6 +42,7 @@ import { NotificationEventsService } from "../notifications/notification-events.
 import { DatabaseBackupService } from "./database-backup.service";
 import { MeilisearchService } from "@modules/search/meilisearch.service";
 import { UploadService } from "@modules/upload/upload.service";
+import { assertProductPublishable } from "@common/validators/product-publish.validator";
 import { Parser } from '@json2csv/plainjs';
 import * as ExcelJS from 'exceljs';
 import * as path from 'path';
@@ -1249,6 +1250,9 @@ export class AdminService {
       dto.slug || dto.name,
     );
     const productData = this.buildInternalProductPayload(dto, tenant, slug);
+    if (productData.isPublished) {
+      assertProductPublishable({ ...productData, variants: dto.variants });
+    }
 
     const product = await this.prisma.$transaction(async (tx) => {
       const created = await tx.product.create({
@@ -1379,7 +1383,7 @@ export class AdminService {
         }
       }
 
-      return tx.product.findUnique({
+      const updatedProduct = await tx.product.findUnique({
         where: { id: productId },
         include: {
           variants: {
@@ -1390,6 +1394,10 @@ export class AdminService {
           tenant: { select: { id: true, name: true, subdomain: true } },
         },
       });
+      if (updatedProduct?.isPublished) {
+        assertProductPublishable(updatedProduct);
+      }
+      return updatedProduct;
     });
 
     await this.uploadService.deleteRemovedFiles(
@@ -1772,8 +1780,12 @@ export class AdminService {
   ) {
     const product = await this.prisma.product.findUnique({
       where: { id: productId },
+      include: { variants: true },
     });
     if (!product) throw new NotFoundException("Product not found");
+    if (dto.isPublished) {
+      assertProductPublishable(product);
+    }
 
     const updated = await this.prisma.product.update({
       where: { id: productId },

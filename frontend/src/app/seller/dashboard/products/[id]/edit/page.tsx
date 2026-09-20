@@ -100,7 +100,7 @@ export default function EditProductPage() {
             description: product.description || "",
             price: product.price != null ? String(product.price) : "",
             comparePrice: product.comparePrice != null ? String(product.comparePrice) : "",
-            stock: String(product.stock || ""),
+            stock: product.stock != null ? String(product.stock) : "",
             weightGram: String(product.weightGram || 1000),
             categoryId: mainCategoryId,
             subcategoryId: subCategoryId,
@@ -331,7 +331,14 @@ export default function EditProductPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    if (!form.name.trim() || form.price === "" || !form.categoryId) {
+      toast.error("Nama, harga, dan kategori wajib diisi");
+      return;
+    }
+    if (productType === 'PHYSICAL' && !hasVariants && form.stock === "") {
+      toast.error("Stok wajib diisi untuk produk fisik");
+      return;
+    }
     if (isOverWordLimit(form.description)) {
       toast.error(`Deskripsi melebihi batas ${MAX_WORDS} kata. Silakan kurangi.`);
       return;
@@ -407,13 +414,13 @@ export default function EditProductPage() {
       // Validate digital product data
       if (productType === 'DIGITAL') {
         // Validate based on delivery method
-        if (digitalData.digitalDeliveryMethod === 'FILE_DOWNLOAD' && !digitalData.digitalFileUrl) {
+        if (form.isPublished && digitalData.digitalDeliveryMethod === 'FILE_DOWNLOAD' && !digitalData.digitalFileUrl) {
           toast.error("Upload file digital terlebih dahulu");
           setIsSubmitting(false);
           return;
         }
 
-        if ((digitalData.digitalDeliveryMethod === 'EXTERNAL_LINK' ||
+        if (form.isPublished && (digitalData.digitalDeliveryMethod === 'EXTERNAL_LINK' ||
              digitalData.digitalDeliveryMethod === 'GOOGLE_DRIVE') &&
             !digitalData.externalLink) {
           toast.error("Masukkan link eksternal");
@@ -421,7 +428,7 @@ export default function EditProductPage() {
           return;
         }
 
-        if (digitalData.digitalDeliveryMethod === 'LICENSE_KEY' && !digitalData.licenseKey) {
+        if (form.isPublished && digitalData.digitalDeliveryMethod === 'LICENSE_KEY' && !digitalData.licenseKey) {
           toast.error("Masukkan license key");
           setIsSubmitting(false);
           return;
@@ -635,7 +642,8 @@ export default function EditProductPage() {
           </h2>
 
           <Input
-            label="Nama Produk *"
+            label="Nama Produk"
+            required
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
           />
@@ -643,7 +651,7 @@ export default function EditProductPage() {
           <div>
             <div className="mb-1 flex items-center justify-between">
               <label className="block text-sm font-medium text-gray-700">
-                Deskripsi
+                Deskripsi {form.isPublished && <span className="text-red-500">*</span>}
               </label>
               <WordCounter text={form.description} />
             </div>
@@ -662,7 +670,8 @@ export default function EditProductPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Harga (Rp) *"
+              label="Harga (Rp)"
+              required
               type="number"
               value={form.price}
               onChange={(e) => setForm({ ...form, price: e.target.value })}
@@ -680,7 +689,8 @@ export default function EditProductPage() {
           <div className="grid grid-cols-2 gap-4">
             {productType === 'PHYSICAL' && (
               <Input
-                label="Stok *"
+                label="Stok"
+                required={!hasVariants}
                 type="number"
                 value={form.stock}
                 onChange={(e) => setForm({ ...form, stock: e.target.value })}
