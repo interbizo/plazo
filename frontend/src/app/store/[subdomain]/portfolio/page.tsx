@@ -103,7 +103,7 @@ export default function PortfolioPage() {
               <a
                 href={portfolioUrl}
                 target="_blank"
-                rel="noopener noreferrer"
+                rel="nofollow noopener noreferrer"
                 className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium"
               >
                 {portfolioUrl}
@@ -124,7 +124,7 @@ export default function PortfolioPage() {
                     key={index}
                     href={file}
                     target="_blank"
-                    rel="noopener noreferrer"
+                    rel="nofollow noopener noreferrer"
                     className="group relative aspect-[4/3] overflow-hidden rounded-lg border border-gray-200 bg-gray-100"
                   >
                     <Image

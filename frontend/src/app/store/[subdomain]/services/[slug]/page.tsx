@@ -330,7 +330,7 @@ export default function StoreServiceDetailPage() {
                 Hubungi Penjual
               </Button>
               {canShowWhatsapp && (
-                <a href={whatsappHref} target="_blank" rel="noreferrer">
+                <a href={whatsappHref} target="_blank" rel="nofollow noreferrer">
                   <Button size="lg" className="w-full bg-green-600 hover:bg-green-700">
                     <Phone className="mr-2 h-4 w-4" />
                     Checkout via WhatsApp

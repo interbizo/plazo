@@ -1396,6 +1396,7 @@ export default function SellerStoreSettingsPage() {
         {store?.subdomain && (
           <Link
             href={getSubdomainLink(store.subdomain)}
+            rel="nofollow"
             className="flex items-center gap-1 text-sm text-emerald-600 hover:text-emerald-700"
           >
             <ExternalLink className="h-3.5 w-3.5" />

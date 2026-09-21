@@ -14,6 +14,7 @@ import {
   Briefcase,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getExternalLinkRel } from "@/lib/domain";
 
 // ============================================
 // TYPES
@@ -182,7 +183,10 @@ export function StorefrontNavigation({
                       key={child.id}
                       href={childUrl}
                       target={childIsExternal ? "_blank" : undefined}
-                      rel={childIsExternal ? "noopener noreferrer" : undefined}
+                      rel={
+                        getExternalLinkRel(childUrl) ||
+                        (childIsExternal ? "nofollow noopener noreferrer" : undefined)
+                      }
                       className={cn(
                         "flex items-center gap-3 px-4 py-3 text-sm transition-all duration-200",
                         childActive
@@ -225,7 +229,10 @@ export function StorefrontNavigation({
                     key={child.id}
                     href={childUrl}
                     target={childIsExternal ? "_blank" : undefined}
-                    rel={childIsExternal ? "noopener noreferrer" : undefined}
+                    rel={
+                      getExternalLinkRel(childUrl) ||
+                      (childIsExternal ? "nofollow noopener noreferrer" : undefined)
+                    }
                     className={cn(
                       "flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-all duration-200",
                       childActive
@@ -262,7 +269,10 @@ export function StorefrontNavigation({
         key={menu.id}
         href={url}
         target={isExternal ? "_blank" : undefined}
-        rel={isExternal ? "noopener noreferrer" : undefined}
+        rel={
+          getExternalLinkRel(url) ||
+          (isExternal ? "nofollow noopener noreferrer" : undefined)
+        }
         className={baseClasses}
         style={activeStyle}
       >

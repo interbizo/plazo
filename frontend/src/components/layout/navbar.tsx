@@ -453,7 +453,7 @@ export function Navbar({ settings = {} }: NavbarProps) {
                           <a
                             href={getSubdomainLink(user.tenantSubdomain)}
                             target="_blank"
-                            rel="noopener noreferrer"
+                            rel="nofollow noopener noreferrer"
                             className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600"
                             onClick={() => setProfileOpen(false)}
                           >

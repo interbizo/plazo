@@ -231,6 +231,7 @@ export default function ServiceDetailPage() {
           </div>
           <Link
             href={getSubdomainLink(tenant.subdomain)}
+            rel="nofollow"
             className="ml-4 shrink-0 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
           >
             Kunjungi Toko
@@ -280,6 +281,7 @@ export default function ServiceDetailPage() {
             {tenant && (
               <Link
                 href={getSubdomainLink(tenant.subdomain)}
+                rel="nofollow"
                 className="mt-3 flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600"
               >
                 {tenant.logo ? (
@@ -358,7 +360,7 @@ export default function ServiceDetailPage() {
                 Hubungi Penjual
               </Button>
               {canShowWhatsapp && (
-                <a href={whatsappHref} target="_blank" rel="noreferrer">
+                <a href={whatsappHref} target="_blank" rel="nofollow noreferrer">
                   <Button size="lg" className="w-full bg-green-600 hover:bg-green-700">
                     <Phone className="mr-2 h-4 w-4" />
                     Checkout via WhatsApp
@@ -459,6 +461,7 @@ export default function ServiceDetailPage() {
                   </div>
                   <Link
                     href={getSubdomainLink(tenant.subdomain)}
+                    rel="nofollow"
                     className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
                   >
                     Kunjungi Toko

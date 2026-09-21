@@ -97,7 +97,33 @@ function isLocalhost(): boolean {
       window.location.hostname === "127.0.0.1"
     );
   }
-  return BASE_DOMAIN.includes("localhost");
+  return process.env.NODE_ENV !== "production" || BASE_DOMAIN.includes("localhost");
+}
+
+/** Return true unless an HTTP(S) URL points to an exact configured Plazo root domain. */
+export function isExternalUrl(href?: string | null): boolean {
+  if (
+    !href ||
+    href.startsWith("#") ||
+    (href.startsWith("/") && !href.startsWith("//"))
+  ) {
+    return false;
+  }
+
+  try {
+    const url = new URL(href, `https://${BASE_DOMAIN}`);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+
+    const hostname = normalizeHostname(url.hostname);
+    return !CONFIGURED_BASE_DOMAINS.includes(hostname);
+  } catch {
+    return false;
+  }
+}
+
+/** SEO and security relation for links that leave Plazo. */
+export function getExternalLinkRel(href?: string | null): string | undefined {
+  return isExternalUrl(href) ? "nofollow noopener noreferrer" : undefined;
 }
 
 /**
@@ -136,16 +162,11 @@ export function getSubdomainUrl(subdomain: string): string {
  * Get the full navigable link for a subdomain (with protocol).
  * Used for <a href="..."> to navigate to seller's store.
  *
- * Now uses subfolder approach for both dev and production
+ * Production uses the seller subdomain; development keeps the subfolder fallback.
  */
 export function getSubdomainLink(subdomain: string): string {
-  const protocol =
-    typeof window !== "undefined" ? window.location.protocol : "https:";
-  const base =
-    typeof window !== "undefined"
-      ? window.location.host
-      : `${getBaseDomain()}`;
-  return `${protocol}//${base}/store/${subdomain}`;
+  if (isLocalhost()) return `/store/${subdomain}`;
+  return `https://${subdomain}.${BASE_DOMAIN}`;
 }
 
 /**

@@ -127,6 +127,7 @@ export function ProductCard({ product }: ProductCardProps) {
         {subdomain ? (
           <a
             href={storeUrl}
+            rel="nofollow"
             className="flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600 transition-colors truncate"
             onClick={(e) => e.stopPropagation()}
           >

@@ -74,7 +74,7 @@ export function Footer({ settings = {} }: FooterProps) {
                 <a 
                   href={settings.social_instagram} 
                   target="_blank"
-                  rel="noopener noreferrer"
+                  rel="nofollow noopener noreferrer"
                   className="rounded-lg bg-gray-800 p-2 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors" 
                   aria-label="Instagram"
                 >
@@ -85,7 +85,7 @@ export function Footer({ settings = {} }: FooterProps) {
                 <a 
                   href={settings.social_twitter}
                   target="_blank"
-                  rel="noopener noreferrer"
+                  rel="nofollow noopener noreferrer"
                   className="rounded-lg bg-gray-800 p-2 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors" 
                   aria-label="Twitter"
                 >
@@ -96,7 +96,7 @@ export function Footer({ settings = {} }: FooterProps) {
                 <a 
                   href={settings.social_facebook}
                   target="_blank"
-                  rel="noopener noreferrer"
+                  rel="nofollow noopener noreferrer"
                   className="rounded-lg bg-gray-800 p-2 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors" 
                   aria-label="Facebook"
                 >

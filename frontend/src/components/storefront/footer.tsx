@@ -123,7 +123,7 @@ export function StorefrontFooter({ store, subdomain }: StorefrontFooterProps) {
                   <a
                     href={socialLinks.instagram}
                     target="_blank"
-                    rel="noopener noreferrer"
+                    rel="nofollow noopener noreferrer"
                     className="p-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-pink-100 hover:text-pink-600 transition-colors"
                     aria-label="Instagram"
                   >
@@ -134,7 +134,7 @@ export function StorefrontFooter({ store, subdomain }: StorefrontFooterProps) {
                   <a
                     href={socialLinks.facebook}
                     target="_blank"
-                    rel="noopener noreferrer"
+                    rel="nofollow noopener noreferrer"
                     className="p-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-600 transition-colors"
                     aria-label="Facebook"
                   >
@@ -145,7 +145,7 @@ export function StorefrontFooter({ store, subdomain }: StorefrontFooterProps) {
                   <a
                     href={socialLinks.twitter}
                     target="_blank"
-                    rel="noopener noreferrer"
+                    rel="nofollow noopener noreferrer"
                     className="p-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-sky-100 hover:text-sky-600 transition-colors"
                     aria-label="Twitter"
                   >
@@ -156,7 +156,7 @@ export function StorefrontFooter({ store, subdomain }: StorefrontFooterProps) {
                   <a
                     href={socialLinks.youtube}
                     target="_blank"
-                    rel="noopener noreferrer"
+                    rel="nofollow noopener noreferrer"
                     className="p-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-red-100 hover:text-red-600 transition-colors"
                     aria-label="YouTube"
                   >
@@ -167,7 +167,7 @@ export function StorefrontFooter({ store, subdomain }: StorefrontFooterProps) {
                   <a
                     href={socialLinks.website}
                     target="_blank"
-                    rel="noopener noreferrer"
+                    rel="nofollow noopener noreferrer"
                     className="p-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
                     aria-label="Website"
                   >
@@ -231,7 +231,7 @@ export function StorefrontFooter({ store, subdomain }: StorefrontFooterProps) {
                   <a
                     href={`https://wa.me/${store.contactWhatsapp.replace(/\D/g, "")}`}
                     target="_blank"
-                    rel="noopener noreferrer"
+                    rel="nofollow noopener noreferrer"
                     className="flex items-start gap-3 text-sm text-gray-600 hover:text-gray-900 transition-colors group"
                   >
                     <MessageCircle className="h-4 w-4 mt-0.5 flex-shrink-0 group-hover:text-green-600" />

@@ -1,6 +1,20 @@
 "use client";
 
 import DOMPurify from "isomorphic-dompurify";
+import { isExternalUrl } from "@/lib/domain";
+
+DOMPurify.addHook("afterSanitizeAttributes", (node) => {
+  if (node.nodeName !== "A") return;
+
+  const href = node.getAttribute("href");
+  if (isExternalUrl(href)) {
+    const rel = new Set((node.getAttribute("rel") || "").split(/\s+/).filter(Boolean));
+    rel.add("nofollow");
+    rel.add("noopener");
+    rel.add("noreferrer");
+    node.setAttribute("rel", Array.from(rel).join(" "));
+  }
+});
 
 interface SafeHtmlProps {
   html: string;

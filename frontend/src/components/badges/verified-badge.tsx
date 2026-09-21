@@ -61,7 +61,7 @@ export function VerifiedBadge({
         <a
           href={certificateUrl}
           target="_blank"
-          rel="noopener noreferrer"
+          rel="nofollow noopener noreferrer"
           className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 underline transition-colors"
           title="Download Sertifikat"
           onClick={(e) => e.stopPropagation()}
