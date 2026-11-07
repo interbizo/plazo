@@ -15,7 +15,7 @@ interface StoreSEOProps {
     address?: string;
     contactPhone?: string;
     contactWhatsapp?: string;
-    isSeoActive?: boolean; // New field for SEO control
+    subscriptionPlan?: string;
     isVerified?: boolean;
   };
   category?: string;
@@ -30,25 +30,30 @@ interface StoreSEOProps {
  */
 function isSubdomainAccess(): boolean {
   if (typeof window === 'undefined') return false;
-  
-  const hostname = window.location.hostname;
-  const mainDomain = process.env.NEXT_PUBLIC_MAIN_DOMAIN || 'plazo.id';
-  
+
+  const hostname = window.location.hostname.toLowerCase().replace(/\.$/, '');
+  const mainDomain = (process.env.NEXT_PUBLIC_MAIN_DOMAIN || 'plazo.id')
+    .toLowerCase()
+    .replace(/\.$/, '');
+  const reservedSubdomains = new Set(['www', 'api', 'admin', 'mail']);
+
   // Check if it's localhost or IP
   if (hostname === 'localhost' || hostname === '127.0.0.1' || /^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
     return false;
   }
-  
+
   // Check if it's the main domain
-  if (hostname === mainDomain) {
+  if (hostname === mainDomain || hostname === `www.${mainDomain}`) {
     return false;
   }
-  
-  // Check if it's a subdomain (has more parts than main domain)
-  const hostParts = hostname.split('.');
-  const mainParts = mainDomain.split('.');
-  
-  return hostParts.length > mainParts.length && hostname.endsWith(`.${mainDomain}`);
+
+  const suffix = `.${mainDomain}`;
+  if (!hostname.endsWith(suffix)) {
+    return false;
+  }
+
+  const subdomain = hostname.slice(0, -suffix.length);
+  return Boolean(subdomain) && !subdomain.includes('.') && !reservedSubdomains.has(subdomain);
 }
 
 export function StoreSEO({ store, category, city, isActive = true }: StoreSEOProps) {
@@ -74,12 +79,10 @@ export function StoreSEO({ store, category, city, isActive = true }: StoreSEOPro
   // OG Image
   const ogImage = store.ogImage || store.banner || store.logo || `${mainDomainUrl}/default-og.png`;
 
-  // SEO Control Logic:
-  // Subdomain URLs are indexed if SEO is active and store is verified
-  // This allows each store to have its own indexed domain
   let robotsContent = 'noindex, nofollow';
-  
-  if (isSubdomain && store.isSeoActive && store.isVerified && isActive) {
+
+  const isPaidStore = Boolean(store.subscriptionPlan && store.subscriptionPlan !== 'FREE');
+  if (isSubdomain && isActive && isPaidStore) {
     robotsContent = 'index, follow, max-image-preview:large';
   }
 
@@ -120,7 +123,7 @@ export function StoreSEO({ store, category, city, isActive = true }: StoreSEOPro
       {/* Canonical - Point to subdomain URL */}
       <link rel="canonical" href={canonicalUrl} />
       
-      {/* Robots - Index subdomain if SEO active and verified */}
+      {/* Robots - Index active tenants with a paid subscription plan */}
       <meta name="robots" content={robotsContent} />
       
       {/* Additional meta for non-indexed pages */}

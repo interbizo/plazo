@@ -36,6 +36,8 @@ yarn-error.log*
 backend/uploads/
 **/*.tsbuildinfo
 frontend/next-env.d.ts
+documentation/
+skills/
 
 # local IDE/system files
 .DS_Store

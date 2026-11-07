@@ -2,29 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../database/prisma.service";
 import { SubscriptionPlan } from "@prisma/client";
 
-/**
- * Dynamic Robots.txt System (SEO-Friendly + Multi-Tenant + Subscription-Based)
- *
- * Logic:
- * - FREE plan tenants → Disallow all (no indexing)
- * - SUBSCRIBED tenants (STARTER/PREMIUM/BUSINESS) with isSeoActive → Allow indexing
- * - Main domain (no subdomain) → Allow public marketplace pages
- *
- * Supports:
- * - Search engine bots (Googlebot, Bingbot, Applebot)
- * - AI crawlers (GPTBot, ClaudeBot, PerplexityBot, etc.)
- * - Multi-tenant per-subdomain dynamic generation
- * - Subscription-based SEO monetization
- */
-
-// Plans that have SEO access (paid plans)
-const SEO_ENABLED_PLANS: SubscriptionPlan[] = [
-  "BASIC" as SubscriptionPlan,
-  "PREMIUM" as SubscriptionPlan,
-  "PROFESSIONAL" as SubscriptionPlan,
-  "ENTERPRISE" as SubscriptionPlan,
-  "ULTIMATE" as SubscriptionPlan,
-];
+const ROOT_DOMAIN = "plazo.id";
 
 @Injectable()
 export class SeoService {
@@ -32,69 +10,94 @@ export class SeoService {
 
   constructor(private prisma: PrismaService) {}
 
+  private normalizeHost(host?: string): string {
+    return (host ?? "")
+      .split(",")[0]
+      .trim()
+      .toLowerCase()
+      .replace(/:\d+$/, "")
+      .replace(/\.$/, "");
+  }
+
+  private isMainDomainHost(host?: string): boolean {
+    const hostname = this.normalizeHost(host);
+    return hostname === ROOT_DOMAIN || hostname === `www.${ROOT_DOMAIN}`;
+  }
+
+  private isPaid(plan: SubscriptionPlan): boolean {
+    return plan !== SubscriptionPlan.FREE;
+  }
+
+  private canIndex(
+    tenant?: {
+      isActive: boolean | null;
+      subscriptionPlan: SubscriptionPlan;
+    } | null,
+  ): boolean {
+    return Boolean(tenant?.isActive && this.isPaid(tenant.subscriptionPlan));
+  }
+
   /**
-   * Generate dynamic robots.txt based on tenant subscription & SEO settings.
-   * Called per-request — no caching to ensure real-time subscription changes.
+   * Generate robots.txt from the normalized host and tenant plan/status.
+   * Called per-request so subscription changes take effect without stale cache.
    */
   async generateRobotsTxt(subdomain?: string, fullHost?: string): Promise<string> {
     try {
       if (subdomain) {
+        const hostname = this.normalizeHost(fullHost);
+        if (
+          !hostname.endsWith(`.${ROOT_DOMAIN}`) ||
+          hostname.slice(0, -(ROOT_DOMAIN.length + 1)) !== subdomain
+        ) {
+          return this.generateDisallowRobotsTxt("Unrecognized tenant host");
+        }
+
         return await this.generateTenantRobotsTxt(subdomain, fullHost);
       }
 
-      // Main domain (no subdomain) → marketplace robots.txt
-      return this.generateMainDomainRobotsTxt(fullHost);
+      if (this.isMainDomainHost(fullHost)) {
+        return this.generateMainDomainRobotsTxt(fullHost);
+      }
+
+      return this.generateDisallowRobotsTxt("Unrecognized host");
     } catch (error) {
       this.logger.error("Error generating robots.txt:", error);
-      // Fallback: restrictive (safe default)
+
+      if (this.isMainDomainHost(fullHost)) {
+        return this.generateMainDomainRobotsTxt(fullHost);
+      }
+
       return this.generateDisallowRobotsTxt("Error generating robots.txt");
     }
   }
 
   /**
    * Generate robots.txt for a specific tenant subdomain.
-   * Checks subscription plan + isSeoActive flag.
+   * Indexes active tenants with a paid subscription plan.
    */
   private async generateTenantRobotsTxt(subdomain: string, fullHost?: string): Promise<string> {
     const tenant = await this.prisma.tenant.findUnique({
       where: { subdomain },
       select: {
-        id: true,
         subdomain: true,
-        isSeoActive: true,
         isActive: true,
-        isVerified: true,
         subscriptionPlan: true,
       },
     });
 
-    // Tenant not found or inactive → disallow
     if (!tenant || !tenant.isActive) {
       this.logger.debug(`[robots.txt] Tenant "${subdomain}" not found or inactive → DISALLOW`);
       return this.generateDisallowRobotsTxt("Store not found or inactive");
     }
 
-    // Check subscription plan
-    const hasPaidPlan = SEO_ENABLED_PLANS.includes(tenant.subscriptionPlan);
-
-    // FREE plan → always disallow (SEO is a premium feature)
-    if (!hasPaidPlan) {
+    if (!this.isPaid(tenant.subscriptionPlan)) {
       this.logger.debug(`[robots.txt] Tenant "${subdomain}" on FREE plan → DISALLOW`);
       return this.generateDisallowRobotsTxt(
         "SEO indexing requires a paid subscription. Upgrade to enable search engine visibility.",
       );
     }
 
-    // Paid plan but SEO not activated by admin → disallow
-    if (!tenant.isSeoActive) {
-      this.logger.debug(`[robots.txt] Tenant "${subdomain}" SEO not activated → DISALLOW`);
-      return this.generateDisallowRobotsTxt(
-        "SEO not yet activated. Contact admin to enable indexing.",
-      );
-    }
-
-    // Paid plan + SEO active → ALLOW indexing
-    this.logger.debug(`[robots.txt] Tenant "${subdomain}" SUBSCRIBED + SEO active → ALLOW`);
+    this.logger.debug(`[robots.txt] Tenant "${subdomain}" PAID + ACTIVE → ALLOW`);
     return this.generateSubscribedRobotsTxt(subdomain, fullHost);
   }
 
@@ -103,8 +106,9 @@ export class SeoService {
    * Allow search engines and AI crawlers to index public content.
    */
   private generateSubscribedRobotsTxt(subdomain: string, fullHost?: string): string {
-    const baseUrl = fullHost
-      ? `https://${fullHost}`
+    const normalizedHost = this.normalizeHost(fullHost);
+    const baseUrl = normalizedHost
+      ? `https://${normalizedHost}`
       : `https://${subdomain}.plazo.id`;
 
     return `# Robots.txt for ${subdomain}
@@ -356,7 +360,9 @@ Disallow: /
    * Always allows indexing for the main platform.
    */
   private generateMainDomainRobotsTxt(fullHost?: string): string {
-    const baseUrl = fullHost ? `https://${fullHost}` : "https://plazo.id";
+    const baseUrl = this.isMainDomainHost(fullHost)
+      ? `https://${this.normalizeHost(fullHost)}`
+      : `https://${ROOT_DOMAIN}`;
 
     return `# Robots.txt for Main Marketplace Platform
 # Status: PLATFORM — Public Indexing Enabled
@@ -557,18 +563,12 @@ Sitemap: ${baseUrl}/sitemap.xml
       where: { subdomain },
       select: {
         id: true,
-        isSeoActive: true,
         isActive: true,
         subscriptionPlan: true,
       },
     });
 
-    // No sitemap for inactive/free tenants
-    if (!tenant || !tenant.isActive || !tenant.isSeoActive) {
-      return '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>';
-    }
-
-    if (!SEO_ENABLED_PLANS.includes(tenant.subscriptionPlan)) {
+    if (!tenant || !this.canIndex(tenant)) {
       return '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>';
     }
 
@@ -624,23 +624,18 @@ Sitemap: ${baseUrl}/sitemap.xml
   }
 
   /**
-   * Check if tenant has SEO active (subscription + flag)
+   * Check whether a tenant is eligible for indexing.
    */
   async isSeoActive(subdomain: string): Promise<boolean> {
     const tenant = await this.prisma.tenant.findUnique({
       where: { subdomain },
       select: {
-        isSeoActive: true,
         isActive: true,
         subscriptionPlan: true,
       },
     });
 
-    if (!tenant || !tenant.isActive || !tenant.isSeoActive) {
-      return false;
-    }
-
-    return SEO_ENABLED_PLANS.includes(tenant.subscriptionPlan);
+    return this.canIndex(tenant);
   }
 
   /**
