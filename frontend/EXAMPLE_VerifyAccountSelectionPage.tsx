@@ -36,7 +36,12 @@ export default function VerifyAccountPage() {
       return;
     }
 
-    setVerificationData({ email, phone, firstName, userId });
+    setVerificationData({
+      email: email ?? undefined,
+      phone: phone ?? undefined,
+      firstName: firstName ?? undefined,
+      userId: userId ?? undefined,
+    });
   }, [searchParams]);
 
   const handleSelectMethod = async (method: 'email' | 'phone') => {

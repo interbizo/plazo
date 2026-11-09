@@ -23,6 +23,7 @@ export interface User {
   isActive: boolean;
   isEmailVerified: boolean;
   kycStatus?: string;
+  accountStatus?: string;
   tenantSubdomain?: string;
   lastActiveAt?: string;
   createdAt: string;

@@ -1,5 +1,5 @@
 import api from "@/lib/api";
-import type { PaginatedResponse } from "@/types";
+import type { PaginatedResponse } from "@/types/api";
 
 export interface Report {
   id: string;

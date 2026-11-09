@@ -1,0 +1,126 @@
+﻿
+> frontend@0.1.0 typecheck
+> tsc --noEmit
+
+EXAMPLE_VerifyAccountSelectionPage.tsx(39,27): error TS2322: Type 'string | null' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+EXAMPLE_VerifyAccountSelectionPage.tsx(39,34): error TS2322: Type 'string | null' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+EXAMPLE_VerifyAccountSelectionPage.tsx(39,41): error TS2322: Type 'string | null' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+EXAMPLE_VerifyAccountSelectionPage.tsx(39,52): error TS2322: Type 'string | null' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+src/app/account-suspended/page.tsx(49,22): error TS2339: Property 'accountStatus' does not exist on type 'User'.
+src/app/admin/boosts/page.tsx(377,20): error TS2322: Type 'ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>' is not assignable to type 'ReactNode'.
+src/app/admin/boosts/page.tsx(393,13): error TS2322: Type '"default" | "outline"' is not assignable to type '"primary" | "danger" | "secondary" | "outline" | "ghost" | undefined'.
+  Type '"default"' is not assignable to type '"primary" | "danger" | "secondary" | "outline" | "ghost" | undefined'.
+src/app/admin/boosts/page.tsx(401,13): error TS2322: Type '"default" | "outline"' is not assignable to type '"primary" | "danger" | "secondary" | "outline" | "ghost" | undefined'.
+  Type '"default"' is not assignable to type '"primary" | "danger" | "secondary" | "outline" | "ghost" | undefined'.
+src/app/admin/boosts/page.tsx(454,20): error TS2322: Type 'ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>' is not assignable to type 'ReactNode'.
+src/app/admin/boosts/page.tsx(474,20): error TS2322: Type 'ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>' is not assignable to type 'ReactNode'.
+src/app/admin/boosts/page.tsx(500,21): error TS2322: Type '"destructive"' is not assignable to type '"primary" | "danger" | "secondary" | "outline" | "ghost" | undefined'.
+src/app/admin/categories/page.tsx(390,75): error TS2503: Cannot find namespace 'JSX'.
+src/app/admin/categories/page.tsx(391,23): error TS2503: Cannot find namespace 'JSX'.
+src/app/admin/categories/page.tsx(440,23): error TS2503: Cannot find namespace 'JSX'.
+src/app/admin/tutorials/page.tsx(572,38): error TS2322: Type '"outline"' is not assignable to type '"default" | "info" | "success" | "warning" | "danger" | "secondary" | undefined'.
+src/app/admin/tutorials/page.tsx(588,30): error TS2322: Type '"outline"' is not assignable to type '"default" | "info" | "success" | "warning" | "danger" | "secondary" | undefined'.
+src/app/admin/tutorials/page.tsx(593,30): error TS2322: Type '"outline"' is not assignable to type '"default" | "info" | "success" | "warning" | "danger" | "secondary" | undefined'.
+src/app/admin/users/page.tsx(935,80): error TS2322: Type '{ className: string; title: string; }' is not assignable to type 'IntrinsicAttributes & Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>'.
+  Property 'title' does not exist on type 'IntrinsicAttributes & Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>'.
+src/app/admin/users/page.tsx(1025,33): error TS2339: Property 'verificationMethod' does not exist on type 'UserItem'.
+src/app/admin/users/page.tsx(1025,66): error TS2339: Property 'verificationMethod' does not exist on type 'UserItem'.
+src/app/admin/users/page.tsx(1029,56): error TS2339: Property 'verificationMethod' does not exist on type 'UserItem'.
+src/app/admin/users/page.tsx(1046,37): error TS2339: Property 'isPhoneVerified' does not exist on type 'UserItem'.
+src/app/admin/users/page.tsx(1052,48): error TS2339: Property 'isPhoneVerified' does not exist on type 'UserItem'.
+src/app/admin/users/page.tsx(1079,36): error TS2551: Property 'emailVerifiedAt' does not exist on type 'UserItem'. Did you mean 'isEmailVerified'?
+src/app/admin/users/page.tsx(1079,66): error TS2339: Property 'phoneVerifiedAt' does not exist on type 'UserItem'.
+src/app/admin/users/page.tsx(1081,39): error TS2339: Property 'verificationMethod' does not exist on type 'UserItem'.
+src/app/admin/users/page.tsx(1081,84): error TS2551: Property 'emailVerifiedAt' does not exist on type 'UserItem'. Did you mean 'isEmailVerified'?
+src/app/admin/users/page.tsx(1082,81): error TS2551: Property 'emailVerifiedAt' does not exist on type 'UserItem'. Did you mean 'isEmailVerified'?
+src/app/admin/users/page.tsx(1084,39): error TS2339: Property 'verificationMethod' does not exist on type 'UserItem'.
+src/app/admin/users/page.tsx(1084,87): error TS2339: Property 'phoneVerifiedAt' does not exist on type 'UserItem'.
+src/app/admin/users/page.tsx(1085,84): error TS2339: Property 'phoneVerifiedAt' does not exist on type 'UserItem'.
+src/app/admin/users/page.tsx(1243,81): error TS2322: Type '{ className: string; title: string; }' is not assignable to type 'IntrinsicAttributes & Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>'.
+  Property 'title' does not exist on type 'IntrinsicAttributes & Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>'.
+src/app/admin/users/page.tsx(1246,76): error TS2322: Type '{ className: string; title: string; }' is not assignable to type 'IntrinsicAttributes & Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>'.
+  Property 'title' does not exist on type 'IntrinsicAttributes & Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>'.
+src/app/dashboard/reports/page.tsx(25,35): error TS2339: Property 'meta' does not exist on type 'PaginatedResponse<Report>'.
+src/app/dashboard/tutorials/page.tsx(148,22): error TS2322: Type '"outline"' is not assignable to type '"default" | "info" | "success" | "warning" | "danger" | "secondary" | undefined'.
+src/app/dashboard/tutorials/page.tsx(310,28): error TS2322: Type '"outline"' is not assignable to type '"default" | "info" | "success" | "warning" | "danger" | "secondary" | undefined'.
+src/app/dashboard/tutorials/page.tsx(314,30): error TS2322: Type '"outline"' is not assignable to type '"default" | "info" | "success" | "warning" | "danger" | "secondary" | undefined'.
+src/app/login/page.tsx(90,24): error TS2339: Property 'accountStatus' does not exist on type 'User'.
+src/app/login/page.tsx(90,70): error TS2339: Property 'accountStatus' does not exist on type 'User'.
+src/app/seller/dashboard/products/[id]/edit/page.tsx(727,15): error TS2322: Type 'import("C:/Users/LENOVO/Documents/Project Lakoni/Project/Project_Requirement_Form-(PRF)/[PRF-2602]-PlazoId/plazo/frontend/src/types/index").Category[]' is not assignable to type 'Category[]'.
+  Type 'import("C:/Users/LENOVO/Documents/Project Lakoni/Project/Project_Requirement_Form-(PRF)/[PRF-2602]-PlazoId/plazo/frontend/src/types/index").Category' is not assignable to type 'Category'.
+    Types of property 'isActive' are incompatible.
+      Type 'boolean | undefined' is not assignable to type 'boolean'.
+        Type 'undefined' is not assignable to type 'boolean'.
+src/app/seller/dashboard/products/create/page.tsx(90,117): error TS2367: This comparison appears to be unintentional because the types 'string | boolean' and 'number' have no overlap.
+src/app/seller/dashboard/products/create/page.tsx(650,15): error TS2322: Type 'import("C:/Users/LENOVO/Documents/Project Lakoni/Project/Project_Requirement_Form-(PRF)/[PRF-2602]-PlazoId/plazo/frontend/src/types/index").Category[]' is not assignable to type 'Category[]'.
+  Type 'import("C:/Users/LENOVO/Documents/Project Lakoni/Project/Project_Requirement_Form-(PRF)/[PRF-2602]-PlazoId/plazo/frontend/src/types/index").Category' is not assignable to type 'Category'.
+    Types of property 'isActive' are incompatible.
+      Type 'boolean | undefined' is not assignable to type 'boolean'.
+        Type 'undefined' is not assignable to type 'boolean'.
+src/app/seller/dashboard/products/page.tsx(87,34): error TS2339: Property 'subscriptionPlan' does not exist on type 'ApiResponse<any>'.
+src/app/seller/dashboard/products/page.tsx(88,27): error TS2339: Property 'usedPosts' does not exist on type 'ApiResponse<any>'.
+src/app/seller/dashboard/products/page.tsx(89,28): error TS2339: Property 'postsLimit' does not exist on type 'ApiResponse<any>'.
+src/app/seller/dashboard/reports/page.tsx(25,35): error TS2339: Property 'meta' does not exist on type 'PaginatedResponse<Report>'.
+src/app/seller/dashboard/services/[id]/edit/page.tsx(481,15): error TS2322: Type 'import("C:/Users/LENOVO/Documents/Project Lakoni/Project/Project_Requirement_Form-(PRF)/[PRF-2602]-PlazoId/plazo/frontend/src/types/index").Category[]' is not assignable to type 'Category[]'.
+  Type 'import("C:/Users/LENOVO/Documents/Project Lakoni/Project/Project_Requirement_Form-(PRF)/[PRF-2602]-PlazoId/plazo/frontend/src/types/index").Category' is not assignable to type 'Category'.
+    Types of property 'isActive' are incompatible.
+      Type 'boolean | undefined' is not assignable to type 'boolean'.
+        Type 'undefined' is not assignable to type 'boolean'.
+src/app/seller/dashboard/services/create/page.tsx(96,117): error TS2367: This comparison appears to be unintentional because the types 'string | boolean | string[]' and 'number' have no overlap.
+src/app/seller/dashboard/services/create/page.tsx(358,15): error TS2322: Type 'import("C:/Users/LENOVO/Documents/Project Lakoni/Project/Project_Requirement_Form-(PRF)/[PRF-2602]-PlazoId/plazo/frontend/src/types/index").Category[]' is not assignable to type 'Category[]'.
+  Type 'import("C:/Users/LENOVO/Documents/Project Lakoni/Project/Project_Requirement_Form-(PRF)/[PRF-2602]-PlazoId/plazo/frontend/src/types/index").Category' is not assignable to type 'Category'.
+    Types of property 'isActive' are incompatible.
+      Type 'boolean | undefined' is not assignable to type 'boolean'.
+        Type 'undefined' is not assignable to type 'boolean'.
+src/app/seller/dashboard/services/page.tsx(85,34): error TS2339: Property 'subscriptionPlan' does not exist on type 'ApiResponse<any>'.
+src/app/seller/dashboard/services/page.tsx(86,27): error TS2339: Property 'usedPosts' does not exist on type 'ApiResponse<any>'.
+src/app/seller/dashboard/services/page.tsx(87,28): error TS2339: Property 'postsLimit' does not exist on type 'ApiResponse<any>'.
+src/app/seller/dashboard/tutorials/page.tsx(164,22): error TS2322: Type '"outline"' is not assignable to type '"default" | "info" | "success" | "warning" | "danger" | "secondary" | undefined'.
+src/app/seller/dashboard/tutorials/page.tsx(341,28): error TS2322: Type '"outline"' is not assignable to type '"default" | "info" | "success" | "warning" | "danger" | "secondary" | undefined'.
+src/app/seller/dashboard/tutorials/page.tsx(345,30): error TS2322: Type '"outline"' is not assignable to type '"default" | "info" | "success" | "warning" | "danger" | "secondary" | undefined'.
+src/app/verify-email/page.tsx(35,27): error TS2339: Property 'accessToken' does not exist on type 'ApiResponse<{ message: string; }>'.
+src/app/verify-email/page.tsx(35,56): error TS2339: Property 'refreshToken' does not exist on type 'ApiResponse<{ message: string; }>'.
+src/app/verify-email/page.tsx(37,48): error TS2339: Property 'accessToken' does not exist on type 'ApiResponse<{ message: string; }>'.
+src/app/verify-email/page.tsx(37,75): error TS2339: Property 'refreshToken' does not exist on type 'ApiResponse<{ message: string; }>'.
+src/app/verify-email/page.tsx(41,31): error TS2339: Property 'user' does not exist on type 'ApiResponse<{ message: string; }>'.
+src/app/verify-email/page.tsx(43,38): error TS2339: Property 'user' does not exist on type 'ApiResponse<{ message: string; }>'.
+src/app/verify-email/page.tsx(43,78): error TS2339: Property 'user' does not exist on type 'ApiResponse<{ message: string; }>'.
+src/app/verify-otp/page.tsx(71,43): error TS2339: Property 'accessToken' does not exist on type 'ApiResponse<{ message: string; userId?: string | undefined; }>'.
+src/app/verify-otp/page.tsx(71,63): error TS2339: Property 'refreshToken' does not exist on type 'ApiResponse<{ message: string; userId?: string | undefined; }>'.
+src/app/verify-otp/page.tsx(74,37): error TS2339: Property 'accessToken' does not exist on type 'ApiResponse<{ message: string; userId?: string | undefined; }>'.
+src/app/verify-otp/page.tsx(74,55): error TS2339: Property 'refreshToken' does not exist on type 'ApiResponse<{ message: string; userId?: string | undefined; }>'.
+src/app/verify-otp/page.tsx(78,20): error TS2339: Property 'user' does not exist on type 'ApiResponse<{ message: string; userId?: string | undefined; }>'.
+src/app/verify-otp/page.tsx(80,27): error TS2339: Property 'user' does not exist on type 'ApiResponse<{ message: string; userId?: string | undefined; }>'.
+src/app/verify-otp/page.tsx(80,58): error TS2339: Property 'user' does not exist on type 'ApiResponse<{ message: string; userId?: string | undefined; }>'.
+src/app/verify-otp/page.tsx(111,16): error TS2339: Property 'cooldown' does not exist on type 'ApiResponse<{ message: string; cooldown?: number | undefined; }>'.
+src/app/verify-otp/page.tsx(112,26): error TS2339: Property 'cooldown' does not exist on type 'ApiResponse<{ message: string; cooldown?: number | undefined; }>'.
+src/app/verify-otp/page.tsx(113,21): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'Message'.
+  Type 'undefined' is not assignable to type 'Message'.
+src/components/admin/internal-product-form.tsx(106,117): error TS2367: This comparison appears to be unintentional because the types 'string | boolean' and 'number' have no overlap.
+src/components/admin/internal-product-form.tsx(619,15): error TS2322: Type 'import("C:/Users/LENOVO/Documents/Project Lakoni/Project/Project_Requirement_Form-(PRF)/[PRF-2602]-PlazoId/plazo/frontend/src/types/index").Category[]' is not assignable to type 'Category[]'.
+  Type 'import("C:/Users/LENOVO/Documents/Project Lakoni/Project/Project_Requirement_Form-(PRF)/[PRF-2602]-PlazoId/plazo/frontend/src/types/index").Category' is not assignable to type 'Category'.
+    Types of property 'isActive' are incompatible.
+      Type 'boolean | undefined' is not assignable to type 'boolean'.
+        Type 'undefined' is not assignable to type 'boolean'.
+src/components/admin/internal-service-form.tsx(126,117): error TS2367: This comparison appears to be unintentional because the types 'string | boolean' and 'number' have no overlap.
+src/components/admin/internal-service-form.tsx(518,15): error TS2322: Type 'import("C:/Users/LENOVO/Documents/Project Lakoni/Project/Project_Requirement_Form-(PRF)/[PRF-2602]-PlazoId/plazo/frontend/src/types/index").Category[]' is not assignable to type 'Category[]'.
+  Type 'import("C:/Users/LENOVO/Documents/Project Lakoni/Project/Project_Requirement_Form-(PRF)/[PRF-2602]-PlazoId/plazo/frontend/src/types/index").Category' is not assignable to type 'Category'.
+    Types of property 'isActive' are incompatible.
+      Type 'boolean | undefined' is not assignable to type 'boolean'.
+        Type 'undefined' is not assignable to type 'boolean'.
+src/components/auth/otp-input.tsx(151,13): error TS2322: Type '(el: HTMLInputElement | null) => HTMLInputElement | null' is not assignable to type 'Ref<HTMLInputElement> | undefined'.
+  Type '(el: HTMLInputElement | null) => HTMLInputElement | null' is not assignable to type '(instance: HTMLInputElement | null) => void | (() => VoidOrUndefinedOnly)'.
+    Type 'HTMLInputElement | null' is not assignable to type 'void | (() => VoidOrUndefinedOnly)'.
+      Type 'null' is not assignable to type 'void | (() => VoidOrUndefinedOnly)'.
+src/components/auth/simple-otp-input.tsx(73,11): error TS2322: Type '(el: HTMLInputElement | null) => HTMLInputElement | null' is not assignable to type 'Ref<HTMLInputElement> | undefined'.
+  Type '(el: HTMLInputElement | null) => HTMLInputElement | null' is not assignable to type '(instance: HTMLInputElement | null) => void | (() => VoidOrUndefinedOnly)'.
+    Type 'HTMLInputElement | null' is not assignable to type 'void | (() => VoidOrUndefinedOnly)'.
+      Type 'null' is not assignable to type 'void | (() => VoidOrUndefinedOnly)'.
+src/components/shared/product-card.tsx(136,26): error TS2339: Property 'isVerified' does not exist on type '{ id: string; name: string; subdomain: string; } & { subdomain?: string | undefined; owner?: { lastActiveAt?: string | undefined; } | undefined; }'.
+src/components/ui/category-select.tsx(54,60): error TS2503: Cannot find namespace 'JSX'.
+src/components/ui/category-select.tsx(69,6): error TS2503: Cannot find namespace 'JSX'.
+src/components/ui/category-select.tsx(71,19): error TS2503: Cannot find namespace 'JSX'.

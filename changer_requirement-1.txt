@@ -1,0 +1,32 @@
+1. Feature Inventory
+Daftar berikut merupakan fitur yang terkait langsung dengan empat temuan yang diperiksa. Daftar ini belum mencakup seluruh fitur yang tersedia pada dashboard Superadmin.
+Feature ID	Modul / Area	Fitur	Deskripsi
+F-001	Notifikasi	Notification Panel	Menampilkan daftar notifikasi untuk Superadmin.
+F-002	Pengaturan tampilan	Theme Color Settings	Mengubah warna utama (primary) dan warna sekunder (secondary) tampilan website.
+F-003	Audit Log	Activity Log Display	Menampilkan catatan aktivitas admin di platform.
+F-004	Boost Listing Management	Lihat & Boost Listings	Membuka tampilan pengelolaan listing yang akan di-boost.
+
+2. Test Case Register
+2.1 UI Test Cases
+Test ID	Fitur	Skenario	Expected UI Result	Actual Result	Status
+UI-001	Notification Panel	Membuka panel notifikasi dan membaca pesan.	Teks notifikasi tampil utuh dan tetap berada di dalam panel.	Sebagian teks notifikasi terlihat terpotong.	Failed
+UI-002	Theme Color Settings	Mengubah primary menjadi merah dan secondary menjadi hijau.	Elemen UI menerapkan kedua warna secara konsisten.	Warna merah hanya berubah pada sebagian elemen; warna sekunder tidak berubah menjadi hijau.	Failed
+UI-003	Audit Log	Melihat daftar aktivitas dengan detail teks yang panjang.	Teks tetap berada di dalam container dan tidak menyebabkan overflow.	Terdapat teks/elemen yang melewati batas area konten.	Failed
+
+2.2 Functional Test Case
+Test ID	Fitur	Skenario	Expected Result	Actual Result	Status
+FT-001	Lihat & Boost Listings	Klik tombol pada kartu seller di halaman Boost Listing Management.	Sistem membuka halaman atau detail pengelolaan listing tanpa menampilkan error.	Sistem menampilkan halaman “Oops! Terjadi Kesalahan”.	Failed
+
+
+
+==========
+Saya menemukan kode yang paling relevan untuk keempat temuan. Ini lokasi yang kemungkinan terkait, bukan konfirmasi akar masalah penuh—untuk Boost khususnya, penyebab runtime perlu dipastikan dari data API atau pesan error di browser.
+
+Test	File dan lokasi	Petunjuk dari kode
+UI-001 — Notifikasi terpotong	frontend/src/components/shared/notification-dropdown.tsx, baris 97–98, 127–169	Panel memakai overflow-hidden, daftar dibatasi tingginya, dan pesan memakai line-clamp-2. Jadi teks panjang memang dipotong menjadi maksimal dua baris; ini kandidat kuat untuk gejala yang dilaporkan.
+UI-002 — Warna tema tidak konsisten	Halaman pengaturan CMS: frontend/src/app/admin/cms/page.tsx, baris 374–402; penerapan warna: frontend/src/components/layout/client-layout.tsx, baris 100–131	Pengaturan Superadmin menggunakan primary_color dan accent_color—bukan secondary_color. Layout menerapkan keduanya sebagai CSS variables. Elemen yang memakai warna Tailwind statis atau tidak memakai variable tersebut tidak otomatis ikut berubah, yang bisa menjelaskan perubahan hanya pada sebagian UI.
+UI-003 — Audit log overflow	frontend/src/app/admin/audit-logs/page.tsx, baris 78–104	Deskripsi dan email ditampilkan dalam layout flex. Kolom teks tidak tampak diberi batas lebar atau aturan pemenggalan seperti min-w-0/break-words, sementara tanggal memakai shrink-0. Teks panjang—terutama tanpa spasi—dapat mendorong konten melewati container.
+FT-001 — Klik seller di Boost memunculkan error	frontend/src/app/admin/boosts/page.tsx, baris 150–163 dan 294–382	Klik kartu mengatur selectedSeller, lalu tampilan detail langsung membaca seller.products.length, seller.services.length, dan seller.jobs.length. Bila respons API tidak menyertakan salah satu array tersebut, render detail dapat melempar error. Error boundary yang menampilkan pesan “Oops! Terjadi Kesalahan” ada di frontend/src/components/ErrorBoundary.tsx, baris 55–91.
+Catatan untuk warna: kalau yang dimaksud adalah warna storefront seller, bukan warna platform Superadmin, pengaturannya berada di frontend/src/app/seller/dashboard/store/page.tsx, baris 763–850. Itu alur terpisah dari pengaturan warna CMS Superadmin.
+
+Untuk memastikan FT-001, langkah berikutnya adalah memeriksa respons getPremiumSellersForBoost dan error di console saat kartu diklik; dari kode frontend saja belum bisa dipastikan apakah penyebabnya data seller yang tidak lengkap atau error lain di render detail.

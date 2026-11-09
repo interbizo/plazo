@@ -9,7 +9,7 @@ interface Category {
   description?: string;
   icon?: string;
   parentId?: string | null;
-  isActive: boolean;
+  isActive?: boolean;
   children?: Category[];
 }
 

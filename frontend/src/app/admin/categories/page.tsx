@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type JSX } from "react";
 import { adminApi } from "@/services/admin.service";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";

@@ -21,6 +21,7 @@ export function ProductCard({ product }: ProductCardProps) {
   const tenantInfo = product.tenant as Product["tenant"] & {
     subdomain?: string;
     owner?: { lastActiveAt?: string };
+    isVerified?: boolean;
   };
   const subdomain = tenantInfo?.subdomain;
   const availableStock =

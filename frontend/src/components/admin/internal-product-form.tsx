@@ -103,7 +103,7 @@ export function InternalProductForm({
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       try {
-        const hasData = Object.values(form).some((v) => v !== "" && v !== null && v !== undefined && v !== false && v !== 0);
+        const hasData = Object.values(form).some((v) => v !== "" && v !== null && v !== undefined && v !== false);
         if (hasData) localStorage.setItem(draftKey, JSON.stringify(form));
       } catch {}
     }, 2000);

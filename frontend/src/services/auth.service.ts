@@ -47,7 +47,7 @@ export const authApi = {
   me: () => api.get<ProfileResponse>("/api/auth/profile"),
 
   verifyEmail: (token: string) => 
-    api.post<ApiResponse<{ message: string }>>("/api/auth/verify-email", { token }),
+    api.post<{ message: string; accessToken?: string; refreshToken?: string; user?: User }>("/api/auth/verify-email", { token }),
 
   forgotPassword: (email: string, turnstileToken: string) =>
     api.post<ApiResponse<{ message: string }>>("/api/auth/forgot-password", { email, turnstileToken }),
@@ -101,10 +101,10 @@ export const authApi = {
 
   // OTP WhatsApp endpoints
   verifyOtp: (phone: string, code: string, type: 'REGISTRATION' | 'FORGOT_PASSWORD') =>
-    api.post<ApiResponse<{ message: string; userId?: string }>>("/api/auth/verify-otp", { phone, code, type }),
+    api.post<{ message: string; userId?: string; accessToken?: string; refreshToken?: string; user?: User }>("/api/auth/verify-otp", { phone, code, type }),
 
   resendOtp: (phone: string, type: 'REGISTRATION' | 'FORGOT_PASSWORD') =>
-    api.post<ApiResponse<{ message: string; cooldown?: number }>>("/api/auth/resend-otp", { phone, type }),
+    api.post<{ message: string; cooldown?: number }>("/api/auth/resend-otp", { phone, type }),
 
   forgotPasswordOtp: (phone: string) =>
     api.post<ApiResponse<{ message: string }>>("/api/auth/forgot-password-otp", { phone }),

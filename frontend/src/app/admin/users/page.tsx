@@ -96,6 +96,10 @@ interface UserItem {
   
   // Email & KYC Verification
   isEmailVerified?: boolean;
+  isPhoneVerified?: boolean;
+  verificationMethod?: string;
+  emailVerifiedAt?: string | null;
+  phoneVerifiedAt?: string | null;
   kycStatus?: string;
   kycVerifiedAt?: string;
   
@@ -932,7 +936,9 @@ function UsersContent() {
                         <Mail className="h-3.5 w-3.5" />
                         {detailUser.email}
                         {detailUser.isEmailVerified && (
-                          <CheckCircle2 className="h-3.5 w-3.5 text-green-600" title="Email Terverifikasi" />
+                          <span title="Email Terverifikasi">
+                            <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                          </span>
                         )}
                       </p>
                       <div className="flex items-center gap-2 mt-2 flex-wrap">
@@ -1240,10 +1246,14 @@ function UsersContent() {
                             <div className="flex items-center gap-2">
                               <h5 className="font-semibold text-gray-900">{detailUser.tenant.name}</h5>
                               {detailUser.tenant.isVerified && (
-                                <CheckCircle2 className="h-4 w-4 text-blue-600" title="Toko Terverifikasi" />
+                                <span title="Toko Terverifikasi">
+                                  <CheckCircle2 className="h-4 w-4 text-blue-600" />
+                                </span>
                               )}
                               {detailUser.tenant.isFeatured && (
-                                <Crown className="h-4 w-4 text-yellow-600" title="Toko Featured" />
+                                <span title="Toko Featured">
+                                  <Crown className="h-4 w-4 text-yellow-600" />
+                                </span>
                               )}
                             </div>
                             {detailUser.tenant.tagline && (

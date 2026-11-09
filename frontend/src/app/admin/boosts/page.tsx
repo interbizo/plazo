@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Image from "next/image";
+import { resolveImageUrl } from "@/lib/image-url";
 
 interface PremiumSeller {
   id: string;
@@ -67,6 +68,20 @@ interface BoostItem {
   service?: { name?: string };
 }
 
+/**
+ * Pastikan setiap seller selalu punya array listing dan owner yang valid.
+ * Respons API yang tidak lengkap tidak boleh membuat halaman detail crash.
+ */
+function normalizeSeller(seller: PremiumSeller): PremiumSeller {
+  return {
+    ...seller,
+    owner: seller.owner ?? { email: "", firstName: "", lastName: "" },
+    products: Array.isArray(seller.products) ? seller.products : [],
+    services: Array.isArray(seller.services) ? seller.services : [],
+    jobs: Array.isArray(seller.jobs) ? seller.jobs : [],
+  };
+}
+
 export default function AdminBoostsPage() {
   const [view, setView] = useState<"sellers" | "boosted">("sellers");
   const [sellers, setSellers] = useState<PremiumSeller[]>([]);
@@ -93,7 +108,12 @@ export default function AdminBoostsPage() {
     setIsLoading(true);
     try {
       const { data } = await adminApi.getPremiumSellersForBoost({ search });
-      setSellers(data.data || []);
+      const raw: PremiumSeller[] = Array.isArray(data?.data)
+        ? data.data
+        : Array.isArray(data)
+          ? data
+          : [];
+      setSellers(raw.map(normalizeSeller));
     } catch (error) {
       toast.error("Gagal memuat data seller");
       setSellers([]);
@@ -227,7 +247,7 @@ export default function AdminBoostsPage() {
           {listing.thumbnail && (
             <div className="relative h-16 w-16 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
               <Image
-                src={listing.thumbnail}
+                src={resolveImageUrl(listing.thumbnail)}
                 alt={name}
                 fill
                 className="object-cover"
@@ -374,7 +394,7 @@ export default function AdminBoostsPage() {
           selectedSeller.services.length === 0 &&
           selectedSeller.jobs.length === 0 && (
             <EmptyState
-              icon={Package}
+              icon={<Package className="h-12 w-12 text-gray-300" />}
               title="Belum ada listing"
               description="Seller ini belum memiliki produk, jasa, atau job"
             />
@@ -390,7 +410,7 @@ export default function AdminBoostsPage() {
         <div className="flex gap-2">
           <Button
             size="sm"
-            variant={view === "sellers" ? "default" : "outline"}
+            variant={view === "sellers" ? "primary" : "outline"}
             onClick={() => setView("sellers")}
           >
             <Crown className="h-4 w-4 mr-2" />
@@ -398,7 +418,7 @@ export default function AdminBoostsPage() {
           </Button>
           <Button
             size="sm"
-            variant={view === "boosted" ? "default" : "outline"}
+            variant={view === "boosted" ? "primary" : "outline"}
             onClick={() => setView("boosted")}
           >
             <Rocket className="h-4 w-4 mr-2" />
@@ -451,7 +471,7 @@ export default function AdminBoostsPage() {
             </div>
           ) : sellers.length === 0 ? (
             <EmptyState
-              icon={Crown}
+              icon={<Crown className="h-12 w-12 text-gray-300" />}
               title="Tidak ada seller premium"
               description="Belum ada seller dengan paket Premium atau Business"
             />
@@ -471,7 +491,7 @@ export default function AdminBoostsPage() {
             </div>
           ) : boosts.length === 0 ? (
             <EmptyState
-              icon={Rocket}
+              icon={<Rocket className="h-12 w-12 text-gray-300" />}
               title="Tidak ada boosted listing"
               description="Belum ada listing yang di-boost"
             />
@@ -497,7 +517,7 @@ export default function AdminBoostsPage() {
                   </div>
                   <Button
                     size="sm"
-                    variant="destructive"
+                    variant="danger"
                     onClick={() =>
                       handleRemove(
                         boost.listingId || "",

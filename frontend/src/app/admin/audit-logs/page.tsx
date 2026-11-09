@@ -79,25 +79,27 @@ function AuditContent() {
             {logs.map((log) => (
               <div
                 key={log.id}
-                className="rounded-lg border border-gray-200 bg-white px-4 py-3"
+                className="rounded-lg border border-gray-200 bg-white px-4 py-3 overflow-hidden"
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="info">{log.action}</Badge>
-                      <span className="text-xs text-gray-500">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="info" className="break-all">
+                        {log.action}
+                      </Badge>
+                      <span className="text-xs text-gray-500 break-words">
                         {log.entity || log.resource}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-600 mt-1">
+                    <p className="text-xs text-gray-600 mt-1 break-words">
                       {log.description || log.details || "-"}
                     </p>
-                    <p className="text-xs text-gray-400 mt-0.5">
+                    <p className="text-xs text-gray-400 mt-0.5 break-words">
                       {log.user?.firstName} {log.user?.lastName} (
                       {log.user?.email})
                     </p>
                   </div>
-                  <p className="text-xs text-gray-400 shrink-0">
+                  <p className="text-xs text-gray-400 shrink-0 whitespace-nowrap">
                     {formatDate(log.createdAt)}
                   </p>
                 </div>

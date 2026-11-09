@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 
 interface BadgeProps {
   children: React.ReactNode;
-  variant?: "default" | "success" | "warning" | "danger" | "info" | "secondary";
+  variant?: "default" | "success" | "warning" | "danger" | "info" | "secondary" | "outline";
   size?: "sm" | "md";
   className?: string;
 }
@@ -13,13 +13,16 @@ export function Badge({
   size = "md",
   className,
 }: BadgeProps) {
+  // default & info mengikuti warna tema (primary/accent) agar perubahan
+  // warna dari CMS Superadmin konsisten. Variant lain tetap semantik.
   const variants = {
-    default: "bg-gray-100 text-gray-700",
+    default: "bg-brand-accent/15 text-brand-accent",
     success: "bg-green-100 text-green-700",
     warning: "bg-yellow-100 text-yellow-700",
     danger: "bg-red-100 text-red-700",
-    info: "bg-blue-100 text-blue-700",
+    info: "bg-brand/10 text-brand",
     secondary: "bg-gray-200 text-gray-600",
+    outline: "border border-gray-300 text-gray-700",
   };
 
   const sizes = {

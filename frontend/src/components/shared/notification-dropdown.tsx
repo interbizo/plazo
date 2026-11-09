@@ -161,10 +161,10 @@ export function NotificationDropdown({ role }: NotificationDropdownProps) {
 
                       {/* Content */}
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm leading-snug ${notif.isRead ? "text-gray-600" : "text-gray-900 font-medium"}`}>
+                        <p className={`text-sm leading-snug break-words ${notif.isRead ? "text-gray-600" : "text-gray-900 font-medium"}`}>
                           {notif.title}
                         </p>
-                        <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">
+                        <p className="text-xs text-gray-400 mt-0.5 break-words">
                           {notif.message}
                         </p>
                         <p className="text-[10px] text-gray-300 mt-1">

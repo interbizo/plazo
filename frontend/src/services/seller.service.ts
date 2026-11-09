@@ -30,7 +30,7 @@ export const sellerApi = {
 
   // Store Settings
   getStoreSettings: () => 
-    api.get<ApiResponse<any>>("/api/seller/store"),
+    api.get<any>("/api/seller/store"),
   updateStoreSettings: (data: Record<string, unknown>) =>
     api.put<ApiResponse<any>>("/api/seller/store", data),
 
