@@ -120,7 +120,25 @@ export class OTPService {
         };
       }
 
-      // Invalidate all previous OTPs for this phone and type
+      // Generate new OTP
+      const code = this.generateOTPCode();
+      const expiresAt = new Date(Date.now() + this.OTP_EXPIRY_MINUTES * 60 * 1000);
+
+      // Kirim OTP terlebih dahulu. OTP baru hanya disimpan bila pengiriman
+      // benar-benar berhasil, supaya percobaan yang gagal tidak mengunci user
+      // dengan cooldown 60 detik pada percobaan berikutnya.
+      const otpType = type.toLowerCase() as 'registration' | 'forgot_password' | 'login_2fa';
+      const sent = await this.fonnte.sendOTP({
+        phone: normalizedPhone,
+        code,
+        type: otpType,
+      });
+
+      if (!sent) {
+        throw new Error('Failed to send OTP via WhatsApp');
+      }
+
+      // Invalidate all previous OTPs for this phone and type, lalu simpan OTP baru
       await this.prisma.oTP.updateMany({
         where: {
           phone: normalizedPhone,
@@ -132,11 +150,6 @@ export class OTPService {
         },
       });
 
-      // Generate new OTP
-      const code = this.generateOTPCode();
-      const expiresAt = new Date(Date.now() + this.OTP_EXPIRY_MINUTES * 60 * 1000);
-
-      // Save OTP to database
       const savedOTP = await this.prisma.oTP.create({
         data: {
           phone: normalizedPhone,
@@ -146,20 +159,8 @@ export class OTPService {
           userId,
         },
       });
-      
+
       this.logger.log(`[OTP CREATE] ✅ OTP created - ID: ${savedOTP.id}, Phone: ${normalizedPhone}, Code: "${code}", Type: ${type}, Expires: ${expiresAt.toISOString()}`);
-
-      // Send OTP via WhatsApp
-      const otpType = type.toLowerCase().replace('_', '_') as 'registration' | 'forgot_password' | 'login_2fa';
-      const sent = await this.fonnte.sendOTP({
-        phone: normalizedPhone,
-        code,
-        type: otpType,
-      });
-
-      if (!sent) {
-        throw new Error('Failed to send OTP via WhatsApp');
-      }
 
       this.logger.log(`[OTP CREATE] ✅ OTP sent to ${phone} (normalized: ${normalizedPhone}) for ${type}`);
 
@@ -170,6 +171,15 @@ export class OTPService {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`Error generating OTP: ${errorMessage}`);
+
+      // Bedakan masalah konfigurasi dari kegagalan pengiriman biasa agar
+      // operator tahu penyebab sebenarnya saat OTP selalu gagal.
+      if (errorMessage.toLowerCase().includes('not configured')) {
+        throw new BadRequestException(
+          'Layanan WhatsApp belum dikonfigurasi. Hubungi administrator.',
+        );
+      }
+
       throw new BadRequestException('Gagal mengirim kode OTP. Silakan coba lagi.');
     }
   }

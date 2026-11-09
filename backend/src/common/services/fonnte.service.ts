@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 
 export interface SendWhatsAppOTPParams {
@@ -10,8 +11,21 @@ export interface SendWhatsAppOTPParams {
 @Injectable()
 export class FontteService {
   private readonly logger = new Logger(FontteService.name);
-  private readonly apiUrl = 'https://api.fonnte.com/send';
-  private readonly token = process.env.FONNTE_API_TOKEN;
+
+  constructor(private readonly configService: ConfigService) {}
+
+  private get apiUrl(): string {
+    return (
+      this.configService.get<string>('FONNTE_API_URL') ||
+      'https://api.fonnte.com/send'
+    );
+  }
+
+  // Dibaca saat dipanggil (bukan saat konstruksi) agar selalu mengikuti nilai
+  // .env terbaru dan tidak kosong bila env dimuat setelah provider dibuat.
+  private get token(): string {
+    return this.configService.get<string>('FONNTE_API_TOKEN') || '';
+  }
 
   /**
    * Send OTP via WhatsApp using Fonnte API
@@ -45,16 +59,22 @@ export class FontteService {
         },
       );
 
-      if (response.data.status === true || response.data.status === 'success') {
+      if (response.data?.status === true || response.data?.status === 'success') {
         this.logger.log(`OTP sent successfully to ${formattedPhone}`);
         return true;
-      } else {
-        this.logger.error(`Failed to send OTP: ${JSON.stringify(response.data)}`);
-        return false;
       }
+
+      this.logger.error(`Failed to send OTP: ${JSON.stringify(response.data)}`);
+      return false;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`Error sending OTP via Fonnte: ${errorMessage}`);
+      // Sertakan detail respons dari Fonnte (mis. token invalid atau device
+      // WhatsApp terputus) agar akar masalah kegagalan OTP bisa ditelusuri.
+      const detail = axios.isAxiosError(error)
+        ? JSON.stringify(error.response?.data ?? error.message)
+        : error instanceof Error
+          ? error.message
+          : 'Unknown error';
+      this.logger.error(`Error sending OTP via Fonnte: ${detail}`);
       throw new Error('Failed to send OTP via WhatsApp');
     }
   }
@@ -121,10 +141,14 @@ export class FontteService {
         },
       );
 
-      return response.data.status === true || response.data.status === 'success';
+      return response.data?.status === true || response.data?.status === 'success';
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`Error sending WhatsApp message: ${errorMessage}`);
+      const detail = axios.isAxiosError(error)
+        ? JSON.stringify(error.response?.data ?? error.message)
+        : error instanceof Error
+          ? error.message
+          : 'Unknown error';
+      this.logger.error(`Error sending WhatsApp message: ${detail}`);
       return false;
     }
   }
