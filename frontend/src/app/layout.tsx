@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import "./globals.css";
 import { ClientLayout } from "@/components/layout/client-layout";
+import { AnalyticsScripts } from "@/components/analytics/analytics-scripts";
 import { getSubdomainFromHostname } from "@/lib/domain";
 import { generateDynamicMetadata } from "@/lib/metadata";
 
@@ -21,6 +22,7 @@ export default async function RootLayout({
   return (
     <html lang="id" className="h-full" data-scroll-behavior="smooth">
       <body className="min-h-full flex flex-col bg-white text-gray-900">
+        <AnalyticsScripts />
         <ClientLayout settings={{}} isStorefrontHost={isStorefrontHost}>
           {children}
         </ClientLayout>
