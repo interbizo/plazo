@@ -8,7 +8,8 @@ import { SearchResults } from "./search-results";
 export const metadata: Metadata = {
   title: "Pencarian - Plazo Marketplace",
   description: "Cari produk, jasa, artikel, forum, dan project di Plazo Marketplace.",
-  robots: "noindex",
+  // Hasil pencarian bersifat dinamis & tipis → jangan diindeks, tapi ikuti tautan.
+  robots: { index: false, follow: true },
 };
 
 interface SearchPageProps {

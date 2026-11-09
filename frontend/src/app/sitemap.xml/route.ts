@@ -3,6 +3,10 @@ import { NextResponse } from 'next/server';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://plazo.id';
 
+// Ambil seluruh halaman dari endpoint terpaginasi (bukan hanya page pertama).
+const PAGE_SIZE = 500;
+const MAX_PAGES = 40; // batas aman: hingga 20.000 item per resource
+
 /**
  * Dynamic Sitemap for main domain (plazo.id)
  * Includes: static pages + all published products + all published services + jobs + articles
@@ -10,42 +14,12 @@ const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://plazo.id';
  */
 export async function GET() {
   try {
-    const [productsRes, servicesRes, jobsRes, articlesRes] = await Promise.all([
-      fetch(`${API_URL}/api/public/products?limit=500&sortBy=newest`, {
-        next: { revalidate: 3600 },
-      }).catch(() => null),
-      fetch(`${API_URL}/api/public/services?limit=500&sortBy=newest`, {
-        next: { revalidate: 3600 },
-      }).catch(() => null),
-      fetch(`${API_URL}/api/public/jobs?limit=200&status=OPEN`, {
-        next: { revalidate: 3600 },
-      }).catch(() => null),
-      fetch(`${API_URL}/api/public/articles?limit=500`, {
-        next: { revalidate: 3600 },
-      }).catch(() => null),
+    const [products, services, jobs, articles] = await Promise.all([
+      fetchAllPages('/api/public/products', { sortBy: 'newest' }),
+      fetchAllPages('/api/public/services', { sortBy: 'newest' }),
+      fetchAllPages('/api/public/jobs', { status: 'OPEN' }),
+      fetchAllPages('/api/public/articles', {}),
     ]);
-
-    let products: any[] = [];
-    let services: any[] = [];
-    let jobs: any[] = [];
-    let articles: any[] = [];
-
-    if (productsRes?.ok) {
-      const data = await productsRes.json();
-      products = data?.data || [];
-    }
-    if (servicesRes?.ok) {
-      const data = await servicesRes.json();
-      services = data?.data || [];
-    }
-    if (jobsRes?.ok) {
-      const data = await jobsRes.json();
-      jobs = data?.data || [];
-    }
-    if (articlesRes?.ok) {
-      const data = await articlesRes.json();
-      articles = data?.data || [];
-    }
 
     const now = new Date().toISOString();
     const urls: string[] = [];
@@ -128,6 +102,55 @@ export async function GET() {
       headers: { 'Content-Type': 'application/xml; charset=utf-8' },
     });
   }
+}
+
+/**
+ * Ambil seluruh item dari endpoint terpaginasi.
+ * Menghentikan loop saat halaman terakhir tercapai, data habis, atau batas aman tercapai
+ * agar sitemap tidak terpotong pada limit page pertama saja.
+ */
+async function fetchAllPages<T = any>(
+  path: string,
+  baseParams: Record<string, string>,
+): Promise<T[]> {
+  const items: T[] = [];
+  let page = 1;
+
+  while (page <= MAX_PAGES) {
+    const searchParams = new URLSearchParams({
+      ...baseParams,
+      page: String(page),
+      limit: String(PAGE_SIZE),
+    });
+
+    const res = await fetch(`${API_URL}${path}?${searchParams.toString()}`, {
+      next: { revalidate: 3600 },
+    }).catch(() => null);
+
+    if (!res?.ok) break;
+
+    let payload: any = null;
+    try {
+      payload = await res.json();
+    } catch {
+      break;
+    }
+
+    const batch: T[] = Array.isArray(payload?.data) ? payload.data : [];
+    items.push(...batch);
+
+    const totalPages = Number(payload?.pagination?.pages || 0);
+    const total = Number(payload?.pagination?.total || 0);
+
+    if (batch.length === 0) break;
+    if (batch.length < PAGE_SIZE) break;
+    if (totalPages > 0 && page >= totalPages) break;
+    if (total > 0 && items.length >= total) break;
+
+    page += 1;
+  }
+
+  return items;
 }
 
 function buildUrl(

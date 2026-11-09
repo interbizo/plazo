@@ -6,21 +6,8 @@ import { ProductsBrowseClient } from "./products-client";
 // SEO METADATA (Server-side)
 // ============================================
 
-export const metadata: Metadata = {
-  title: "Produk - Plazo Marketplace",
-  description:
-    "Temukan berbagai produk terbaik di Plazo Marketplace. Belanja aman dengan sistem escrow dan garansi pembeli.",
-  openGraph: {
-    title: "Produk - Plazo Marketplace",
-    description:
-      "Temukan berbagai produk terbaik di Plazo Marketplace. Belanja aman dengan sistem escrow dan garansi pembeli.",
-    type: "website",
-  },
-};
-
-// ============================================
-// SERVER COMPONENT — fetches initial data for SEO
-// ============================================
+const CATALOG_DESCRIPTION =
+  "Temukan berbagai produk terbaik di Plazo Marketplace. Belanja aman dengan sistem escrow dan garansi pembeli.";
 
 interface PageProps {
   searchParams: Promise<{
@@ -35,6 +22,58 @@ interface PageProps {
     maxPrice?: string;
   }>;
 }
+
+/**
+ * Canonical mengarah ke URL kategori/katalog bersih, sedangkan kombinasi
+ * filter/sort/pencarian (konten tipis & duplikat) diberi `noindex, follow`
+ * agar crawler tetap dapat mengikuti tautan produk di dalamnya.
+ */
+export async function generateMetadata({
+  searchParams,
+}: PageProps): Promise<Metadata> {
+  const params = await searchParams;
+  const categorySlug = params.categorySlug || "";
+  const categoryId = categorySlug ? "" : params.category || "";
+  const hasCategory = Boolean(categorySlug || categoryId);
+  const page = Number(params.page || "1");
+
+  const isThinVariation = Boolean(
+    params.search ||
+      params.sort ||
+      params.minPrice ||
+      params.maxPrice ||
+      params.city ||
+      params.province,
+  );
+
+  let canonical = hasCategory
+    ? `/products?categorySlug=${categorySlug || categoryId}`
+    : "/products";
+  if (!isThinVariation && page > 1) {
+    canonical += `${canonical.includes("?") ? "&" : "?"}page=${page}`;
+  }
+
+  return {
+    title: "Produk - Plazo Marketplace",
+    description: CATALOG_DESCRIPTION,
+    alternates: {
+      canonical,
+    },
+    robots: isThinVariation
+      ? { index: false, follow: true }
+      : { index: true, follow: true },
+    openGraph: {
+      title: "Produk - Plazo Marketplace",
+      description: CATALOG_DESCRIPTION,
+      type: "website",
+      url: canonical,
+    },
+  };
+}
+
+// ============================================
+// SERVER COMPONENT — fetches initial data for SEO
+// ============================================
 
 export default async function BrowseProductsPage({ searchParams }: PageProps) {
   const params = await searchParams;
