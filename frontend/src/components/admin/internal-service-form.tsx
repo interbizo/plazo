@@ -733,7 +733,13 @@ export function InternalServiceForm({
                   key={`existing-${index}`}
                   className="relative aspect-square overflow-hidden rounded-lg border-2 border-gray-200 group"
                 >
-                  <Image src={src} alt={`Existing ${index + 1}`} fill className="object-cover" />
+                  <Image
+                    src={src}
+                    alt={`Existing ${index + 1}`}
+                    fill
+                    sizes="(max-width: 640px) 33vw, (max-width: 768px) 25vw, 20vw"
+                    className="object-cover"
+                  />
                   {index === 0 && (
                     <div className="absolute left-1 top-1 rounded bg-blue-500 px-2 py-0.5 text-xs text-white">
                       Utama

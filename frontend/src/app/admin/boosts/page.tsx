@@ -250,6 +250,7 @@ export default function AdminBoostsPage() {
                 src={resolveImageUrl(listing.thumbnail)}
                 alt={name}
                 fill
+                sizes="64px"
                 className="object-cover"
               />
             </div>

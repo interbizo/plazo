@@ -151,6 +151,7 @@ export default function BoostProductPage() {
                   src={product.thumbnail}
                   alt={product.name}
                   fill
+                  sizes="(max-width: 1024px) 100vw, 33vw"
                   className="object-cover"
                 />
               ) : (

@@ -208,6 +208,7 @@ export default function SellerReviewsPage() {
                               src={img}
                               alt={`Review ${idx + 1}`}
                               fill
+                              sizes="80px"
                               className="object-cover"
                             />
                           </div>
@@ -224,6 +225,7 @@ export default function SellerReviewsPage() {
                               src={review.order.orderItems[0].product.images[0]}
                               alt={review.order.orderItems[0].product.name}
                               fill
+                              sizes="40px"
                               className="object-cover"
                             />
                           </div>

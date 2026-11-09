@@ -237,6 +237,7 @@ export function ReviewSection({ productId, serviceId, type }: ReviewSectionProps
                           alt={`Review ${idx + 1}`}
                           fill
                           className="object-cover"
+                          sizes="80px"
                         />
                       </div>
                     ))}

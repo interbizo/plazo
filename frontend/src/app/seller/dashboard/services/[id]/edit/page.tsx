@@ -662,7 +662,13 @@ export default function EditServicePage() {
               {/* Existing images */}
               {existingImages.map((src, i) => (
                 <div key={`existing-${i}`} className="relative aspect-square rounded-lg overflow-hidden border-2 border-gray-200 group">
-                  <Image src={src} alt={`Existing ${i + 1}`} fill className="object-cover" />
+                  <Image
+                    src={src}
+                    alt={`Existing ${i + 1}`}
+                    fill
+                    sizes="(max-width: 640px) 33vw, (max-width: 768px) 25vw, 20vw"
+                    className="object-cover"
+                  />
                   {i === 0 && (
                     <div className="absolute top-1 left-1 bg-blue-500 text-white text-xs px-2 py-0.5 rounded">
                       Utama
