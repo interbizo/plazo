@@ -1,0 +1,384 @@
+/* ==========================================================================
+   Plazo — Modern UI Stylesheet
+   Arah desain: "pasar digital" yang rapi dan hangat.
+   Indigo batik sebagai warna utama, kuning kunyit sebagai aksen,
+   dan satu elemen yang diingat: kanopi/tenda toko (scalloped awning).
+   Font: Bricolage Grotesque (judul) + Plus Jakarta Sans (isi).
+   ========================================================================== */
+
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap");
+
+/* ---------- 1. Design tokens ---------- */
+:root {
+  /* Warna */
+  --plz-indigo-900: #161c47;
+  --plz-indigo-700: #2a3580;
+  --plz-indigo-600: #3a47a8;
+  --plz-indigo-100: #dfe3f7;
+  --plz-indigo-50:  #eef0fb;
+  --plz-saffron-500: #f4b31d;
+  --plz-saffron-600: #d99a0b;
+  --plz-saffron-100: #fdf0cc;
+  --plz-green-600:  #1f9d6b;
+
+  --plz-ink:     #161a33;
+  --plz-muted:   #565c7c;
+  --plz-line:    #e1e4f2;
+  --plz-bg:      #f8f9fd;
+  --plz-surface: #ffffff;
+  --plz-on-primary: #ffffff;
+
+  /* Tipografi */
+  --plz-font-display: "Bricolage Grotesque", "Plus Jakarta Sans", system-ui, sans-serif;
+  --plz-font-body: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --plz-text-sm: 0.875rem;
+  --plz-text-base: 1rem;
+  --plz-text-lg: 1.125rem;
+  --plz-h3: clamp(1.125rem, 1.05rem + 0.3vw, 1.3rem);
+  --plz-h2: clamp(1.75rem, 1.3rem + 1.8vw, 2.75rem);
+  --plz-h1: clamp(2.5rem, 1.6rem + 4.2vw, 4.75rem);
+
+  /* Radius bertingkat: makin besar elemen, makin besar radius */
+  --plz-r-sm: 8px;
+  --plz-r-md: 14px;
+  --plz-r-lg: 24px;
+  --plz-r-pill: 999px;
+
+  /* Bayangan bernuansa indigo */
+  --plz-shadow-sm: 0 1px 2px rgba(22, 28, 71, .06), 0 2px 6px rgba(22, 28, 71, .04);
+  --plz-shadow-md: 0 4px 12px rgba(22, 28, 71, .07), 0 12px 28px rgba(22, 28, 71, .07);
+  --plz-shadow-lg: 0 8px 20px rgba(22, 28, 71, .08), 0 28px 60px rgba(22, 28, 71, .12);
+
+  /* Layout */
+  --plz-container: 1160px;
+  --plz-gutter: clamp(1.25rem, 4vw, 2rem);
+  --plz-section-y: clamp(4rem, 8vw, 7.5rem);
+  --plz-header-h: 68px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --plz-ink: #eef0fb;
+    --plz-muted: #a6acd0;
+    --plz-line: #2a3060;
+    --plz-bg: #0e1230;
+    --plz-surface: #171c45;
+    --plz-indigo-50: #1c2252;
+    --plz-indigo-100: #2a3170;
+    --plz-saffron-100: #3b3010;
+    --plz-shadow-sm: 0 1px 2px rgba(0,0,0,.4);
+    --plz-shadow-md: 0 10px 30px rgba(0,0,0,.35);
+    --plz-shadow-lg: 0 24px 60px rgba(0,0,0,.5);
+  }
+}
+
+/* ---------- 2. Base ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: calc(var(--plz-header-h) + 16px); }
+
+body {
+  margin: 0;
+  background: var(--plz-bg);
+  color: var(--plz-ink);
+  font-family: var(--plz-font-body);
+  font-size: var(--plz-text-base);
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--plz-font-display);
+  color: var(--plz-ink);
+  margin: 0 0 .5em;
+  text-wrap: balance;
+}
+h1 { font-size: var(--plz-h1); line-height: 1.02; letter-spacing: -0.035em; font-weight: 700; }
+h2 { font-size: var(--plz-h2); line-height: 1.12; letter-spacing: -0.025em; font-weight: 700; }
+h3 { font-size: var(--plz-h3); line-height: 1.3;  letter-spacing: -0.01em;  font-weight: 600; }
+p  { margin: 0 0 1em; max-width: 62ch; text-wrap: pretty; }
+
+a { color: var(--plz-indigo-600); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { color: var(--plz-indigo-700); }
+img, svg { max-width: 100%; display: block; }
+
+:focus-visible {
+  outline: 3px solid var(--plz-saffron-500);
+  outline-offset: 3px;
+  border-radius: var(--plz-r-sm);
+}
+
+.plz-container { width: min(100% - 2 * var(--plz-gutter), var(--plz-container)); margin-inline: auto; }
+.plz-section { padding-block: var(--plz-section-y); }
+.plz-section__head { max-width: 640px; margin-bottom: clamp(2rem, 4vw, 3.5rem); }
+.plz-section__head p { color: var(--plz-muted); font-size: var(--plz-text-lg); }
+
+/* ---------- 3. Tombol ---------- */
+.plz-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+  min-height: 48px; padding: .75rem 1.5rem;
+  border: 1.5px solid transparent; border-radius: var(--plz-r-pill);
+  font: 600 var(--plz-text-base)/1 var(--plz-font-body);
+  text-decoration: none; cursor: pointer;
+  transition: transform .15s ease, box-shadow .2s ease, background-color .2s ease, border-color .2s ease;
+}
+.plz-btn:active { transform: translateY(1px) scale(.99); }
+
+.plz-btn--primary { background: var(--plz-indigo-600); color: var(--plz-on-primary); box-shadow: 0 6px 16px rgba(58, 71, 168, .28); }
+.plz-btn--primary:hover { background: var(--plz-indigo-700); color: var(--plz-on-primary); box-shadow: 0 10px 22px rgba(58, 71, 168, .34); }
+
+.plz-btn--accent { background: var(--plz-saffron-500); color: #2b2100; }
+.plz-btn--accent:hover { background: var(--plz-saffron-600); color: #2b2100; }
+
+.plz-btn--ghost { background: transparent; color: var(--plz-ink); border-color: var(--plz-line); }
+.plz-btn--ghost:hover { background: var(--plz-surface); border-color: var(--plz-indigo-600); color: var(--plz-indigo-600); }
+
+/* ---------- 4. Header ---------- */
+.plz-header {
+  position: sticky; top: 0; z-index: 50;
+  height: var(--plz-header-h);
+  display: flex; align-items: center;
+  background: color-mix(in srgb, var(--plz-bg) 82%, transparent);
+  -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  backdrop-filter: saturate(1.4) blur(14px);
+  border-bottom: 1px solid var(--plz-line);
+}
+.plz-header .plz-container { display: flex; align-items: center; gap: 2rem; }
+.plz-logo { display: inline-flex; align-items: center; gap: .6rem; font: 700 1.35rem/1 var(--plz-font-display); color: var(--plz-ink); text-decoration: none; letter-spacing: -0.02em; }
+.plz-logo__mark {
+  display: grid; place-items: center; width: 34px; height: 34px;
+  background: var(--plz-indigo-600); color: #fff;
+  border-radius: 10px 10px 10px 4px; font-size: 1.1rem;
+}
+.plz-nav { display: flex; gap: .25rem; margin-left: auto; }
+.plz-nav a {
+  padding: .5rem .85rem; border-radius: var(--plz-r-pill);
+  color: var(--plz-muted); font-size: var(--plz-text-sm); font-weight: 600; text-decoration: none;
+  transition: background-color .2s, color .2s;
+}
+.plz-nav a:hover, .plz-nav a[aria-current="page"] { background: var(--plz-indigo-50); color: var(--plz-indigo-600); }
+
+/* ---------- 5. Hero + etalase toko (elemen utama: kanopi) ---------- */
+.plz-hero { padding-block: clamp(3rem, 7vw, 6rem) var(--plz-section-y); }
+.plz-hero .plz-container {
+  display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr);
+  gap: clamp(2rem, 6vw, 5rem); align-items: center;
+}
+.plz-hero__title { margin-bottom: .4em; }
+.plz-hero__lead { font-size: clamp(1.05rem, 1rem + .4vw, 1.25rem); color: var(--plz-muted); }
+.plz-hero__actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 2rem; }
+.plz-hero__note { margin-top: 1.25rem; font-size: var(--plz-text-sm); color: var(--plz-muted); }
+
+.plz-storefront {
+  position: relative; background: var(--plz-surface);
+  border: 1px solid var(--plz-line); border-radius: var(--plz-r-lg);
+  box-shadow: var(--plz-shadow-lg); overflow: hidden;
+  padding-bottom: 1.5rem;
+}
+/* Kanopi toko bergelombang */
+.plz-awning {
+  --r: 22px;
+  height: calc(var(--r) * 2 + 8px);
+  background: repeating-linear-gradient(90deg,
+    var(--plz-indigo-600) 0 calc(var(--r) * 2),
+    var(--plz-saffron-500) calc(var(--r) * 2) calc(var(--r) * 4));
+  -webkit-mask:
+    linear-gradient(#000 0 0) top / 100% calc(100% - var(--r)) no-repeat,
+    radial-gradient(var(--r) at 50% 0, #000 98%, #0000) bottom / calc(var(--r) * 2) var(--r) repeat-x;
+          mask:
+    linear-gradient(#000 0 0) top / 100% calc(100% - var(--r)) no-repeat,
+    radial-gradient(var(--r) at 50% 0, #000 98%, #0000) bottom / calc(var(--r) * 2) var(--r) repeat-x;
+  transform-origin: top;
+  animation: plz-awning-drop .7s cubic-bezier(.2, .9, .3, 1.15) both;
+}
+@keyframes plz-awning-drop { from { transform: scaleY(.2); opacity: 0; } to { transform: scaleY(1); opacity: 1; } }
+
+.plz-storefront__body { padding: 1.5rem 1.5rem 0; display: grid; gap: 1rem; }
+.plz-storefront__name { display: flex; align-items: center; gap: .75rem; font-family: var(--plz-font-display); font-weight: 700; font-size: 1.25rem; }
+.plz-storefront__url { font-size: var(--plz-text-sm); color: var(--plz-muted); }
+.plz-badge {
+  display: inline-flex; align-items: center; gap: .4rem; padding: .25rem .7rem;
+  background: color-mix(in srgb, var(--plz-green-600) 14%, transparent); color: var(--plz-green-600);
+  border-radius: var(--plz-r-pill); font-size: .8rem; font-weight: 700;
+}
+.plz-badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+.plz-bubble {
+  max-width: 80%; padding: .7rem 1rem; font-size: var(--plz-text-sm);
+  background: var(--plz-indigo-50); border-radius: 16px 16px 16px 4px;
+}
+.plz-bubble--me { margin-left: auto; background: var(--plz-indigo-600); color: #fff; border-radius: 16px 16px 4px 16px; }
+
+/* ---------- 6. Benefit / fitur (layout bento, bukan kartu seragam) ---------- */
+.plz-features { display: grid; grid-template-columns: repeat(6, 1fr); gap: 1.25rem; }
+.plz-feature {
+  grid-column: span 2; padding: 1.75rem;
+  background: var(--plz-surface); border: 1px solid var(--plz-line);
+  border-radius: var(--plz-r-md); box-shadow: var(--plz-shadow-sm);
+}
+.plz-feature:nth-child(1) { grid-column: span 4; background: var(--plz-indigo-600); border-color: transparent; color: #fff; padding: 2.25rem; border-radius: var(--plz-r-lg); }
+.plz-feature:nth-child(1) h3 { color: #fff; font-size: clamp(1.4rem, 1.1rem + 1vw, 2rem); }
+.plz-feature:nth-child(1) p { color: rgba(255,255,255,.82); }
+.plz-feature:nth-child(2) { grid-column: span 2; background: var(--plz-saffron-100); border-color: transparent; }
+.plz-feature:nth-child(4) { grid-column: span 4; }
+.plz-feature p { color: var(--plz-muted); margin-bottom: 0; }
+.plz-feature:nth-child(2) p { color: color-mix(in srgb, var(--plz-ink) 78%, transparent); }
+
+/* ---------- 7. Cara kerja (ini memang urutan, jadi pakai nomor) ---------- */
+.plz-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; counter-reset: step; position: relative; }
+.plz-step { position: relative; padding-top: 4rem; counter-increment: step; }
+.plz-step::before {
+  content: counter(step); position: absolute; top: 0; left: 0; z-index: 1;
+  display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%;
+  background: var(--plz-saffron-500); color: #2b2100; font: 700 1.1rem/1 var(--plz-font-display);
+  box-shadow: 0 0 0 6px var(--plz-bg);
+}
+.plz-step::after { content: ""; position: absolute; top: 22px; left: 52px; right: -2rem; height: 2px; background: repeating-linear-gradient(90deg, var(--plz-indigo-100) 0 8px, transparent 8px 16px); }
+.plz-step:last-child::after { display: none; }
+.plz-step p { color: var(--plz-muted); }
+
+/* ---------- 8. Keunggulan (daftar biasa, tanpa nomor) ---------- */
+.plz-benefits { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0 3rem; }
+.plz-benefit { padding-block: 1.5rem; border-top: 1px solid var(--plz-line); }
+.plz-benefit p { color: var(--plz-muted); margin-bottom: 0; }
+
+/* ---------- 9. Harga ---------- */
+.plz-pricing { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; align-items: stretch; }
+.plz-plan {
+  position: relative; display: flex; flex-direction: column; gap: 1rem;
+  padding: 2rem; background: var(--plz-surface);
+  border: 1px solid var(--plz-line); border-radius: var(--plz-r-lg); box-shadow: var(--plz-shadow-sm);
+}
+.plz-plan__price { font: 700 clamp(2rem, 1.6rem + 1.4vw, 2.75rem)/1 var(--plz-font-display); letter-spacing: -0.03em; }
+.plz-plan__price small { font: 500 var(--plz-text-sm)/1 var(--plz-font-body); color: var(--plz-muted); letter-spacing: 0; }
+.plz-plan ul { list-style: none; margin: 0 0 auto; padding: 0; display: grid; gap: .7rem; }
+.plz-plan li { display: flex; gap: .6rem; align-items: flex-start; font-size: var(--plz-text-sm); }
+.plz-plan li::before {
+  content: ""; flex: none; width: 18px; height: 18px; margin-top: 2px; border-radius: 50%;
+  background: var(--plz-indigo-50)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath d='M5 9.5l2.5 2.5L13 6.5' fill='none' stroke='%233a47a8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 100% no-repeat;
+}
+.plz-plan--featured {
+  background: var(--plz-indigo-900); color: #fff; border-color: transparent;
+  box-shadow: var(--plz-shadow-lg); transform: translateY(-12px);
+}
+.plz-plan--featured h3, .plz-plan--featured .plz-plan__price { color: #fff; }
+.plz-plan--featured .plz-plan__price small { color: rgba(255,255,255,.7); }
+.plz-plan--featured li::before { background-color: rgba(255,255,255,.14); }
+.plz-plan__flag {
+  position: absolute; top: -14px; left: 2rem; padding: .3rem .85rem;
+  background: var(--plz-saffron-500); color: #2b2100; border-radius: var(--plz-r-pill);
+  font-size: .8rem; font-weight: 700;
+}
+
+/* ---------- 10. Testimoni ---------- */
+.plz-quotes { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 1.25rem; }
+.plz-quote {
+  display: flex; flex-direction: column; gap: 1.5rem; margin: 0; padding: 2rem;
+  background: var(--plz-surface); border: 1px solid var(--plz-line); border-radius: var(--plz-r-md);
+}
+.plz-quote:first-child { background: var(--plz-indigo-50); border-color: transparent; border-radius: var(--plz-r-lg); }
+.plz-quote blockquote { margin: 0; font: 500 var(--plz-text-lg)/1.55 var(--plz-font-body); }
+.plz-quote:first-child blockquote { font: 500 clamp(1.2rem, 1rem + .8vw, 1.55rem)/1.45 var(--plz-font-display); }
+.plz-quote__who { display: flex; align-items: center; gap: .75rem; margin-top: auto; font-size: var(--plz-text-sm); }
+.plz-avatar {
+  display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%;
+  background: var(--plz-indigo-600); color: #fff; font-weight: 700; font-size: .85rem;
+}
+.plz-quote__who strong { display: block; }
+.plz-quote__who span { color: var(--plz-muted); }
+
+/* ---------- 11. FAQ (<details> native) ---------- */
+.plz-faq { max-width: 760px; }
+.plz-faq details { border-bottom: 1px solid var(--plz-line); }
+.plz-faq summary {
+  display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+  padding: 1.25rem 0; cursor: pointer; list-style: none;
+  font: 600 var(--plz-text-lg)/1.4 var(--plz-font-body);
+}
+.plz-faq summary::-webkit-details-marker { display: none; }
+.plz-faq summary::after {
+  content: "+"; flex: none; display: grid; place-items: center; width: 32px; height: 32px;
+  border-radius: 50%; background: var(--plz-indigo-50); color: var(--plz-indigo-600);
+  font-size: 1.25rem; transition: transform .25s ease, background-color .2s;
+}
+.plz-faq details[open] summary::after { transform: rotate(45deg); background: var(--plz-saffron-500); color: #2b2100; }
+.plz-faq details p { padding-bottom: 1.25rem; color: var(--plz-muted); }
+
+/* ---------- 12. CTA penutup ---------- */
+.plz-cta {
+  position: relative; overflow: hidden; text-align: center;
+  padding: clamp(3rem, 7vw, 5.5rem) var(--plz-gutter);
+  background: var(--plz-indigo-900); color: #fff; border-radius: var(--plz-r-lg);
+}
+.plz-cta h2 { color: #fff; margin-inline: auto; max-width: 20ch; }
+.plz-cta p { color: rgba(255,255,255,.78); margin-inline: auto; }
+.plz-cta .plz-hero__actions { justify-content: center; }
+.plz-cta .plz-btn--ghost { color: #fff; border-color: rgba(255,255,255,.35); }
+.plz-cta .plz-btn--ghost:hover { background: rgba(255,255,255,.1); color: #fff; border-color: #fff; }
+
+/* ---------- 13. Footer ---------- */
+.plz-footer { margin-top: var(--plz-section-y); padding-block: 3.5rem 2rem; border-top: 1px solid var(--plz-line); font-size: var(--plz-text-sm); }
+.plz-footer__grid { display: grid; grid-template-columns: 1.6fr repeat(3, 1fr); gap: 2.5rem; }
+.plz-footer h4 { font: 700 var(--plz-text-sm)/1.4 var(--plz-font-body); margin-bottom: 1rem; }
+.plz-footer ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; }
+.plz-footer a { color: var(--plz-muted); text-decoration: none; }
+.plz-footer a:hover { color: var(--plz-indigo-600); text-decoration: underline; }
+.plz-pay { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: .75rem; }
+.plz-pay span { padding: .3rem .75rem; background: var(--plz-surface); border: 1px solid var(--plz-line); border-radius: var(--plz-r-sm); font-weight: 700; font-size: .78rem; }
+.plz-footer__bottom { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--plz-line); color: var(--plz-muted); }
+
+/* ---------- 14. Kartu produk & jasa (halaman /products, /services) ---------- */
+.plz-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1.25rem; }
+.plz-product {
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--plz-surface); border: 1px solid var(--plz-line); border-radius: var(--plz-r-md);
+  box-shadow: var(--plz-shadow-sm); text-decoration: none; color: inherit;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.plz-product:hover { transform: translateY(-3px); box-shadow: var(--plz-shadow-md); color: inherit; }
+.plz-product__img { aspect-ratio: 4 / 3; width: 100%; object-fit: cover; background: var(--plz-indigo-50); }
+.plz-product__body { padding: 1rem 1.15rem 1.25rem; display: grid; gap: .35rem; }
+.plz-product__title { font: 600 var(--plz-text-base)/1.35 var(--plz-font-body); margin: 0; }
+.plz-product__price { font: 700 1.15rem/1 var(--plz-font-display); color: var(--plz-indigo-600); }
+
+/* ---------- 15. Form ---------- */
+input[type="text"], input[type="email"], input[type="password"], input[type="search"], input[type="tel"], select, textarea {
+  width: 100%; min-height: 48px; padding: .7rem 1rem;
+  background: var(--plz-surface); color: var(--plz-ink);
+  border: 1.5px solid var(--plz-line); border-radius: var(--plz-r-md);
+  font: inherit; transition: border-color .2s, box-shadow .2s;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none; border-color: var(--plz-indigo-600);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--plz-indigo-600) 20%, transparent);
+}
+
+/* ---------- 16. Responsive ---------- */
+@media (max-width: 960px) {
+  .plz-hero .plz-container { grid-template-columns: 1fr; }
+  .plz-features { grid-template-columns: repeat(2, 1fr); }
+  .plz-feature, .plz-feature:nth-child(n) { grid-column: span 1; }
+  .plz-feature:nth-child(1) { grid-column: span 2; }
+  .plz-pricing, .plz-quotes { grid-template-columns: 1fr; }
+  .plz-plan--featured { transform: none; }
+  .plz-footer__grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 720px) {
+  .plz-nav { display: none; } /* ganti dengan menu mobile (hamburger) */
+  .plz-steps { grid-template-columns: 1fr; gap: 1.5rem; }
+  .plz-step { padding: 0 0 0 4rem; }
+  .plz-step::after { top: 52px; left: 21px; right: auto; bottom: -1.5rem; width: 2px; height: auto; background: repeating-linear-gradient(180deg, var(--plz-indigo-100) 0 8px, transparent 8px 16px); }
+  .plz-benefits { grid-template-columns: 1fr; }
+  .plz-features { grid-template-columns: 1fr; }
+  .plz-feature:nth-child(n) { grid-column: span 1; }
+  .plz-footer__grid { grid-template-columns: 1fr; }
+  .plz-hero__actions .plz-btn { flex: 1 1 100%; }
+}
+
+/* ---------- 17. Aksesibilitas gerak ---------- */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
